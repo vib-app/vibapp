@@ -15,7 +15,6 @@ const NODE = join(BUNDLE, 'Contents/Resources/roomhash/node');
 const HOST = join(BUNDLE, 'Contents/Resources/roomhash/roomhash-host.mjs');
 const ROOMHASH_ROOT = join(BUNDLE, 'Contents/Resources/roomhash/current');
 const COLLABORATION_ROOT = join(BUNDLE, 'Contents/Resources/roomhash/collaboration');
-const CANDIDATE_ROOT = resolve(DESKTOP_ROOT, '../app-builder/demo-output/pipeline/candidates');
 const scratch = await mkdtemp(join(tmpdir(), 'vibapp-packaged-roomhash-'));
 
 let child;
@@ -28,7 +27,9 @@ try {
       VIBAPP_ROOMHASH_ROOT: ROOMHASH_ROOT,
       VIBAPP_ROOMHASH_COLLABORATION_ROOT: COLLABORATION_ROOT,
       VIBAPP_ROOMHASH_DATA_DIR: scratch,
-      VIBAPP_ROOMHASH_ALLOWED_SEED_ROOTS: CANDIDATE_ROOT,
+      // A fresh checkout has no local Builder demo output. This smoke starts
+      // an empty transport, so only its own temporary directory is allowlisted.
+      VIBAPP_ROOMHASH_ALLOWED_SEED_ROOTS: scratch,
     },
   });
   child.stderr.setEncoding('utf8');
@@ -46,6 +47,11 @@ try {
   child.once('error', error => {
     const waiter = waiting.shift();
     if (waiter) waiter.reject(error);
+  });
+  child.once('exit', code => {
+    if (code !== 0) {
+      for (const waiter of waiting.splice(0)) waiter.reject(new Error(`packaged host exited ${code}: ${stderr}`));
+    }
   });
 
   const next = (timeoutMs = 30_000) => new Promise((resolveNext, rejectNext) => {
