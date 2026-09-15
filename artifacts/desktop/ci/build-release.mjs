@@ -1,13 +1,15 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, statSync, symlinkSync, cpSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stampInspectorPin, releaseTag } from './release-policy.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 process.chdir(root);
 if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('Only macOS arm64 is release-qualified');
 if (process.env.GITHUB_ACTIONS !== 'true') throw new Error('Run in a disposable GitHub Actions checkout, not the working tree');
+if (process.env.RELEASE_TAG) releaseTag(process.env.RELEASE_TAG);
 const pins = JSON.parse(readFileSync('artifacts/desktop/ci/release-dependencies.json'));
 const sha = file => createHash('sha256').update(readFileSync(file)).digest('hex');
 const run = (file, args, options = {}) => execFileSync(file, args, { cwd: root, stdio: 'inherit', timeout: 1800000, ...options });
@@ -49,14 +51,20 @@ run(cargo, ['build', '--locked', '--offline', '--release', '--manifest-path', se
 const inspector = join(serviceTarget, 'release/vibapp-service-runtime');
 run('/usr/bin/codesign', ['--force', '--sign', '-', '--timestamp=none', '--options', 'runtime', '--entitlements', 'artifacts/desktop/packaging/macos/Runtime.entitlements.plist', inspector]);
 if (statSync(inspector).size > 16 * 1024 * 1024) throw new Error('Inspector exceeds verifier executable budget');
+const component = resolve('artifacts/desktop/runtime-apps/hello/component.wasm');
+const inspectionArgs = ['--inspect-descriptor', '--component', component, '--expected-sha256', sha(component), '--world', 'ui-only-reference'];
+const inspection = JSON.parse(execFileSync(inspector, inspectionArgs, { encoding: 'utf8', timeout: 20000, maxBuffer: 262144 }));
+if (inspection.component_sha256 !== sha(component) || inspection.descriptor?.id !== 'ai.vibapp.hello' || inspection.isolation?.ambient_wasi_linked !== false) throw new Error('Real inspector smoke failed');
+const wrongDigest = [...inspectionArgs];
+wrongDigest[4] = '0'.repeat(64);
+const rejected = spawnSync(inspector, wrongDigest, { encoding: 'utf8', timeout: 20000, maxBuffer: 262144 });
+if (rejected.status !== 1 || !rejected.stderr.includes('INSPECT_REJECTED')) throw new Error('Inspector did not reject wrong artifact digest');
 
 // Bind the verifier to THIS trusted CI build's signed executable, before the
 // launcher computes its source-input receipt. No runtime override or TOFU.
 const reconciliation = 'artifacts/app-builder/descriptor_reconciliation.py';
 const original = readFileSync(reconciliation, 'utf8');
-const pattern = /^COMPONENT_INSPECTOR_SHA256 = "[0-9a-f]{64}"$/gm;
-if ([...original.matchAll(pattern)].length !== 1) throw new Error('Inspector pin source format changed');
-writeFileSync(reconciliation, original.replace(pattern, `COMPONENT_INSPECTOR_SHA256 = "${sha(inspector)}"`));
+writeFileSync(reconciliation, stampInspectorPin(original, sha(inspector)));
 run(python, ['-I', '-B', '-c', 'import sys;sys.path.insert(0,sys.argv[1]);from descriptor_reconciliation import descriptor_inspector_preflight;descriptor_inspector_preflight()', resolve('artifacts/app-builder')]);
 
 const desktopTarget = resolve('artifacts/desktop/target');

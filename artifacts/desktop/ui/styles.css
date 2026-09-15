@@ -872,6 +872,7 @@ body.runtime-host-window .collaboration-overlay-body .collaboration-heading > .c
 }
 
 @media (max-width: 520px) {
+  .app-header:has(.client-download:not([hidden])) .wordmark > span:nth-child(2) { display: none; }
   body.runtime-host-window .runtime-trust-publisher,
   body.runtime-host-window .runtime-trust-permissions { display: none; }
   body.runtime-host-window .runtime-trust-strip strong { max-width: 40%; }

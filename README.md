@@ -4,6 +4,26 @@ VibApp is a Rust/Wasm application ecosystem: a shared desktop/web Launcher and
 AppStore, with Registry-first requirement intake, provider-neutral CodeAgents,
 an isolated Builder, a separate Verifier, and a host-owned runtime.
 
+[Open the Store](https://www.vibapp.ai) · [Download the client](https://github.com/vib-app/vibapp/releases)
+
+The client download is an experimental Apple Silicon macOS preview. Read the
+release's signing, platform and setup limitations before installing.
+
+## Client releases
+
+`.github/workflows/client-release.yml` builds on a clean macOS arm64 runner,
+includes pinned Python/Node/RoomHash dependencies, runs verification, and uploads
+a DMG plus checksums and provenance. **Run workflow** builds an artifact without
+publishing. Pushing a new `client-v*` tag builds and publishes a GitHub pre-release
+only after checks pass. The build job is read-only; only the separate publish job
+receives repository write permission. Never reuse or move a published tag.
+
+Versioned dependency inputs are in `artifacts/desktop/ci/release-dependencies.json`.
+The trusted host's inspector hash is stamped in the disposable CI checkout before
+desktop compilation; this does not disable the runtime verifier or change the
+historical Stage 0 toolchain. Apple Developer ID signing/notarization is not yet
+configured. Windows/Linux release jobs are intentionally not enabled.
+
 Current engineering status and acceptance boundaries are in
 [the repair ledger](docs/product/repair-ledger.md). The
 [Stage 0 contracts](docs/stage0/README.md) remain the ABI/security baseline;
