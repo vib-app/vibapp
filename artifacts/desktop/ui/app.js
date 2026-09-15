@@ -33,6 +33,10 @@ const model = {
   route: "home",
   conversation: [],
   selectedAppId: null,
+  storeDetailOpen: false,
+  storeFilter: "all",
+  storeQuery: "",
+  downloadDevice: null,
   runningApp: null,
   runtimeLayoutObserver: null,
   busy: false,
@@ -558,6 +562,11 @@ function updateLocaleUI() {
   document.querySelectorAll("[data-locale-aria-key]").forEach(node => { node.setAttribute("aria-label", t(node.dataset.localeAriaKey)); });
   document.querySelectorAll("[data-setting-locale]").forEach(node => { node.value = model.localePreference; });
   document.querySelectorAll("[data-client-download]").forEach(node => { node.hidden = !Boolean(window.VibAppWebBridge?.invoke); });
+  const downloadDialog = document.querySelector("#client-download-dialog");
+  if (downloadDialog?.open && downloadDialog.dataset.locale !== model.locale) {
+    downloadDialog.innerHTML = renderClientDownload();
+    downloadDialog.dataset.locale = model.locale;
+  }
 }
 
 function setLocale(nextLocale) {
@@ -687,6 +696,11 @@ function icon(name) {
     arrow: '<path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M7.5 8.5A6 6 0 0 1 18 12"/><path d="M16.5 15.5A6 6 0 0 1 6 12"/>',
     box: '<path d="m4 7 8-4 8 4-8 4z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/>',
     shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    download: '<path d="M12 3v12m-4-4 4 4 4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>',
+    close: '<path d="m6 6 12 12M18 6 6 18"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z"/>',
+    monitor: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 17v4m-4 0h8"/>',
   };
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name] || ""}</svg>`;
 }
@@ -1596,9 +1610,113 @@ function webAppOpenMode(app) {
   return "unavailable";
 }
 
+// Explicit, published client assets. A platform is downloadable only after its
+// release asset has been checked; an OS support plan is not a download artifact.
+const CLIENT_RELEASE = Object.freeze({
+  version: "0.1.0-preview.1",
+  url: "https://github.com/vib-app/vibapp/releases/download/client-v0.1.0-preview.1/VibApp-macOS-Apple-Silicon.dmg",
+  size: "170 MB",
+});
+
+function clientDevice(browser = navigator, hints = {}) {
+  const platform = String(hints.platform || browser.userAgentData?.platform || browser.platform || "");
+  const ua = String(browser.userAgent || "");
+  const os = /Android/i.test(platform + ua) ? "android"
+    : /iPhone|iPad|iPod/i.test(platform + ua) || (/Mac/i.test(platform) && browser.maxTouchPoints > 1) ? "ios"
+    : /Mac/i.test(platform + ua) ? "macos"
+    : /Win/i.test(platform + ua) ? "windows"
+    : /Linux|CrOS/i.test(platform + ua) ? "linux" : "unknown";
+  // MacIntel in navigator.platform and Intel in Safari's UA also occur on ARM
+  // Macs. Only an explicit architecture hint may select a chip automatically.
+  const architecture = String(hints.architecture || "").toLowerCase();
+  return { os, arch: /^(arm|arm64|aarch64)$/.test(architecture) ? "arm64" : /^(x86|x86_64|x64)$/.test(architecture) ? "x64" : "unknown" };
+}
+
+function renderClientDownload() {
+  const device = model.downloadDevice || clientDevice();
+  const platforms = { macos: "macOS", windows: "Windows", linux: "Linux", android: "Android", ios: "iOS / iPadOS" };
+  const available = device.os === "macos" && device.arch === "arm64";
+  const chooseChip = device.os === "macos" && device.arch === "unknown";
+  const name = platforms[device.os];
+  return `<div class="download-heading"><span class="brand-glyph" aria-hidden="true">V</span><button class="download-close" data-close-download aria-label="${lx("关闭下载窗口", "Close downloads")}">${icon("close")}</button></div>
+    <h2 id="download-title">${name ? lx(`下载 ${name} 版`, `VibApp for ${name}`) : lx("下载 VibApp", "Get VibApp")}</h2>
+    <p class="download-lead">${lx("你的应用，随手打开。", "Your apps. Right at home.")}</p>
+    <div class="download-choices"><label><span>${lx("操作系统", "Operating system")}</span><select data-download-os>
+      <option value="unknown" ${device.os === "unknown" ? "selected" : ""}>${lx("选择系统", "Choose a system")}</option>
+      ${Object.entries(platforms).map(([key, label]) => `<option value="${key}" ${device.os === key ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+      ${device.os === "macos" ? `<label><span>${lx("芯片", "Chip")}</span><select data-download-arch><option value="unknown" ${chooseChip ? "selected" : ""}>${lx("选择芯片", "Choose your chip")}</option><option value="arm64" ${device.arch === "arm64" ? "selected" : ""}>${lx("Apple Silicon（M 系列）", "Apple Silicon (M-series)")}</option><option value="x64" ${device.arch === "x64" ? "selected" : ""}>Intel</option></select></label>` : ""}
+    </div>
+    <div class="download-result" aria-live="polite">${available
+      ? `<p class="download-version">${esc(CLIENT_RELEASE.version)} · DMG · ${CLIENT_RELEASE.size}</p><a class="download-primary" href="${CLIENT_RELEASE.url}" target="_blank" rel="noopener noreferrer" download="VibApp-macOS-Apple-Silicon.dmg">${icon("download")}${lx("下载 Mac 版", "Download for Mac")}</a><p class="download-caption">${lx("Apple Silicon · 预览版", "Apple Silicon · Preview release")}</p><details class="download-help"><summary>${lx("首次安装须知", "Before your first install")}</summary><p>${lx("此预览版尚未经过 Apple 公证。打开 DMG 后将 VibApp 拖入 Applications；如 macOS 拦截，请在「系统设置 → 隐私与安全性」中确认允许打开。", "This preview is not yet notarized by Apple. Open the DMG and drag VibApp into Applications. If macOS blocks it, review the app in System Settings → Privacy & Security.")}</p></details>`
+      : `<p class="download-unavailable">${chooseChip ? lx("在「关于本机」中查看芯片，再选择对应版本。", "Check About This Mac to choose the right chip.") : device.os === "unknown" ? lx("选择你的系统，查看可用的客户端。", "Choose your system to see available downloads.") : lx(`${name}${device.os === "macos" ? " Intel" : ""} 客户端暂未提供。`, `The ${name}${device.os === "macos" ? " Intel" : ""} client is not available yet.`)}</p><button class="download-primary" disabled>${chooseChip ? lx("请先选择芯片", "Choose your chip first") : lx("暂未提供下载", "Download unavailable")}</button><button class="download-browser" data-close-download>${lx("继续使用网页版", "Continue in your browser")}</button>`}</div>
+    <a class="download-releases" href="https://github.com/vib-app/vibapp/releases" target="_blank" rel="noopener noreferrer">${lx("所有版本与更新说明", "All releases & release notes")} <span aria-hidden="true">↗</span></a>`;
+}
+
+async function openClientDownload() {
+  const dialog = document.querySelector("#client-download-dialog");
+  if (!dialog || !window.VibAppWebBridge?.invoke) return;
+  model.downloadDevice = clientDevice();
+  const initial = model.downloadDevice;
+  dialog.innerHTML = renderClientDownload();
+  dialog.dataset.locale = model.locale;
+  if (!dialog.open) dialog.showModal();
+  try {
+    const hints = await navigator.userAgentData?.getHighEntropyValues?.(["platform", "architecture"]);
+    // A manual selection wins over a late browser hint (or an earlier opening).
+    if (hints && dialog.open && model.downloadDevice === initial) {
+      model.downloadDevice = clientDevice(navigator, hints);
+      dialog.innerHTML = renderClientDownload();
+      dialog.querySelector(".download-primary:not([disabled]), [data-download-arch], [data-download-os]")?.focus();
+    }
+  } catch (_) { /* Restricted browsers keep the explicit OS/chip choice. */ }
+}
+
+function storeApps() {
+  return (model.data?.apps || []).filter(app => app.publication_state === "published");
+}
+
+function filteredStoreApps() {
+  const query = model.storeQuery.trim().toLocaleLowerCase();
+  return storeApps().filter(app => {
+    const mode = webAppOpenMode(app);
+    return (model.storeFilter === "all" || mode === model.storeFilter)
+      && (!query || `${app.display_name} ${app.summary} ${app.publisher || ""}`.toLocaleLowerCase().includes(query));
+  });
+}
+
+function storeOpenAction(app) {
+  const mode = webAppOpenMode(app);
+  const label = mode === "browser" ? lx("打开", "Open") : lx("获取", "Get");
+  const aria = esc(`${label} ${app.display_name}`);
+  if (mode === "browser") return `<button class="store-get" data-launch="${esc(app.app_id)}" aria-label="${aria}">${label}</button>`;
+  if (mode === "desktop") return `<a class="store-get" href="${esc(desktopAppUrl(app.app_id))}" target="_blank" rel="noopener" data-open-desktop-app="${esc(app.app_id)}" aria-label="${aria}">${label}</a>`;
+  return `<button class="store-get" disabled>${lx("暂不可用", "Unavailable")}</button>`;
+}
+
+function storeRow(app) {
+  return `<article class="store-app-row"><button class="store-app-link" data-app-id="${esc(app.app_id)}">${appIdentityIcon(app, "large")}<span><strong>${esc(app.display_name)}</strong><small>${esc(app.summary)}</small></span></button><div class="store-row-action">${storeOpenAction(app)}<small>${webAppOpenMode(app) === "browser" ? lx("浏览器运行", "In your browser") : lx("通过客户端", "VibApp client")}</small></div></article>`;
+}
+
+function renderStoreResults() {
+  const apps = filteredStoreApps();
+  const browsing = model.storeFilter === "all" && !model.storeQuery.trim();
+  const features = browsing ? apps.slice(0, 2) : [];
+  if (!apps.length) return `<div class="store-empty"><h2>${storeApps().length ? lx("没有找到应用", "No apps found") : lx("应用即将上架", "Apps are on their way")}</h2><p>${storeApps().length ? lx("试试其他关键词或分类。", "Try another search or collection.") : lx("已上架的应用会出现在这里。", "Published apps will appear here.")}</p>${storeApps().length ? `<button class="secondary-button" data-reset-store>${lx("查看全部应用", "View all apps")}</button>` : ""}</div>`;
+  const section = (title, items) => items.length ? `<section class="store-collection"><h2>${title}</h2><div class="store-app-list">${items.map(storeRow).join("")}</div></section>` : "";
+  return `${features.length ? `<section class="store-features" aria-label="${lx("应用速览", "App spotlight")}">${features.map(app => `<article class="store-feature"><div class="store-feature-copy"><p class="store-eyebrow">${webAppOpenMode(app) === "browser" ? lx("即点即用", "OPEN IN YOUR BROWSER") : lx("桌面应用", "ON YOUR DESKTOP")}</p><button class="store-feature-title" data-app-id="${esc(app.app_id)}"><h2>${esc(app.display_name)}</h2></button><p class="store-feature-summary">${esc(app.summary)}</p><div class="store-feature-actions">${storeOpenAction(app)}<button class="store-more" data-app-id="${esc(app.app_id)}">${lx("了解更多", "Learn more")}</button></div></div><button class="store-feature-icon" data-app-id="${esc(app.app_id)}" aria-label="${esc(app.display_name)}">${appIdentityIcon(app, "large")}</button></article>`).join("")}</section>` : ""}
+    ${browsing ? section(lx("浏览器里，即刻打开", "Ready for your browser"), apps.filter(app => webAppOpenMode(app) === "browser")) + section(lx("为你的桌面增添一点好用", "At home on your desktop"), apps.filter(app => webAppOpenMode(app) !== "browser")) : section(model.storeQuery.trim() ? lx("搜索结果", "Search results") : model.storeFilter === "browser" ? lx("浏览器应用", "Browser apps") : lx("客户端应用", "Desktop apps"), apps)}`;
+}
+
+function renderStore() {
+  const filters = [["all", "box", lx("探索", "Explore")], ["browser", "globe", lx("浏览器应用", "Browser apps")], ["desktop", "monitor", lx("客户端应用", "Desktop apps")]];
+  return `<div class="store-shell"><aside class="store-sidebar"><p class="store-sidebar-title">${t("nav_store")}</p><label class="store-search">${icon("search")}<input type="search" data-store-search value="${esc(model.storeQuery)}" aria-label="${lx("搜索商店", "Search Store")}" placeholder="${lx("搜索", "Search")}"></label><nav class="store-filters" aria-label="${lx("应用分类", "App collections")}">${filters.map(([key, symbol, label]) => `<button data-store-filter="${key}" class="${model.storeFilter === key ? "active" : ""}" aria-pressed="${model.storeFilter === key}">${icon(symbol)}<span>${label}</span></button>`).join("")}</nav><div class="store-sidebar-footer"><button data-client-download>${icon("download")}<span>${lx("下载 VibApp", "Get VibApp")}</span></button></div></aside>
+    <div class="store-content"><header class="store-heading"><h1>${lx("探索好应用", "Discover great apps.")}</h1><p>${lx("找到所需，打开即用。", "Find your next everyday essential.")}</p></header>${(model.data.feed_errors || []).includes("store-catalog-snapshot") ? `<p class="truth-note" role="status">${lx("显示最近已上架的目录，实时刷新暂不可用。", "Showing the last published catalog. Live refresh is temporarily unavailable.")}</p>` : ""}<div id="store-results">${renderStoreResults()}</div></div></div>`;
+}
+
 function renderApps() {
   const apps = model.data.apps || [];
   const isWebStore = Boolean(window.VibAppWebBridge?.invoke);
+  if (isWebStore && !model.storeDetailOpen) return renderStore();
   if (!apps.some(app => app.app_id === model.selectedAppId)) model.selectedAppId = apps[0]?.app_id;
   const selected = apps.find(app => app.app_id === model.selectedAppId);
   if (!selected) return `<div class="library-empty">
@@ -1622,7 +1740,8 @@ function renderApps() {
   const availableUpdate = selected.update_eligible ? selected.available_update : null;
   const updateState = selected.update || {};
   const updateTransaction = updateState.last_transaction || null;
-  return `<div class="tool-page">
+  return `<div class="tool-page ${isWebStore ? "store-detail-page" : ""}">
+    ${isWebStore ? `<button class="back-button" data-back-store>${icon("back")}${t("nav_store")}</button>` : ""}
     <div class="page-heading"><div><p class="overline">${isWebStore ? "VIBAPP" : t("page_apps_overline_running")}</p><h1>${isWebStore ? t("nav_store") : t("page_apps_title")}</h1><p>${isWebStore ? lx("发现你需要的应用。", "Find your next app.") : t("page_apps_desc")}</p></div></div>
     ${(model.data.feed_errors || []).includes("store-catalog-snapshot") ? `<p class="truth-note" role="status">${lx("目录暂未刷新，显示最近已上架的应用。", "Showing the last published catalog. Live refresh is temporarily unavailable.")}</p>` : ""}
     <div class="apps-grid">
@@ -1657,7 +1776,7 @@ function renderApps() {
           ${!launchable && !serviceLike && !desktopHandoff ? `<button class="secondary-button" disabled>${t("page_apps_unavailable")}</button>` : ""}
           ${storePackageLinks(selected)}
         </div>
-        ${desktopHandoff ? `<p class="truth-note">${lx("由 VibApp 客户端安装并运行，无需手动下载应用包。", "VibApp installs and runs this app. No manual package download needed.")}</p><details class="technical-details" ${model.desktopHandoffAppId === selected.app_id ? "open" : ""}><summary>${lx("没有打开？安装或更新客户端", "Didn't open? Install or update VibApp")}</summary><p>${lx("请在浏览器提示中允许打开 VibApp。还没安装？先下载客户端，安装并打开一次，再回来重试。", "Allow your browser to open VibApp. Not installed yet? Download the client, install and open it once, then return and try again.")}</p><a class="secondary-button" href="https://github.com/vib-app/vibapp/releases" target="_blank" rel="noopener noreferrer">${lx("前往 GitHub 下载客户端", "Download VibApp on GitHub")}</a><p>${lx("当前提供 macOS Apple Silicon 预览版；其他系统请查看 Release 说明。", "A macOS Apple Silicon preview is available. See release notes for platform support.")}</p></details>` : ""}
+        ${desktopHandoff ? `<p class="truth-note">${lx("由 VibApp 客户端安装并运行，无需手动下载应用包。", "VibApp installs and runs this app. No manual package download needed.")}</p><details class="technical-details" ${model.desktopHandoffAppId === selected.app_id ? "open" : ""}><summary>${lx("没有打开？安装或更新客户端", "Didn't open? Install or update VibApp")}</summary><p>${lx("请在浏览器提示中允许打开 VibApp。还没安装？先下载客户端，安装并打开一次，再回来重试。", "Allow your browser to open VibApp. Not installed yet? Download the client, install and open it once, then return and try again.")}</p><button class="secondary-button" data-client-download aria-haspopup="dialog" aria-controls="client-download-dialog">${icon("download")}${lx("下载客户端", "Get VibApp")}</button></details>` : ""}
         ${browserRuntimeMissing && !cachedForWeb && !desktopHandoff ? `<p class="truth-note" role="status">${lx("这个版本尚无可验证的网页运行包，请使用桌面客户端。", "This version has no verified browser runtime. Use the desktop client.")}</p>` : ""}
         ${cachedForWeb ? `<p class="truth-note">${selected.web_runtime_available ? lx("公开包已通过 P2P 下载并逐文件校验；运行仍使用单独验证的同源 Web Runtime，不直接执行缓存字节。", "The public package was fetched over P2P and verified file by file. Execution still uses the separately verified same-origin Web Runtime; cached bytes are not executed directly.") : lx("公开包已通过 P2P 下载并逐文件校验，但它当前没有已验证的 Web Runtime；请使用 VibApp Client 运行。", "The public package was fetched over P2P and verified file by file, but it has no verified Web Runtime; use VibApp Client to run it.")}</p>` : ""}
         ${serviceEntrypoints.length ? `<section class="service-controls" aria-label="${lx("后台服务入口", "Background service entrypoints")}">${serviceEntrypoints.map(entrypoint => {
@@ -2411,6 +2530,7 @@ function scheduleConsentExpiryRefresh() {
 }
 
 function navigate(route) {
+  if (route === "apps") model.storeDetailOpen = false;
   model.route = ["home", "apps", "builds", "runtime", "settings"].includes(route) ? route : "home";
   render();
   main.focus({ preventScroll: true });
@@ -2485,11 +2605,35 @@ async function refreshCollaborationStatus() {
 }
 
 document.addEventListener("click", async event => {
+  if (event.target.closest("[data-client-download]")) {
+    event.preventDefault();
+    await openClientDownload();
+    return;
+  }
+  const downloadDialog = document.querySelector("#client-download-dialog");
+  if (event.target.closest("[data-close-download]") || (event.target === downloadDialog && downloadDialog?.open)) {
+    // Only clicks outside the dialog's bounds dismiss its backdrop. Empty
+    // space inside the panel must not unexpectedly close the picker.
+    const rect = downloadDialog?.getBoundingClientRect();
+    if (event.target !== downloadDialog || (rect && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom))) downloadDialog?.close();
+    return;
+  }
+  const storeFilter = event.target.closest("[data-store-filter]");
+  if (storeFilter || event.target.closest("[data-reset-store]") || event.target.closest("[data-back-store]")) {
+    model.storeDetailOpen = false;
+    if (storeFilter) model.storeFilter = storeFilter.dataset.storeFilter;
+    if (event.target.closest("[data-reset-store]")) { model.storeFilter = "all"; model.storeQuery = ""; }
+    render();
+    document.querySelector(storeFilter ? `[data-store-filter="${model.storeFilter}"]` : "[data-store-search]")?.focus({ preventScroll: true });
+    return;
+  }
   const desktopLink = event.target.closest("[data-open-desktop-app]");
   if (desktopLink) {
     // Keep navigation in the original user gesture. Do not infer installation
     // from a timer/blur event, or remove the anchor before its default action.
     model.desktopHandoffAppId = desktopLink.dataset.openDesktopApp;
+    model.selectedAppId = desktopLink.dataset.openDesktopApp;
+    model.storeDetailOpen = true;
     window.setTimeout(() => render(), 200);
     return;
   }
@@ -2592,7 +2736,9 @@ document.addEventListener("click", async event => {
   }
   if (app) {
     model.selectedAppId = app.dataset.appId;
+    model.storeDetailOpen = true;
     render();
+    main.focus({ preventScroll: true });
   }
   if (newChat) {
     model.conversation = [];
@@ -2628,6 +2774,7 @@ document.addEventListener("click", async event => {
     document.querySelector(".composer textarea")?.focus();
   }
   if (jobApp) {
+    model.storeDetailOpen = true;
     model.selectedAppId = jobApp.dataset.jobApp;
     model.route = "apps";
     render();
@@ -2843,6 +2990,28 @@ document.addEventListener("keydown", event => {
   if (candidates.length !== 1) return;
   event.preventDefault();
   candidates[0].click();
+});
+
+document.addEventListener("input", event => {
+  if (!event.target.matches?.("[data-store-search]")) return;
+  model.storeQuery = event.target.value;
+  const results = document.querySelector("#store-results");
+  if (results) results.innerHTML = renderStoreResults();
+});
+
+document.addEventListener("change", event => {
+  const control = event.target;
+  if (!control.matches?.("[data-download-os], [data-download-arch]")) return;
+  const current = model.downloadDevice || clientDevice();
+  model.downloadDevice = control.matches("[data-download-os]")
+    ? { os: control.value, arch: "unknown" }
+    : { ...current, arch: control.value };
+  const selector = control.matches("[data-download-os]") ? "[data-download-os]" : "[data-download-arch]";
+  const dialog = document.querySelector("#client-download-dialog");
+  if (dialog?.open) {
+    dialog.innerHTML = renderClientDownload();
+    dialog.querySelector(selector)?.focus();
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
@@ -3188,6 +3357,7 @@ async function boot() {
     const sharedAppId = new URLSearchParams(window.location.search).get("app");
     if (sharedAppId && (model.data?.apps || []).some(app => app.app_id === sharedAppId)) {
       model.selectedAppId = sharedAppId;
+      model.storeDetailOpen = true;
       model.route = "apps";
     }
     render();
@@ -3205,6 +3375,8 @@ window.VibAppUiTest = {
   renderRecommendation,
   renderApps,
   desktopAppUrl, webAppOpenMode, renderStoreOpenRequest,
+  clientDevice, renderClientDownload, openClientDownload, CLIENT_RELEASE,
+  renderStore, renderStoreResults, filteredStoreApps,
   renderBuilds,
   renderJobConversation,
   renderCodeagentDiagnostics,

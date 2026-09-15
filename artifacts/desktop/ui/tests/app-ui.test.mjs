@@ -84,7 +84,7 @@ test("locale follows the primary browser language, defaults to English, and hono
   }
 });
 
-test("web-only download link follows locale and stays hidden in the native launcher", () => {
+test("web-only download dialog trigger follows locale without replacing its icon", () => {
   const ui = loadUi();
   const link = { dataset: { localeKey: "download_client" }, textContent: "", hidden: true };
   ui.testDocument.querySelectorAll = selector =>
@@ -98,7 +98,10 @@ test("web-only download link follows locale and stays hidden in the native launc
   ui.setLocale("zh-CN");
   assert.equal(link.textContent, "下载客户端");
   const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /https:\/\/github\.com\/vib-app\/vibapp\/releases/);
+  assert.match(html, /<button class="client-download" data-client-download aria-haspopup="dialog"/);
+  assert.match(html, /<span data-locale-key="download_client">Download<\/span>/);
+  assert.match(html, /<dialog id="client-download-dialog"/);
+  assert.match(ui.renderClientDownload(), /https:\/\/github\.com\/vib-app\/vibapp\/releases/);
 });
 
 test("web navigation says Store while desktop keeps Library in both locales", () => {
@@ -124,6 +127,7 @@ test("Store open prefers verified browser runtime; otherwise hands public apps t
   ui.testWindow.VibAppWebBridge = { invoke: async () => ({}) };
   ui.model.data = { apps: [app], jobs: [], needs: [], meta: {} };
   ui.model.selectedAppId = app.app_id;
+  ui.model.storeDetailOpen = true;
   assert.equal(ui.webAppOpenMode(app), "desktop");
   assert.match(ui.renderApps(), /href="vibapp:\/\/ai.vibapp.clock"/);
   assert.match(ui.renderApps(), /target="_blank" rel="noopener" data-open-desktop-app=/);
@@ -139,6 +143,92 @@ test("Store open prefers verified browser runtime; otherwise hands public apps t
   for (const id of ["app?install=1", "app/path", "user@app", "app:80", "app..id", "<script>"]) {
     assert.equal(ui.desktopAppUrl(id), null);
   }
+});
+
+test("download recommendation detects OS but never guesses a Mac chip from its UA", () => {
+  const ui = loadUi();
+  for (const [browser, expected] of [
+    [{ platform: "MacIntel", userAgent: "Intel Mac OS X" }, "macos"],
+    [{ platform: "Win32", userAgent: "Windows NT 10.0" }, "windows"],
+    [{ platform: "Linux x86_64" }, "linux"],
+    [{ platform: "Linux armv8l", userAgent: "Android 15" }, "android"],
+    [{ platform: "MacIntel", maxTouchPoints: 5 }, "ios"],
+    [{ platform: "iPhone" }, "ios"],
+    [{}, "unknown"],
+  ]) {
+    assert.equal(ui.clientDevice(browser).os, expected);
+    assert.equal(ui.clientDevice(browser).arch, "unknown");
+  }
+  assert.equal(ui.clientDevice({ platform: "MacIntel" }, { architecture: "arm" }).arch, "arm64");
+  assert.equal(ui.clientDevice({ platform: "MacIntel" }, { architecture: "x86" }).arch, "x64");
+  ui.setTestLocale("en-US");
+  ui.model.downloadDevice = { os: "macos", arch: "arm64" };
+  const available = ui.renderClientDownload();
+  assert.match(available, /href="https:\/\/github.com\/vib-app\/vibapp\/releases\/download\/client-v0.1.0-preview.1\/VibApp-macOS-Apple-Silicon.dmg"/);
+  assert.match(available, /Download for Mac/);
+  assert.match(available, /not yet notarized/);
+  for (const device of [{ os: "macos", arch: "x64" }, { os: "macos", arch: "unknown" },
+    ...["windows", "linux", "android", "ios", "unknown"].map(os => ({ os, arch: "arm64" }))]) {
+    ui.model.downloadDevice = device;
+    const html = ui.renderClientDownload();
+    assert.doesNotMatch(html, /href="[^"]+\.dmg"/);
+    assert.match(html, /class="download-primary" disabled/);
+    assert.match(html, /Continue in your browser/);
+  }
+  ui.setTestLocale("zh-CN");
+  ui.model.downloadDevice = { os: "windows", arch: "x64" };
+  assert.match(ui.renderClientDownload(), /Windows 客户端暂未提供/);
+});
+
+test("late architecture hints cannot overwrite a manual download choice", async () => {
+  const ui = loadUi();
+  ui.testWindow.VibAppWebBridge = { invoke: async () => ({}) };
+  let resolveHints;
+  ui.testNavigator.platform = "MacIntel";
+  ui.testNavigator.userAgentData = { getHighEntropyValues: () => new Promise(resolve => { resolveHints = resolve; }) };
+  const dialog = { open: false, dataset: {}, innerHTML: "", showModal() { this.open = true; }, querySelector() { return null; } };
+  ui.testDocument.querySelector = selector => selector === "#client-download-dialog" ? dialog : null;
+  const opening = ui.openClientDownload();
+  assert.equal(dialog.open, true);
+  ui.model.downloadDevice = { os: "windows", arch: "unknown" };
+  resolveHints({ platform: "macOS", architecture: "arm" });
+  await opening;
+  assert.equal(ui.model.downloadDevice.os, "windows");
+});
+
+test("Store overview uses actual public apps, working filters and per-app launch modes", () => {
+  const ui = loadUi();
+  ui.setTestLocale("en-US");
+  ui.testWindow.VibAppWebBridge = { invoke: async () => ({}) };
+  const desktop = { ...installedApp(), app_id: "ai.vibapp.clock", display_name: "LED clock", summary: "Time at a glance", publication_state: "published", launch_eligible: false };
+  const browser = { ...desktop, app_id: "ai.vibapp.notes", display_name: "Notes", summary: "A notebook", web_runtime_available: true, launch_eligible: true };
+  const privateApp = { ...desktop, app_id: "ai.vibapp.private", display_name: "Private draft", publication_state: "private" };
+  ui.model.data = { apps: [desktop, browser, privateApp], feed_errors: [] };
+  const html = ui.renderApps();
+  assert.match(html, /class="store-sidebar"/);
+  assert.match(html, /class="store-features"/);
+  assert.match(html, /data-open-desktop-app="ai.vibapp.clock"/);
+  assert.match(html, /data-launch="ai.vibapp.notes"/);
+  assert.doesNotMatch(html, /Private draft|App Store rating|Editors. choice/);
+  ui.model.storeFilter = "browser";
+  assert.deepEqual(Array.from(ui.filteredStoreApps(), app => app.app_id), [browser.app_id]);
+  ui.model.storeFilter = "desktop";
+  assert.deepEqual(Array.from(ui.filteredStoreApps(), app => app.app_id), [desktop.app_id]);
+  ui.model.storeQuery = "not found";
+  assert.match(ui.renderStoreResults(), /No apps found/);
+  ui.model.storeQuery = "TIME";
+  assert.equal(ui.filteredStoreApps()[0].app_id, desktop.app_id);
+  ui.model.storeDetailOpen = true;
+  ui.model.selectedAppId = desktop.app_id;
+  assert.match(ui.renderApps(), /data-back-store/);
+  ui.setLocale("zh-CN");
+  assert.equal(ui.model.storeQuery, "TIME");
+  assert.equal(ui.model.storeFilter, "desktop");
+  assert.match(ui.renderStore(), /探索好应用/);
+  desktop.display_name = '<img src=x onerror="alert(1)">';
+  ui.model.storeQuery = "";
+  assert.doesNotMatch(ui.renderStore(), /<img src=x/);
+  assert.match(ui.renderStore(), /&lt;img/);
 });
 
 test("native incoming app is confined to its own install pane and escapes untrusted metadata", () => {

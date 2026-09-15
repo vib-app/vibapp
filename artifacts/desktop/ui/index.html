@@ -34,7 +34,6 @@
           </button>
         </nav>
         <div class="header-tools">
-        <a class="client-download" data-client-download data-locale-key="download_client" href="https://github.com/vib-app/vibapp/releases" target="_blank" rel="noopener noreferrer" hidden>Download</a>
         <label class="header-language">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z"/></svg>
           <span class="sr-only" data-locale-key="settings_gui_locale">Language</span>
@@ -44,6 +43,10 @@
             <option value="zh-CN" lang="zh-CN">简体中文</option>
           </select>
         </label>
+        <button class="client-download" data-client-download aria-haspopup="dialog" aria-controls="client-download-dialog" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+          <span data-locale-key="download_client">Download</span>
+        </button>
         </div>
       </header>
 
@@ -54,6 +57,7 @@
       </main>
     </div>
 
+    <dialog id="client-download-dialog" class="download-dialog" aria-labelledby="download-title"></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="app.js" defer></script>
   </body>
