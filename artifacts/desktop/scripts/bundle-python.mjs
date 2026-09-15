@@ -6,11 +6,12 @@ import { execFileSync } from 'node:child_process';
 const [sourceArg, destinationArg] = process.argv.slice(2);
 if (!sourceArg || !destinationArg) throw new Error('usage: bundle-python.mjs SOURCE NEW_DESTINATION');
 const source = await realpath(sourceArg);
-const destination = resolve(destinationArg);
+let destination = resolve(destinationArg);
 try { await lstat(destination); throw new Error('destination already exists'); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 if (!(await lstat(join(source, 'bin/python3.13'))).isFile()) throw new Error('Python executable missing');
 await cp(source, destination, { recursive: true, verbatimSymlinks: true });
+destination = await realpath(destination); // macOS /tmp is an alias for /private/tmp.
 
 async function visit(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -29,8 +30,11 @@ async function visit(directory) {
       if (kind.includes('Mach-O')) {
         if (!kind.includes('arm64')) throw new Error(`wrong Python architecture: ${path}`);
         const libraries = execFileSync('/usr/bin/otool', ['-L', path], { encoding: 'utf8' }).split('\n').slice(1);
-        for (const line of libraries) {
+        const installId = execFileSync('/usr/bin/otool', ['-D', path], { encoding: 'utf8' }).split('\n')[1]?.trim();
+        for (const [index, line] of libraries.entries()) {
           const dependency = line.trim().split(' ')[0];
+          // otool lists a dylib's own install ID first; that is not a dependency.
+          if (index === 0 && dependency === installId) continue;
           if (dependency && !/^(@|\/usr\/lib\/|\/System\/Library\/)/.test(dependency)) {
             throw new Error(`non-relocatable Python dependency: ${dependency}`);
           }

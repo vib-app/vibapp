@@ -13,8 +13,9 @@ release's signing, platform and setup limitations before installing.
 
 `.github/workflows/client-release.yml` builds on a clean macOS arm64 runner,
 includes pinned Python/Node/RoomHash dependencies, runs verification, and uploads
-a DMG plus checksums and provenance. **Run workflow** builds an artifact without
-publishing. Pushing a new `client-v*` tag builds and publishes a GitHub pre-release
+a DMG plus checksums and provenance. **Run workflow** with an empty `release_tag`
+builds an artifact without publishing; supply `client-vX.Y.Z-preview.N` on `main`
+to create a new tag and pre-release after verification. Pushing a new `client-v*` tag also builds and publishes a GitHub pre-release
 only after checks pass. The build job is read-only; only the separate publish job
 receives repository write permission. Never reuse or move a published tag.
 

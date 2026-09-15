@@ -61,7 +61,9 @@ jobs:
           path: release
       - name: Verify transferred artifacts
         working-directory: release
-        run: sha256sum --check SHA256SUMS
+        run: |
+          sha256sum --check SHA256SUMS
+          node -e 'const m=require("./release-manifest.json");if(m.source_commit!==process.env.GITHUB_SHA||m.platform!=="macOS-arm64")throw Error("Release source/platform mismatch")'
       - name: Publish preview only after all checks pass
         env:
           GH_TOKEN: ${{ github.token }}
@@ -71,8 +73,12 @@ jobs:
           if [ "$GITHUB_REF_TYPE" = tag ]; then
             gh release create "$RELEASE_TAG" release/* --verify-tag --prerelease --title "VibApp $RELEASE_TAG" --notes-file docs/product/client-release-notes.md
           else
-            if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG"; then
-              echo "Refusing to reuse an existing tag" >&2
+            set +e
+            git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG"
+            lookup_status=$?
+            set -e
+            if [ "$lookup_status" -ne 2 ]; then
+              echo "Tag lookup must confirm a new tag; refusing an existing tag or lookup failure" >&2
               exit 1
             fi
             gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --prerelease --title "VibApp $RELEASE_TAG" --notes-file docs/product/client-release-notes.md
