@@ -1,0 +1,22 @@
+{
+  "schema_version": "vibapp.cloud-codeagent-provider-result.experimental-v1",
+  "document_type": "cloud-codeagent-provider-result",
+  "job_id": "job-cloud-ui-001",
+  "status": "source-generated",
+  "summary": "Dry-run fixture authored bounded Rust source while the worker supplied the policy Cargo/WIT scaffolds.",
+  "wit_world": "ui-only-reference",
+  "app_kind": "ui",
+  "declared_capabilities": [
+    "vibapp:experimental-v0/clock@0.0.1",
+    "vibapp:experimental-v0/kv@0.0.1",
+    "vibapp:experimental-v0/log@0.0.1",
+    "vibapp:experimental-v0/host-info@0.0.1",
+    "vibapp:experimental-v0/settings@0.0.1"
+  ],
+  "source_files": [
+    "Cargo.toml",
+    "src/lib.rs",
+    "wit/contract.wit"
+  ],
+  "unresolved": []
+}

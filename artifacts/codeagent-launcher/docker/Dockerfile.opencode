@@ -1,0 +1,12 @@
+# Resolved node:22.21.1-bookworm-slim. No host npmrc/config is copied.
+FROM node@sha256:25b3eb23a00590b7499f2a2ce939322727fcce1b15fdd69754fcd09536a3ae2c
+RUN npm install --global --ignore-scripts --no-audit --no-fund opencode-ai@1.18.27 \
+    && npm cache clean --force
+COPY entry.mjs opencode-provider.mjs install-opencode.mjs /opt/vibapp/
+RUN mkdir -p /opt/vibapp/empty-config \
+    && node /opt/vibapp/install-opencode.mjs \
+    && test "$(opencode --version)" = "1.18.27" \
+    && node /opt/vibapp/entry.mjs --write-identity
+USER 0:0
+WORKDIR /work
+ENTRYPOINT ["node","/opt/vibapp/entry.mjs"]

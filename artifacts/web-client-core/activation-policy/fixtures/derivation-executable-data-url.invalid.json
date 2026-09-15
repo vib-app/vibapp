@@ -1,0 +1,5 @@
+{
+  "case_id": "derivation-executable-data-url",
+  "mutation": { "path": "derivation.executable_blob_or_data_urls", "value": true },
+  "expected_reason": "derivation-executable-url"
+}

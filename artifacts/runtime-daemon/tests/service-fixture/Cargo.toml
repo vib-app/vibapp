@@ -1,0 +1,30 @@
+[package]
+name = "vibapp-runtime-service-fixture"
+version = "0.1.0"
+edition = "2024"
+publish = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+
+[workspace]
+
+[features]
+default = ["service"]
+service = []
+hybrid = []
+ui = []
+v2 = []
+unhealthy = []
+migration-fail = []
+app-b = []
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = { version = "=0.60.0", default-features = false, features = ["bitflags", "macro-string", "macros", "realloc"] }
+
+[profile.release]
+panic = "abort"

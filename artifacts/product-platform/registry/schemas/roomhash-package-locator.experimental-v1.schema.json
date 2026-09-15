@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/roomhash-package-locator.experimental-v1.schema.json",
+  "title": "VibApp public package transport locator",
+  "description": "A locator for immutable package bytes. It grants no verification, installation, execution, or publication authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "package_digest_sha256",
+    "transport",
+    "info_hash",
+    "magnet_uri",
+    "size_bytes",
+    "files",
+    "trust_note"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "vibapp.roomhash-package-locator.experimental-v1"
+    },
+    "package_digest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "transport": {
+      "const": "bittorrent-v1"
+    },
+    "info_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "magnet_uri": {
+      "description": "Canonical magnet bound to this locator's info hash and package digest, using only the fixed VibApp RoomHash tracker allowlist.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "^magnet:\\?xt=urn:btih:[0-9a-f]{40}&dn=[0-9a-f]{64}\\.vibapp-candidate(?:&tr=wss%3A%2F%2F(?:tracker\\.webtorrent\\.dev|tracker\\.openwebtorrent\\.com|tracker\\.btorrent\\.xyz))+$"
+    },
+    "size_bytes": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 67108864
+    },
+    "files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 128,
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["path"],
+            "properties": { "path": { "const": "candidate.json" } }
+          }
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["path"],
+            "properties": { "path": { "const": "package/manifest.json" } }
+          }
+        }
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size_bytes"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)[A-Za-z0-9._/-]+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 67108864
+          }
+        }
+      }
+    },
+    "trust_note": {
+      "const": "locator-only-package-bytes-require-vibapp-verification"
+    }
+  }
+}

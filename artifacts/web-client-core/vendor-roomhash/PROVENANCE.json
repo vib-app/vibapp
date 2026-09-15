@@ -1,0 +1,45 @@
+{
+  "schema_version": "vibapp.vendored-browser-dependency.experimental-v1",
+  "package": "webtorrent",
+  "version": "3.0.16",
+  "license": "MIT",
+  "upstream_repository": "https://github.com/webtorrent/webtorrent",
+  "resolved_package": "https://registry.npmmirror.com/webtorrent/-/webtorrent-3.0.16.tgz",
+  "npm_integrity": "sha512-oryVor+AGWiNbI4zBT58CKw5MrUYz2GxP5fleHyIhucqwTYAl6pjGkDTjCPGiY5VZCPnVhhhlt+eFov85ZgZKg==",
+  "source_evidence": "/Users/zhuzhe/Workspace/RoomHash/roomhash.github.io/package-lock.json",
+  "reason": "Reuse the current RoomHash browser WebTorrent transport behind the bounded VibApp host adapter without runtime package resolution.",
+  "bundle": {
+    "path": "webtorrent.min.js",
+    "format": "esm-browser",
+    "size_bytes": 239430,
+    "sha256": "1de6dcc5cba63ab802a02c4d1fa024f5768c8af47fa4a4dd96076aae5e4c098e"
+  },
+  "upstream_bundle": {
+    "path": "dist/webtorrent.min.js",
+    "format": "esm-browser",
+    "size_bytes": 239513,
+    "sha256": "50bc3160dadadac2306a41908aeec90335b6fad93847b55eb23b7ef906e55c5a"
+  },
+  "local_patches": [
+    {
+      "id": "webtorrent-3.0.16-browser-webseed-cors-headers-v1",
+      "scope": "vendored-browser-esm-webseed-fetch-only",
+      "script": "artifacts/web-client-core/patch-roomhash-webseed-headers.mjs",
+      "script_sha256": "fbde211b43b596aa5ba08e692f3c9d4e6aa57a5cb72bd34b438fcfda5dbcea1a",
+      "input_sha256": "50bc3160dadadac2306a41908aeec90335b6fad93847b55eb23b7ef906e55c5a",
+      "output_sha256": "1de6dcc5cba63ab802a02c4d1fa024f5768c8af47fa4a4dd96076aae5e4c098e",
+      "occurrence_count": 1,
+      "removed_request_headers": [
+        "Cache-Control",
+        "user-agent"
+      ],
+      "preserved_request_options": [
+        "cache:no-store",
+        "method:GET",
+        "range:bytes=${n}-${s}",
+        "signal:AbortSignal.timeout(60000)"
+      ],
+      "reason": "Avoid non-safelisted explicit browser request headers that cause GitHub Raw webseed CORS preflight failure; preserve cache policy, byte range and cancellation."
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/public-package-locator-index.experimental-v1.schema.json",
+  "title": "VibApp public package locator index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "trust_note", "registry_snapshot_sha256", "entries"],
+  "properties": {
+    "schema_version": {
+      "const": "vibapp.public-package-locator-index.experimental-v1"
+    },
+    "trust_note": {
+      "const": "locator-only-package-bytes-require-vibapp-verification"
+    },
+    "registry_snapshot_sha256": {
+      "description": "SHA-256 of the exact public Registry snapshot bytes emitted by the same Website build.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "app_id",
+          "record_id",
+          "record_revision",
+          "registry_record_sha256",
+          "package_digest_sha256",
+          "locator_path",
+          "locator_sha256",
+          "size_bytes",
+          "web_runtime_available"
+        ],
+        "properties": {
+          "app_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$",
+            "maxLength": 128
+          },
+          "record_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "record_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "registry_record_sha256": {
+            "description": "SHA-256 of canonical JSON for the exact public Registry record bound to this locator.",
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "package_digest_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "locator_path": {
+            "type": "string",
+            "pattern": "^/data/package-locators/[0-9a-f]{64}\\.json$"
+          },
+          "locator_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 67108864
+          },
+          "web_runtime_available": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

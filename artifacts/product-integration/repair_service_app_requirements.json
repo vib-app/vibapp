@@ -1,0 +1,34 @@
+{
+  "schema_version": "vibapp.existing-service-repair-plan.v1",
+  "execution_enabled": false,
+  "automatic_user_upgrade": false,
+  "reason": "Read-only preparation; UI repairs prioritized and parent owns author admission/build freeze.",
+  "apps": [
+    {
+      "key": "focus-tracker",
+      "app_id": "ai.vibapp.e2e.focus-tracker",
+      "name": "本地专注记录器",
+      "app_kind": "hybrid",
+      "version": "0.1.1",
+      "baseline_digest": "197e89cbddb8918ad756a03d18f614e4eb680eed3c4de9d0f58ec370864c1c37",
+      "original_source_sha256": "08f351fc28ee99abe42e2c30fa4d716934a3c7a58352ee69e86e9c0e69e18235",
+      "capabilities": ["clock", "kv"],
+      "entrypoints": ["launcher.main/home", "service.background"],
+      "description": "修复本地专注记录器为同应用0.1.1，保持hybrid而非改UI来绕过服务。保留开始/停止、开始时间与累计时长、关闭窗口后后台服务仍running，重开保留同一次会话且时长增长，停止后记录持久化可见。真实处理服务生命周期与健康检查，不用空服务响应假装后台功能。计时由宿主clock时间差与私有KV起始时间计算，不需要闹钟、scheduler或notification；这些仅为hybrid WIT结构导入，按现有宿主degradable typed denied/unavailable准确处理，不请求无用硬权限。保留schema1和键focus/active，其值原始UTF-8 UTC起始时间；记录键focus/records/<started UTC>，值原始UTF-8 started|ended|elapsed整数秒。已有活动会话、记录键、UTC格式和时长不能丢失或改编码，停止写记录与删除active须同一KV事务；失败显示错误不伪保存。保留launcher.main/home和service.background。不开网络、不发通知、不读取用户文件。",
+      "acceptance": "开始后关闭UI5秒，服务仍running；重开仍同起始时间且时长增加至少5秒；停止后记录存在，重启保持。用隔离旧数据验证focus/active与focus/records/键值原样可读，失败事务不能丢active。不得依赖scheduler/notification成功调用。"
+    },
+    {
+      "key": "headless-health-probe",
+      "app_id": "ai.vibapp.e2e.headless-health-probe",
+      "name": "无窗口健康探针",
+      "app_kind": "service",
+      "version": "0.1.1",
+      "baseline_digest": "9787ee0881f7050062d1fc847633c74ee480bf53dc05f1e3dbb5e4fe51875850",
+      "original_source_sha256": "656cade46cbdac658674a8a2bc2134c568f2e1176de19f4583f303b3797e0998",
+      "capabilities": ["clock", "kv"],
+      "entrypoints": ["service.main"],
+      "description": "修复无窗口本地健康探针为同应用0.1.1，保持service-only及service.main，不新增伪UI；提供真实运行状态、健康度、启动时间，daemon重启后自动恢复并更新启动代次。保留schema1与health/start-evidence键，原始UTF-8值为generation字符串加一个换行再加UTC启动时间，不是JSON。Start读取宿主clock并写当前generation证据；Stop停止清理自己的证据；health只在证据属于当前generation时healthy，缺失/损坏/旧generation绝不能伪报healthy，KV或clock失败显式报告。多次health启动时间稳定，重启自动恢复后应是新启动代次。仅实际必需clock+kv；scheduler/http/system-metrics/host-info/log/settings仅service WIT结构导入，保留导入但按宿主degradable typed denied/unavailable处理，不因没用的硬能力阻断enable，不调用HTTP或假读硬件。不得联网、通知、读取宿主文件，不将缺少窗口当成错误。",
+      "acceptance": "启用后running+healthy且多次health启动时间不变；daemon重启真实自动恢复并更新启动代次，旧generation不能通过health；禁用后服务停止；无可打开surface且无HTTP调用。隔离旧health/start-evidence可读但不能冒充本代次活跃。"
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "state": "proposal-local-smoke-passed-not-integrated-not-release-acceptance",
+  "scope": "synthetic-infrastructure-only",
+  "component_sha256": "0b42691363fe5114325451f91be3c0098737513f1c614ec39691b99d186bccd6",
+  "component_bytes": 97776,
+  "proposal_sha256": "3b10d017092ae4ed4e6479f986e02d60688c089ae6cced7253503f4d0aa26bc4",
+  "assembled_support_sha256": "78cf557839870ec0233ac27283ab18fc089c971cd4027cc5ea5012a8b74f328e",
+  "frozen_support_unchanged_sha256": "1f100bd5e8da98fcd304ed1955bc8c31299ef6f9b58164cf13986bea0f2dc2a5",
+  "frozen_guide_unchanged_sha256": "766c9b6e0996cd4cb7c3b44d61fbdc55b88bf51d0f594aa32668327de9a60ec4",
+  "checks": [
+    {
+      "id": "wasm-tools-validate",
+      "outcome": "pass",
+      "tool": "wasm-tools 1.256.0",
+      "detail": "exact component bytes validate"
+    },
+    {
+      "id": "component-import-reconciliation",
+      "outcome": "pass",
+      "tool": "wasm-tools component wit",
+      "detail": "required imports and guest export are exact; ambient WASI denied"
+    },
+    {
+      "id": "component-tool-metadata",
+      "outcome": "pass",
+      "tool": "wasm-tools metadata show",
+      "detail": "wit-bindgen-rust 0.60.0 metadata observed"
+    }
+  ],
+  "descriptor_check": {
+    "id": "guest-descriptor-reconciliation",
+    "outcome": "pass",
+    "tool": "vibapp-component-inspector sha256:588497fddd25",
+    "detail": "app identity/display name and every entrypoint id/kind/label/initial route match one-to-one; no extra Guest entrypoints"
+  },
+  "guest_edge_checks": [
+    "1024-live-block fragmentation/coalescing",
+    "alignments 1..4096",
+    "bounded exhaustion and recovery",
+    "failed realloc preserves old allocation",
+    "near-whole-heap allocation after coalescing",
+    "canonical grow/shrink/free",
+    "Vec/String lifetime"
+  ],
+  "persistent_store": {
+    "health_calls": 128,
+    "allocation_reallocation_free_cycles": 131072,
+    "additional_canonical_allocate_grow_free_cycles": 8192,
+    "ui_launches": 1,
+    "ui_refreshes": 512,
+    "free_bytes_min": 15726160,
+    "free_bytes_max": 15726160,
+    "mapped_heap_bytes": 15726304
+  },
+  "build_observation": {
+    "tool_versions": {
+      "rust": "1.93.0",
+      "cargo": "1.93.0",
+      "target": "wasm32-wasip2",
+      "host_linker": "xcode-clang-byte-bound",
+      "host_sdk": "xcode-sdk-settings-byte-bound"
+    },
+    "isolation": {
+      "claim": "local-macos-process-experimental",
+      "network": "sandbox-denied",
+      "home": "synthetic-empty",
+      "docker_socket": "not-mounted",
+      "source_execution_observed": true,
+      "production_isolation": false
+    },
+    "limits": {
+      "wall_seconds": 180,
+      "cpu_seconds": 120,
+      "memory_bytes": 2147483648,
+      "pids": 32,
+      "disk_bytes": 536870912,
+      "stdout_bytes": 524288,
+      "stderr_bytes": 524288,
+      "open_files": 256,
+      "concurrent_jobs": 1
+    },
+    "resource_observations": {
+      "peak_rss_bytes": 571949056,
+      "peak_pids": 4,
+      "disk_bytes": 135537949,
+      "elapsed_ms": 23360
+    }
+  },
+  "runtime_observation": {
+    "elapsed_ms": 192,
+    "peak_rss_bytes": 61489152,
+    "limits": {
+      "wall_seconds": 60,
+      "cpu_seconds": 45,
+      "memory_bytes": 1073741824,
+      "pids": 8,
+      "disk_bytes": 67108864,
+      "stdout_bytes": 4194304,
+      "stderr_bytes": 131072,
+      "open_files": 128,
+      "concurrent_jobs": 1
+    }
+  },
+  "install": false,
+  "publish": false,
+  "active_support_changed": false,
+  "reproducibility": "one build only; not checked"
+}

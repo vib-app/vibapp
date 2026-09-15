@@ -1,0 +1,271 @@
+{
+  "schema_version": "vibapp.manifest.experimental-v0.0.1",
+  "package_format": "vibapp.package.experimental-v0",
+  "app": {
+    "id": "ai.vibapp.alarm",
+    "version": "0.1.0",
+    "kind": "hybrid",
+    "display_name": "Fixture Alarm",
+    "description": "A launcher UI plus daemon-owned alarm service conformance fixture.",
+    "publisher": {
+      "id": "ai.vibapp",
+      "display_name": "VibApp Fixtures"
+    }
+  },
+  "artifacts": {
+    "canonical_component": {
+      "path": "component.wasm",
+      "media_type": "application/wasm",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "size_bytes": 12288
+    },
+    "assets": [],
+    "browser_derivations": [
+      {
+        "profile": "web-preview",
+        "format": "jco-esm",
+        "derived_from_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "entry": {
+          "path": "web-preview/alarm.mjs",
+          "media_type": "text/javascript",
+          "sha256": "3434343434343434343434343434343434343434343434343434343434343434",
+          "size_bytes": 3072
+        },
+        "files": [
+          {
+            "path": "web-preview/alarm.mjs",
+            "media_type": "text/javascript",
+            "sha256": "3434343434343434343434343434343434343434343434343434343434343434",
+            "size_bytes": 3072
+          },
+          {
+            "path": "web-preview/alarm.core.wasm",
+            "media_type": "application/wasm",
+            "sha256": "3535353535353535353535353535353535353535353535353535353535353535",
+            "size_bytes": 9216
+          }
+        ],
+        "derivation_attestation": {
+          "path": "web-preview/derivation.json",
+          "media_type": "application/json",
+          "sha256": "3636363636363636363636363636363636363636363636363636363636363636",
+          "size_bytes": 512
+        }
+      }
+    ],
+    "provenance": {
+      "path": "provenance.json",
+      "media_type": "application/json",
+      "sha256": "acacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacac",
+      "size_bytes": 512
+    },
+    "sbom": {
+      "path": "sbom.cdx.json",
+      "media_type": "application/vnd.cyclonedx+json",
+      "sha256": "bdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbd",
+      "size_bytes": 1024
+    }
+  },
+  "runtime": {
+    "contract": "vibapp:experimental-v0@0.0.1",
+    "wasi": "0.2",
+    "world": "hybrid-reference",
+    "required_imports": [
+      "vibapp:experimental-v0/clock@0.0.1",
+      "vibapp:experimental-v0/scheduler@0.0.1",
+      "vibapp:experimental-v0/notification@0.0.1",
+      "vibapp:experimental-v0/kv@0.0.1",
+      "vibapp:experimental-v0/log@0.0.1",
+      "vibapp:experimental-v0/host-info@0.0.1",
+      "vibapp:experimental-v0/settings@0.0.1"
+    ],
+    "profiles": [
+      {
+        "profile": "desktop",
+        "mode": "full",
+        "background": "daemon",
+        "artifact_role": "canonical-component",
+        "degradation": ""
+      },
+      {
+        "profile": "headless",
+        "mode": "degraded",
+        "background": "process",
+        "artifact_role": "canonical-component",
+        "degradation": "The service and settings are manageable through CLI/JSON, but launcher UI routes cannot render."
+      },
+      {
+        "profile": "web-preview",
+        "mode": "preview",
+        "background": "foreground-only",
+        "artifact_role": "browser-derived",
+        "degradation": "Schedules and notifications are simulated in the foreground; no closed-page alarm reliability is claimed."
+      }
+    ],
+    "platforms": [
+      { "os": "macos", "arch": "x86-64", "profiles": ["desktop", "headless"] },
+      { "os": "macos", "arch": "aarch64", "profiles": ["desktop", "headless"] },
+      { "os": "windows", "arch": "x86-64", "profiles": ["desktop", "headless"] },
+      { "os": "linux", "arch": "x86-64", "profiles": ["desktop", "headless"] },
+      { "os": "linux", "arch": "aarch64", "profiles": ["desktop", "headless"] },
+      { "os": "browser", "arch": "wasm32", "profiles": ["web-preview"] }
+    ]
+  },
+  "entrypoints": [
+    {
+      "id": "alarm-ui",
+      "kind": "launcher-ui",
+      "label": "Alarms",
+      "profiles": ["desktop", "web-preview"],
+      "routes": {
+        "initial": "alarms",
+        "allowed": ["alarms", "alarm-edit"]
+      },
+      "restoration": "safe-fields"
+    },
+    {
+      "id": "alarm-service",
+      "kind": "service",
+      "label": "Alarm Service",
+      "profiles": ["desktop", "headless", "web-preview"],
+      "triggers": ["on-enable", "scheduler", "manual"],
+      "health_check_interval_seconds": 60
+    },
+    {
+      "id": "settings",
+      "kind": "settings",
+      "label": "Alarm Settings",
+      "profiles": ["desktop", "headless", "web-preview"],
+      "schema_export": "get-settings-schema"
+    }
+  ],
+  "capabilities": [
+    {
+      "interface": "vibapp:experimental-v0/clock@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Resolve display and scheduling time semantics.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Host clock and time zone." },
+        { "profile": "headless", "availability": "native", "behavior": "Headless host clock and time zone." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Deterministic sample clock." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/scheduler@0.0.1",
+      "necessity": "required",
+      "grant": "user",
+      "reason": "Persist validated alarm schedules and notification projections in the host.",
+      "scope": { "maximum_schedules": 128 },
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Daemon creates due-time notification outbox before guest delivery." },
+        { "profile": "headless", "availability": "native", "behavior": "Host process owns schedules; UI is not required." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Simulates one foreground occurrence and labels it preview-only." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/notification@0.0.1",
+      "necessity": "degradable",
+      "grant": "user",
+      "reason": "Allow explicit immediate test notifications; scheduled alarms use the persisted scheduler projection.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Permission-checked OS notification." },
+        { "profile": "headless", "availability": "brokered", "behavior": "Host-selected notification adapter when configured." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Displays an in-page sample only." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/kv@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Persist alarm domain state and occurrence acknowledgements.",
+      "scope": { "maximum_storage_bytes": 2097152 },
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "App-scoped daemon state." },
+        { "profile": "headless", "availability": "native", "behavior": "App-scoped headless state." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Disposable sample state." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/log@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Expose bounded lifecycle and delivery diagnostics.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Daemon log stream." },
+        { "profile": "headless", "availability": "native", "behavior": "CLI/JSON log stream." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Preview log sink." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/host-info@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Discover current surface and capability degradation.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Reports daemon and UI availability." },
+        { "profile": "headless", "availability": "native", "behavior": "Reports that UI surfaces are unavailable." },
+        { "profile": "web-preview", "availability": "native", "behavior": "Reports preview mocks and foreground-only background semantics." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/settings@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Read typed quiet-hours and snooze defaults managed by GUI or CLI.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Host-rendered settings." },
+        { "profile": "headless", "availability": "native", "behavior": "CLI/JSON-managed typed settings." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Sample settings." }
+      ]
+    }
+  ],
+  "resources": {
+    "linear_memory_bytes": 33554432,
+    "event_wall_time_ms": 150,
+    "health_migration_wall_time_ms": 1500,
+    "output_bytes": 262144,
+    "stored_data_bytes": 2097152,
+    "durable_schedules": 128,
+    "log_bytes_per_day": 524288
+  },
+  "state": {
+    "schema": 1,
+    "migratable_from_min": 1,
+    "migratable_from_max": 1
+  },
+  "lifecycle": {
+    "disable": {
+      "retains_package": true,
+      "retains_state": true,
+      "stops_services": true,
+      "cancels_schedules": true
+    },
+    "uninstall": {
+      "allowed_data_dispositions": ["delete", "retain", "export-then-delete"],
+      "default_data_disposition": "retain"
+    }
+  },
+  "source": {
+    "language": "rust",
+    "revision": "fixture-hybrid-1",
+    "cargo_lock_sha256": "cececececececececececececececececececececececececececececececece",
+    "builder_image_digest": "sha256:dfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdf"
+  },
+  "license": {
+    "spdx_expression": "Apache-2.0"
+  },
+  "privacy": {
+    "stores_personal_data": true,
+    "network_access": "none"
+  },
+  "verification": {
+    "status": "fixture",
+    "revocation": "not-revoked"
+  }
+}

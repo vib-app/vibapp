@@ -1,0 +1,80 @@
+{
+  "schema_version": "vibapp.web-activation-candidate.experimental-v1",
+  "manifest": {
+    "package_format": "experimental-v0",
+    "contract": "vibapp:experimental-v0@0.0.1",
+    "wasi": "0.2",
+    "profile": "web-preview",
+    "platform_os": "browser",
+    "platform_arch": "wasm32",
+    "artifact_role": "browser-derived",
+    "canonical_component_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "browser_derivation": {
+      "format": "jco-esm",
+      "derived_from_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "capabilities_complete": true,
+      "live_background_hardware_or_network": false
+    }
+  },
+  "toolchain": {
+    "canonical_target": "wasm32-wasip2",
+    "rust": "1.93.0",
+    "package": "@bytecodealliance/jco",
+    "version": "1.15.4",
+    "resolution": "offline-content-addressed-reviewed-cache",
+    "flags": [
+      "--no-typescript",
+      "--no-wasi-shim",
+      "--base64-cutoff=1000000"
+    ]
+  },
+  "derivation": {
+    "source_state": "candidate-ready",
+    "source_verification_authority": "independent-verifier",
+    "all_files_content_addressed": true,
+    "complete_file_inventory": true,
+    "attestation_content_addressed": true,
+    "attestation_verified_by_fresh_independent_owner": true,
+    "two_clean_derivations_byte_equal": true,
+    "executable_blob_or_data_urls": false,
+    "fallback_to_unverified_code": false
+  },
+  "runtime": {
+    "dedicated_worker": true,
+    "guest_dom": false,
+    "browser_storage": false,
+    "service_worker": false,
+    "credentials": false,
+    "install_or_permission_authority": false,
+    "background_reliability": "foreground-only",
+    "launcher_origin_relation": "distinct-from-preview-shell",
+    "bootstrap": "exact-origin-one-time-message-port-full-envelope",
+    "csp": {
+      "script_src": [
+        "self",
+        "wasm-unsafe-eval"
+      ],
+      "worker_src": [
+        "self"
+      ],
+      "connect_src": [
+        "self"
+      ],
+      "executable_blob_or_data": false,
+      "static_server_allowlist": true,
+      "credential_headers_rejected": true
+    },
+    "invalid_bootstrap_audit": {
+      "durable": true,
+      "healthy": true,
+      "payload_storage": false,
+      "bounded_size_and_count": true,
+      "retention_and_rotation": true,
+      "complete_record_corruption": "fail-closed"
+    }
+  },
+  "verification": {
+    "fresh_independent_owner": true,
+    "formal_policy_acceptance": true
+  }
+}

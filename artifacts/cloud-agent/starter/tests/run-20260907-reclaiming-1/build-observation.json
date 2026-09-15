@@ -1,0 +1,34 @@
+{
+  "tool_versions": {
+    "rust": "1.93.0",
+    "cargo": "1.93.0",
+    "target": "wasm32-wasip2",
+    "host_linker": "xcode-clang-byte-bound",
+    "host_sdk": "xcode-sdk-settings-byte-bound"
+  },
+  "isolation": {
+    "claim": "local-macos-process-experimental",
+    "network": "sandbox-denied",
+    "home": "synthetic-empty",
+    "docker_socket": "not-mounted",
+    "source_execution_observed": true,
+    "production_isolation": false
+  },
+  "limits": {
+    "wall_seconds": 180,
+    "cpu_seconds": 120,
+    "memory_bytes": 2147483648,
+    "pids": 32,
+    "disk_bytes": 536870912,
+    "stdout_bytes": 524288,
+    "stderr_bytes": 524288,
+    "open_files": 256,
+    "concurrent_jobs": 1
+  },
+  "resource_observations": {
+    "peak_rss_bytes": 571949056,
+    "peak_pids": 4,
+    "disk_bytes": 135537949,
+    "elapsed_ms": 23360
+  }
+}

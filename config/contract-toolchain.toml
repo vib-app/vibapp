@@ -1,0 +1,452 @@
+schema_version = 1
+contract = "vibapp-stage0-experimental-v0"
+observed_at = "2026-08-11T21:07:45+08:00"
+normative = true
+
+[rust]
+channel = "1.93.0"
+profile = "minimal"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-wasip2"]
+dist_date = "2026-01-22"
+dist_manifest_url = "https://static.rust-lang.org/dist/2026-01-22/channel-rust-1.93.0.toml"
+dist_manifest_sha256 = "beb6ba4e41c84e9c11c80e6804a007497d0c8ba0810cd403fabc8f4a9c45b1f8"
+rustc_commit = "254b59607d4417e9dffbc307138ae5c86280fe4c"
+cargo_commit = "083ac5135f967fd9dc906ab057a2315861c7a80d"
+wasm32_wasip2_std_url = "https://static.rust-lang.org/dist/2026-01-22/rust-std-1.93.0-wasm32-wasip2.tar.xz"
+wasm32_wasip2_std_sha256 = "0ef01bb552036ab44456f5505015b13c88d3694629804d7af46452c8b0a48f8c"
+
+[runtime.wasmtime]
+crate = "wasmtime"
+version = "36.0.13"
+requirement = "=36.0.13"
+checksum_sha256 = "93d881c5dcff5f230368d84fcf110ca25fe47badc694e7d559c3891492159916"
+license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://github.com/bytecodealliance/wasmtime"
+release_policy = "lts-multiple-of-12"
+default_features = false
+features = ["async", "component-model", "cranelift", "runtime", "std"]
+forbidden_features = ["all-arch", "cache", "coredump", "debug-builtins", "gc", "pooling-allocator", "profiling", "threads", "wat", "winch"]
+
+[runtime.wasmtime_wasi]
+crate = "wasmtime-wasi"
+version = "36.0.13"
+requirement = "=36.0.13"
+checksum_sha256 = "82e4772f39340104c70837d421c71c50364c185936f07eaee19e46cb0754c9e1"
+license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://github.com/bytecodealliance/wasmtime"
+default_features = false
+features = []
+forbidden_features = ["p3", "preview1"]
+
+[guest.wit_bindgen]
+crate = "wit-bindgen"
+version = "0.60.0"
+requirement = "=0.60.0"
+checksum_sha256 = "a301904d6657d6364c758d869e5389d05d393b16d5b65db60b4f03cbe71bb80d"
+license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+repository = "https://github.com/bytecodealliance/wit-bindgen"
+default_features = false
+features = ["bitflags", "macro-string", "macros", "realloc", "std"]
+forbidden_features = ["async", "async-spawn", "futures-stream", "inter-task-wakeup", "rustc-dep-of-std"]
+
+[tools.wasm_tools]
+crate = "wasm-tools"
+binary = "wasm-tools"
+version = "1.256.0"
+checksum_sha256 = "648fb01b39cb01354037807cdd4ae4e384590a1bdb727018bc12b68fb03ed385"
+license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+repository = "https://github.com/bytecodealliance/wasm-tools"
+install = "cargo install --locked --version 1.256.0 wasm-tools"
+
+[tools.wit_bindgen_cli]
+crate = "wit-bindgen-cli"
+binary = "wit-bindgen"
+version = "0.60.0"
+checksum_sha256 = "1f65d42ab3350004f02e36bf0557fb53a411ccb4c49ea56005bfdd40211c672e"
+license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+repository = "https://github.com/bytecodealliance/wit-bindgen"
+install = "cargo install --locked --version 0.60.0 wit-bindgen-cli"
+
+[tools.cargo_deny]
+crate = "cargo-deny"
+binary = "cargo-deny"
+version = "0.20.2"
+checksum_sha256 = "e528dfcbe739af7ce37a77d3d6df1b29dd6887b1c701d888820c0f16b864f737"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/EmbarkStudios/cargo-deny"
+install = "cargo install --locked --version 0.20.2 cargo-deny"
+
+[tools.cargo_vet]
+crate = "cargo-vet"
+binary = "cargo-vet"
+version = "0.10.2"
+checksum_sha256 = "dd93790018205cbbfa161f078ca4631afa8ed57fc8f32482268bcfdf0c0d7499"
+license = "Apache-2.0/MIT"
+repository = "https://github.com/mozilla/cargo-vet"
+install = "cargo install --locked --version 0.10.2 cargo-vet"
+
+[tools.cargo_component]
+status = "excluded"
+observed_version = "0.21.1"
+reason = "The normative Stage 0 path is rustc wasm32-wasip2 plus wit-bindgen and wasm-tools; a second component build driver would add ambient behavior without a required contract role."
+
+[builder.bootstrap_image]
+reference = "docker.io/library/rust@sha256:776861219cd851131c1cec3bbd7cbeb16b99a794048097eb69ad9682a8ed0d57"
+index_digest = "sha256:776861219cd851131c1cec3bbd7cbeb16b99a794048097eb69ad9682a8ed0d57"
+tag_observed = "1.93.0-slim-bookworm"
+source_repository = "https://github.com/rust-lang/docker-rust.git"
+source_revision = "37d9b1d21b5332c4ca4013bb492e18f68971594c"
+source_path = "stable/bookworm/slim"
+created = "2026-02-03"
+default_user_allowed = false
+
+[builder.bootstrap_image.platforms.linux_amd64]
+manifest_digest = "sha256:5c5066e3f3bdd22a5cec7ba22ef0ee6e0bf6eaf63b65b63c9bf25f6f69a5e26a"
+base_name = "debian:bookworm-slim"
+base_digest = "sha256:6458e6ce2b6448e31bfdced4be7d8aa88d389e6694ab09f5a718a694abe147f4"
+
+[builder.bootstrap_image.platforms.linux_arm64]
+manifest_digest = "sha256:9a94ba32757132618f161731e0b93b8bbd5a34c10f256a1d883ca50ff4f422f2"
+base_name = "debian:bookworm-slim"
+base_digest = "sha256:1c5d4fd0caad88eb6cb62bcdbc2f580ef2523ab69e86abc2bd2a94703aac9f96"
+
+[dependency_policy]
+lockfile_required = true
+lockfile_must_be_committed = true
+exact_direct_requirements = true
+default_features_must_be_explicit = true
+build_command_requires_locked = true
+build_command_requires_offline = true
+alternate_registries = "deny"
+git_dependencies = "deny"
+path_dependencies_outside_workspace = "deny"
+patch_and_replace = "deny_unless_reviewed"
+build_scripts = "deny_unless_checksum_allowlisted"
+proc_macros = "deny_unless_checksum_allowlisted"
+native_c_cpp_assembly = "deny_for_guest; review_required_for_host"
+network_fetch = "fetch_stage_only"
+vendor_directory = "generated/vendor"
+vendor_must_be_read_only_during_build = true
+unknown_license = "deny"
+license_file_required_for_publication = true
+
+[dependency_policy.allowed_licenses]
+allow = ["Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "MIT", "Unicode-3.0", "Zlib"]
+review = ["MPL-2.0"]
+deny = ["AGPL-1.0", "AGPL-3.0", "GPL-1.0", "GPL-2.0", "GPL-3.0", "SSPL-1.0", "UNKNOWN"]
+
+[network_policy]
+setup_fetch_only = true
+agent_egress = false
+build_egress = false
+test_egress = false
+allowed_fetch_hosts = ["index.crates.io", "static.crates.io", "static.rust-lang.org", "registry-1.docker.io", "auth.docker.io", "production.cloudfront.docker.com", "github.com", "codeload.github.com"]
+dependency_fetch_hosts = ["index.crates.io", "static.crates.io", "static.rust-lang.org"]
+bootstrap_image_fetch_hosts = ["registry-1.docker.io", "auth.docker.io", "production.cloudfront.docker.com"]
+rustsec_advisory_db_fetch_hosts = ["github.com", "codeload.github.com"]
+fetch_method_authority = "scoped-child-policies-only-no-global-method-grant"
+dependency_fetch_methods = ["GET", "HEAD"]
+redirects_must_remain_allowlisted = true
+
+[network_policy.dependency_fetch]
+enabled = true
+scope = "setup-lock-resolution-only-until-lock-plan-independent-acceptance"
+scheme = "https"
+index_host = "index.crates.io"
+archive_host = "static.crates.io"
+allowed_methods = ["GET"]
+head_requests = "forbidden"
+redirect_hosts = []
+redirect_host_recheck = true
+credentials = "forbidden"
+request_cookie_header = "forbidden"
+cookie_jar = "forbidden"
+user_cargo_configuration = "forbidden"
+alternate_registries = "forbidden"
+git_dependencies = "forbidden"
+trusted_setup_cargo = "exact accepted builder Cargo 1.93.0"
+registry_protocol = "sparse-through-egress-free-internal-network-retaining-mirror"
+mirror_program = "infra/stage0-builder/dependency_sparse_mirror.py"
+cargo_container_networks = ["dependency-resolution-internal-only"]
+mirror_container_networks = ["dependency-resolution-internal-only", "dependency-index-egress"]
+internal_network_must_be_docker_internal = true
+containers_privileged = false
+containers_cap_drop = ["ALL"]
+containers_no_new_privileges = true
+mirror_ip_forwarding = false
+cargo_proxy_environment = "cleared-and-absent"
+mirror_proxy_environment = "cleared-and-absent"
+credential_environment = "cleared-and-absent"
+mirror_registry_host = "dependency-index-mirror"
+mirror_registry_port = 18080
+mirror_runtime_image = "python@sha256:5c34b355088846dddc8afb7442c20b9433dccdc8d66192dc52c616adeaa106a3"
+mirror_runtime_platform = "linux/arm64/v8"
+mirror_runtime_python = "3.11.15"
+mirror_runtime_status = "local-content-addressed-candidate-requires-fresh-wrapper-preexecution-acceptance"
+cargo_direct_egress = "physically-unreachable-not-declarative"
+cargo_direct_egress_denial_canaries = ["index.crates.io", "static.crates.io", "arbitrary-public-ip", "credential-provider"]
+upstream_config_required_keys = ["api", "dl"]
+upstream_config_api = "https://crates.io"
+upstream_config_dl = "https://static.crates.io/crates"
+upstream_config_auth_required = "key-forbidden"
+cargo_config_projection = "mirror-derived-and-future-verifier-validated-no-api-and-internal-forbidden-archive-path"
+inbound_request_rule = "GET-only-exact-single-host-no-auth-proxy-auth-cookie-or-body-framing"
+upstream_response_framing = "one-valid-content-length-or-one-chunked-transfer-encoding-never-both"
+upstream_set_cookie = "retain-all-headers-then-fail"
+index_request_rule = "one complete GET per unique Cargo-requested canonical sparse path"
+index_max_unique_paths = 1024
+index_max_total_retained_bytes = 536870912
+index_retries = 0
+index_redirects = 0
+index_response_evidence = "status-all-headers-final-url-complete-body-size-sha256"
+failed_index_response_evidence = "status-all-headers-final-url-bounded-body-prefix-size-sha256-truncation-read-error"
+isolated_cargo_home = true
+user_rustup_state = "not-mounted"
+source_input = "manifest-files-only-no-Rust-source"
+source_execution = false
+build_scripts = "not-executed"
+proc_macros = "not-executed"
+resolver_command = "cargo generate-lockfile"
+resolver_output = "quarantined-candidate-Cargo.lock"
+mirror_completion = "nonblocking-cloexec-nofollow-regular-root-owned-0444-supervisor-handshake-after-exact-Cargo-exit-zero-and-lock-capture"
+signal_without_completion = "fail-closed-nonzero"
+evidence_root = "supervisor-precreated-canonical-absolute-empty-0700-complete-ancestor-no-follow-private-to-mirror-with-directory-fd-relative-writes"
+evidence_writes = "exclusive-atomic-no-replace"
+evidence_terminal_seal = "mirror-0500-0400-then-supervisor-root-owned-canonical-inventory-and-consumed-authority"
+network_and_container_topology_evidence = "docker-network-inspect-plus-both-container-inspects-plus-route-dns-connect-canaries"
+resolver_wrapper_status = "absent-requires-separate-fresh-independent-acceptance-before-any-request"
+archive_requests_enabled = false
+archive_release = "requires-fresh-independent-lock-and-exact-request-plan-acceptance"
+archive_request_rule = "one complete GET per exact non-workspace Cargo.lock registry package"
+archive_retries = 0
+archive_redirects = 0
+archive_response_evidence = "status-all-headers-final-url-complete-body-size-sha256-and-lock-checksum"
+vendor_or_cache_release = "requires-fresh-independent-archive-tree-SBOM-license-and-provenance-acceptance"
+repository_build_test_policy_execution = false
+requires_independent_policy_acceptance_before_index_resolution = true
+requires_independent_lock_plan_acceptance_before_archive_fetch = true
+requires_independent_cache_acceptance_before_repository_execution = true
+
+[network_policy.bootstrap_image_fetch]
+enabled = true
+scope = "setup-retrieval-only"
+scheme = "https"
+registry_host = "registry-1.docker.io"
+anonymous_token_host = "auth.docker.io"
+redirect_hosts = ["production.cloudfront.docker.com"]
+repository = "library/rust"
+index_reference = "docker.io/library/rust@sha256:776861219cd851131c1cec3bbd7cbeb16b99a794048097eb69ad9682a8ed0d57"
+index_digest = "sha256:776861219cd851131c1cec3bbd7cbeb16b99a794048097eb69ad9682a8ed0d57"
+selected_platform = "linux/arm64"
+platform_reference = "docker.io/library/rust@sha256:9a94ba32757132618f161731e0b93b8bbd5a34c10f256a1d883ca50ff4f422f2"
+platform_manifest_digest = "sha256:9a94ba32757132618f161731e0b93b8bbd5a34c10f256a1d883ca50ff4f422f2"
+allowed_methods = ["GET", "HEAD"]
+tag_selection = false
+credentials = "forbidden"
+anonymous_bearer_token = "ephemeral-memory-only"
+token_persistence = "forbidden"
+source_execution = false
+redirect_host_recheck = true
+digest_verification = "required-before-cache-acceptance"
+requires_independent_policy_acceptance_before_fetch = true
+requires_independent_image_and_isolation_acceptance_before_build = true
+official_allowlist_url = "https://docs.docker.com/desktop/setup/allow-list/"
+official_registry_api_url = "https://docs.docker.com/reference/api/registry/latest/"
+official_anonymous_pull_url = "https://docs.docker.com/docker-hub/usage/pulls/"
+provenance_observed_at = "2026-08-11"
+
+[network_policy.rustsec_advisory_db_fetch]
+enabled = false
+scope = "completed-setup-evidence-only-no-further-network"
+scheme = "https"
+repository = "RustSec/advisory-db"
+resolver_host = "github.com"
+resolver_path = "/RustSec/advisory-db/commits/main.atom"
+resolver_accept = "application/atom+xml"
+resolver_format = "atom-1.0"
+resolver_namespace = "http://www.w3.org/2005/Atom"
+resolver_feed_id = "tag:github.com,2008:/rustsec/advisory-db/commits/main"
+resolver_self_url = "https://github.com/rustsec/advisory-db/commits/main.atom"
+resolver_entry_id_template = "tag:github.com,2008:Grit::Commit/{selected_commit_sha}"
+resolver_entry_link_template = "https://github.com/rustsec/advisory-db/commit/{selected_commit_sha}"
+feed_scope = "main"
+selection_claim = "recent-official-main-feed-commit-not-current-branch-head"
+validate_every_entry = true
+entry_commit_sha_unique = true
+selection_algorithm = "greatest-entry-updated-then-lowercase-sha-ascending"
+feed_updated_must_equal_selected_entry_updated = true
+selected_commit_requirement = "lowercase-40-hex"
+selected_timestamp_field = "selected-entry.updated"
+feed_updated_field = "feed.updated"
+archive_host = "codeload.github.com"
+archive_path_template = "/rustsec/advisory-db/tar.gz/{selected_commit_sha}"
+current_archive_path = "/rustsec/advisory-db/tar.gz/d0861df1eab469d3c58d6b836ce48b5766e5f217"
+allowed_methods = []
+head_requests = "forbidden"
+probes = "forbidden"
+retries = "forbidden"
+credentials = "forbidden"
+request_cookie_header = "forbidden"
+cookie_jar = "forbidden"
+response_set_cookie = "retain-all-occurrences-as-private-untrusted-evidence-never-apply-or-replay"
+response_cookie_influence = "forbidden-for-url-selection-request-headers-and-provenance-identity"
+user_git_configuration = "forbidden"
+git_clone_fetch_smart_protocol = false
+tag_selection = false
+branch_archive = false
+redirect_hosts = []
+redirect_host_recheck = true
+response_hash_and_size = "required-before-cache-acceptance"
+response_final_url = "exact-request-url-required-before-validation"
+response_evidence_order = "persist-status-all-headers-final-url-bounded-body-prefix-metadata-before-validation"
+non_200_response_evidence = "retain-bounded-status-headers-body-prefix-completeness-truncation-read-error-before-fail-stop"
+historical_rest_403_disposition = "status-only-non-authoritative-no-commit-no-archive-no-provenance-no-retry"
+retained_atom_attempt_root = "tmp/rustsec-fetch-mbevh64_"
+retained_atom_root_mode = "0700"
+retained_atom_failure_sha256 = "fffeede31b4a080b2dc04f5255862d441a5850fea124e4d1574c4f8923845f4b"
+retained_atom_exchange_sha256 = "fadc0b0b1749f3d0e0db5db07a4491aded014fb8fd3d7062174e0bd951d9ff95"
+retained_atom_body_sha256 = "f4ad723b5244edceb7239a44d4afdbe69c12208743380e053c655179314385df"
+retained_atom_body_size = 16071
+retained_atom_status = 200
+retained_atom_server_date = "2026-08-11T12:08:47Z"
+retained_atom_local_observed_at = "2026-08-11T12:08:47Z"
+retained_atom_set_cookie_occurrences = 3
+retained_atom_selected_commit_sha = "d0861df1eab469d3c58d6b836ce48b5766e5f217"
+retained_atom_selected_entry_updated = "2026-08-11T11:04:49Z"
+retained_atom_feed_updated = "2026-08-11T11:04:49Z"
+retained_atom_request_completed = true
+retained_atom_retry_allowed = false
+remaining_resolver_requests = 0
+remaining_archive_requests = 0
+archive_request_completed = true
+archive_request_retry_allowed = false
+archive_request_method = "GET"
+archive_request_final_url = "https://codeload.github.com/rustsec/advisory-db/tar.gz/d0861df1eab469d3c58d6b836ce48b5766e5f217"
+archive_response_status = 200
+archive_response_server_date = "2026-08-11T13:03:08Z"
+archive_response_complete = true
+archive_response_truncated = false
+archive_response_read_error = false
+archive_response_set_cookie_occurrences = 0
+archive_response_body_size = 456286
+archive_response_body_sha256 = "2d9c8ef529a3d0942730fcf3c8549634b937bb2e0b8cebf3aa3ceedb1c8a9315"
+archive_exchange_sha256 = "a6f41ba601bd8251bd5db427a7bf4a5643ba249a4ba96154ed4920810ea1a5c3"
+snapshot_packet_root = "generated/rustsec-advisory-db/d0861df1eab469d3c58d6b836ce48b5766e5f217/packet"
+snapshot_manifest_sha256 = "7de6f5314132f8bf168df84cdbfd7d9f130f9033a784d2893f7dcec254e8ef63"
+snapshot_provenance_sha256 = "4cf51b89f133ad7ba5107cd5b74b0369eb1088ded086ecc9e99b98a1e0ce8f33"
+snapshot_license_sha256 = "b342fe896e158b8c5a83e707446113f3a149fa0104d834afa78cd2a48eaf1906"
+snapshot_path_count = 2140
+snapshot_file_count = 1231
+snapshot_directory_count = 909
+snapshot_symlink_count = 0
+snapshot_special_count = 0
+snapshot_writable_count = 0
+snapshot_setup_completed = true
+snapshot_acceptance = "pending-current-config-snapshot-bound-builder-and-fresh-independent-review"
+repository_execution_released = false
+completion_program_post_fetch_behavior = "fail-before-temp-root-and-network-when-authority-absent-or-consumed"
+safe_extraction = "relative-regular-files-and-directories-only-no-links-no-specials"
+canonical_tree_hash = "required"
+offline_db_child = "advisory-db-3157b0e258782691"
+compatibility_marker_path = ".git/FETCH_HEAD"
+compatibility_marker_content = "selected-commit-sha-followed-by-newline"
+compatibility_marker_mtime = "selected-feed-entry-updated-timestamp"
+maximum_db_staleness = "P90D"
+snapshot_subtree_writable = false
+ephemeral_lock_parent_writable = true
+source_execution = false
+requires_independent_policy_acceptance_before_fetch = true
+requires_independent_snapshot_acceptance_before_repository_policy = true
+official_repository_url = "https://github.com/RustSec/advisory-db"
+official_commit_history_documentation_url = "https://docs.github.com/en/pull-requests/committing-changes-to-your-project/creating-and-editing-commits/about-commits"
+official_feed_documentation_url = "https://docs.github.com/en/rest/activity/feeds"
+official_cargo_deny_advisory_documentation_url = "https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html"
+provenance_observed_at = "2026-08-11"
+
+[provenance]
+required_subjects = ["source_tree", "Cargo.lock", "rust-toolchain.toml", "config/contract-toolchain.toml", "builder_image", "component_wasm"]
+required_fields = ["sha256", "builder_identity", "started_at", "finished_at", "command", "network_phase", "tool_versions"]
+
+[verification]
+policy_version = 2
+read_only = true
+offline = true
+requires_live_credentials = false
+requires_model = false
+requires_source_build = false
+rustup_auto_install = "0"
+qualified_toolchain = "1.93.0-aarch64-apple-darwin"
+required_environment = ["VIBAPP_RUSTUP_BIN", "VIBAPP_RUSTUP_DIR"]
+command_execution = "ordered-single-fail-fast-shell"
+commands_require_state_guard = true
+state_comparison_required = true
+state_snapshot_algorithm = "canonical-path-type-mode-size-mtime-ns-content-sha256"
+state_snapshot_walk = "recursive-lstat-no-symlink-follow"
+state_snapshot_serialization = "utf8-jsonl-sorted-by-normalized-absolute-path"
+state_snapshot_errors = "fail-closed"
+state_snapshot_roots = [
+  "$VIBAPP_RUSTUP_DIR/settings.toml",
+  "$VIBAPP_RUSTUP_DIR/toolchains/1.93.0-aarch64-apple-darwin",
+  "$VIBAPP_RUSTUP_DIR/toolchains/1.93.0-aarch64-apple-darwin/lib/rustlib/wasm32-wasip2",
+]
+state_comparison = "before-equals-after"
+state_change_action = "fail-read-only-claim-and-record-side-effect"
+forbidden_command_classes = [
+  "plus-toolchain-rustc-proxy",
+  "plus-toolchain-cargo-proxy",
+  "bare-rustc-repository-proxy",
+  "bare-cargo-repository-proxy",
+  "unqualified-toolchain",
+  "auto-install-enabled",
+]
+observed_local_state_at = "2026-08-11T13:52:55+08:00"
+observed_host_toolchain = "1.93.0-aarch64-apple-darwin"
+observed_installed_targets = ["aarch64-apple-darwin", "wasm32-unknown-unknown", "wasm32-wasip2"]
+observed_absent_tools = ["wasm-tools", "wit-bindgen", "cargo-deny", "cargo-vet", "cargo-component"]
+upstream_provenance_recheck = "separate-explicitly-authorized-network-phase"
+commands = [
+  "python3 -c 'import tomllib; tomllib.load(open(\"rust-toolchain.toml\", \"rb\")); tomllib.load(open(\"config/contract-toolchain.toml\", \"rb\"))'",
+  'test -n "$VIBAPP_RUSTUP_BIN" && test -x "$VIBAPP_RUSTUP_BIN"',
+  'test -n "$VIBAPP_RUSTUP_DIR" && test -d "$VIBAPP_RUSTUP_DIR"',
+  'case "$VIBAPP_RUSTUP_BIN" in /*) ;; *) exit 64 ;; esac',
+  'case "$VIBAPP_RUSTUP_DIR" in /*) ;; *) exit 64 ;; esac',
+  'RUSTUP_AUTO_INSTALL=0 "$VIBAPP_RUSTUP_BIN" toolchain list',
+  'RUSTUP_AUTO_INSTALL=0 "$VIBAPP_RUSTUP_BIN" target list --installed --toolchain 1.93.0-aarch64-apple-darwin',
+  'VIBAPP_RUSTC_PATH="$(RUSTUP_AUTO_INSTALL=0 "$VIBAPP_RUSTUP_BIN" which --toolchain 1.93.0-aarch64-apple-darwin rustc)"',
+  'VIBAPP_CARGO_PATH="$(RUSTUP_AUTO_INSTALL=0 "$VIBAPP_RUSTUP_BIN" which --toolchain 1.93.0-aarch64-apple-darwin cargo)"',
+  'test "$VIBAPP_RUSTC_PATH" = "$VIBAPP_RUSTUP_DIR/toolchains/1.93.0-aarch64-apple-darwin/bin/rustc"',
+  'test "$VIBAPP_CARGO_PATH" = "$VIBAPP_RUSTUP_DIR/toolchains/1.93.0-aarch64-apple-darwin/bin/cargo"',
+  'RUSTUP_AUTO_INSTALL=0 "$VIBAPP_RUSTC_PATH" --version --verbose',
+  'RUSTUP_AUTO_INSTALL=0 "$VIBAPP_CARGO_PATH" --version --verbose',
+]
+
+[[verification.side_effects]]
+id = "target-auto-install-20260811T132112+0800"
+occurred_at = "2026-08-11T13:21:12+08:00"
+operation = "repository-rustup-proxy-reconciliation"
+outcome = "installed-exact-pinned-wasm32-wasip2-standard-library"
+observable_rustup_write = true
+repository_changed = false
+
+[[verification.side_effects]]
+id = "settings-rewrite-20260811T134633+0800"
+occurred_at = "2026-08-11T13:46:33+08:00"
+operation = "diagnostic-auto-self-update-setting-command"
+outcome = "settings-file-rewritten-current-auto-self-update-enable-prior-value-unknown"
+observable_rustup_write = true
+repository_changed = false
+
+[[verification.side_effects]]
+id = "invalid-empty-toolchain-selectors-20260811T140118+0800"
+occurred_at = "2026-08-11T14:01:18+08:00"
+operation = "shell-interpolation-invoked-rustc-and-cargo-proxies-with-empty-toolchain-selector"
+outcome = "two-invalid-toolchain-name-errors-no-successful-resolution"
+observable_rustup_write = false
+repository_changed = false
+evidence_state_before = "59e12a2cc8a19cc54aa823196e5d2f9040adc59a10f195b7951bc6d1685da907"
+evidence_state_after = "59e12a2cc8a19cc54aa823196e5d2f9040adc59a10f195b7951bc6d1685da907"
+evidence_target_before = "5975293493ef78c3e3bb024f512f23d7867a32e4c60240a6fe46c1f81695a9a8"
+evidence_target_after = "5975293493ef78c3e3bb024f512f23d7867a32e4c60240a6fe46c1f81695a9a8"
+evidence_settings_before = "126|1786427193"
+evidence_settings_after = "126|1786427193"

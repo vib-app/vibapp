@@ -1,0 +1,247 @@
+{
+  "$schema": "./native-platform-matrix.schema.json",
+  "schema_version": "vibapp.desktop-native-platform-matrix.experimental-v1",
+  "evidence_labels": [
+    "definition-validated",
+    "package-definition-fixture-reproduced",
+    "native-source-compiled",
+    "native-tests-passed",
+    "native-binaries-reproduced",
+    "package-candidate-produced",
+    "package-bytes-reproduced",
+    "native-package-smoke-passed",
+    "independently-accepted"
+  ],
+  "toolchain": {
+    "rust_release": "1.93.0",
+    "network_during_build": "denied",
+    "cargo_flags": ["--locked", "--offline", "--jobs", "1"],
+    "required_environment": [
+      "VIBAPP_NATIVE_CARGO",
+      "VIBAPP_NATIVE_RUSTC",
+      "VIBAPP_NATIVE_RUSTDOC",
+      "VIBAPP_NATIVE_CARGO_HOME"
+    ],
+    "launcher_platform_policy": {
+      "path": "artifacts/desktop/src-tauri/src/native_platform.rs",
+      "sha256": "1ff470f76e277cd6ad4fff1d9b7fd98ea476b6ddae0f624aca4c4a2de6609771",
+      "validation_scope": "macos-hosted-policy-tests-only",
+      "native_execution": "not-run"
+    },
+    "lockfiles": [
+      {
+        "path": "artifacts/desktop/src-tauri/Cargo.lock",
+        "sha256": "153868818b8c7f1e31650b95082ddac7f87a2cedc6af47e0b134f7d6d1b72e5d"
+      },
+      {
+        "path": "artifacts/runtime-daemon/service-runtime/Cargo.lock",
+        "sha256": "d5dff77b1985b20c8e5c13324d87fd8e0986688ffabdc9adb36d5a94557eb4df"
+      }
+    ],
+    "package_assembler": {
+      "path": "artifacts/desktop/ci/assemble_native_package.py",
+      "sha256": "e49a3547632bfa1846b1b1da41d70961656ad422056d984f83a3a130fab0bddc",
+      "input_schema_version": "vibapp.native-package-input.experimental-v1",
+      "maximum_files": 512,
+      "maximum_file_bytes": 67108864,
+      "maximum_total_bytes": 134217728
+    }
+  },
+  "targets": [
+    {
+      "id": "linux-x86_64",
+      "host_os": "linux",
+      "rust_target": "x86_64-unknown-linux-gnu",
+      "runner_labels": ["self-hosted", "linux", "vibapp-rust-1.93-offline"],
+      "package_format": "tar.gz",
+      "release_eligible": false,
+      "current_evidence": {
+        "definition": "authored-not-independently-accepted",
+        "package_definition": "synthetic-fixture-reproduced-not-native",
+        "native_compile": "not-run",
+        "native_tests": "not-run",
+        "package": "not-produced",
+        "native_smoke": "not-run",
+        "independent_acceptance": "not-run",
+        "support_claim": "not-verified"
+      },
+      "archive_layout": {
+        "root": "vibapp",
+        "embedded_manifest": "vibapp/PACKAGE-MANIFEST.json",
+        "launcher": "vibapp/bin/vibapp-launcher",
+        "runtime": "vibapp/bin/vibapp-runtime",
+        "service_runtime": "vibapp/libexec/vibapp-service-runtime",
+        "resources_prefix": "vibapp/resources/",
+        "timestamp": "source_date_epoch-even-utc-second",
+        "ordinary_files_only": true,
+        "sorted_utf8_paths": true
+      },
+      "phases": {
+        "compile": {
+          "state": "runnable-on-matching-native-runner",
+          "emits_at_most": "native-binaries-reproduced",
+          "blockers": []
+        },
+        "package": {
+          "state": "blocked",
+          "emits_at_most": "package-candidate-produced",
+          "blockers": ["LINUX-RESOURCE-002", "LINUX-NATIVE-003", "LINUX-DAEMON-004", "LINUX-SIGNING-005"]
+        },
+        "native_smoke": {
+          "state": "blocked",
+          "emits_at_most": "native-binaries-reproduced",
+          "blockers": ["LINUX-NATIVE-003", "LINUX-DAEMON-004"]
+        },
+        "independent_acceptance": {
+          "state": "blocked",
+          "emits_at_most": "native-binaries-reproduced",
+          "blockers": ["LINUX-NATIVE-003"]
+        }
+      },
+      "blockers": [
+        {
+          "id": "LINUX-RESOURCE-002",
+          "severity": "release-blocking",
+          "observed_in": [
+            "artifacts/desktop/src-tauri/src/native_platform.rs",
+            "artifacts/desktop/src-tauri/src/local_product.rs",
+            "artifacts/desktop/src-tauri/src/registry_integration.rs"
+          ],
+          "condition": "The platform-explicit resolver selects vibapp/resources and refuses development fallback for the accepted Linux archive shape in macOS-hosted unit tests, but those paths have not executed from a native Linux package.",
+          "closes_when": "A fresh Linux runner executes every packaged helper through the accepted resource layout, including missing-resource fail-closed cases."
+        },
+        {
+          "id": "LINUX-NATIVE-003",
+          "severity": "release-blocking",
+          "observed_in": ["artifacts/desktop/evidence/platform-matrix-20260827.md"],
+          "condition": "No Linux-native GUI, package, install, or runtime smoke has been executed.",
+          "closes_when": "A fresh Linux runner executes the packaged Launcher/runtime/daemon lifecycle and records bounded native evidence."
+        },
+        {
+          "id": "LINUX-DAEMON-004",
+          "severity": "release-blocking",
+          "observed_in": ["artifacts/runtime-daemon/tests/run-validation.sh"],
+          "condition": "The daemon validation harness hard-codes macOS aarch64 toolchain paths and generated target locations.",
+          "closes_when": "The harness consumes explicit verified Linux tool paths and passes its full suite natively without changing the security envelope."
+        },
+        {
+          "id": "LINUX-SIGNING-005",
+          "severity": "security-blocking",
+          "observed_in": ["artifacts/desktop/scripts/package-macos.sh"],
+          "condition": "Only the local macOS ad-hoc codesign path exists; no accepted Linux package signer/verifier policy exists.",
+          "closes_when": "A separate Linux signer/verifier policy binds the exact reproduced archive digest and passes independent review."
+        }
+      ]
+    },
+    {
+      "id": "windows-x86_64",
+      "host_os": "windows",
+      "rust_target": "x86_64-pc-windows-msvc",
+      "runner_labels": ["self-hosted", "windows", "vibapp-rust-1.93-offline"],
+      "package_format": "zip",
+      "release_eligible": false,
+      "current_evidence": {
+        "definition": "authored-not-independently-accepted",
+        "package_definition": "synthetic-fixture-reproduced-not-native",
+        "native_compile": "not-run",
+        "native_tests": "not-run",
+        "package": "not-produced",
+        "native_smoke": "not-run",
+        "independent_acceptance": "not-run",
+        "support_claim": "not-verified"
+      },
+      "archive_layout": {
+        "root": "VibApp",
+        "embedded_manifest": "VibApp/PACKAGE-MANIFEST.json",
+        "launcher": "VibApp/vibapp-launcher.exe",
+        "runtime": "VibApp/vibapp-runtime.exe",
+        "service_runtime": "VibApp/libexec/vibapp-service-runtime.exe",
+        "resources_prefix": "VibApp/resources/",
+        "timestamp": "source_date_epoch-even-utc-second",
+        "ordinary_files_only": true,
+        "sorted_utf8_paths": true
+      },
+      "phases": {
+        "compile": {
+          "state": "runnable-on-matching-native-runner",
+          "emits_at_most": "native-binaries-reproduced",
+          "blockers": []
+        },
+        "package": {
+          "state": "blocked",
+          "emits_at_most": "native-binaries-reproduced",
+          "blockers": [
+            "WINDOWS-IPC-001",
+            "WINDOWS-PYTHON-002",
+            "WINDOWS-RESOURCE-003",
+            "WINDOWS-SECRETS-004",
+            "WINDOWS-NATIVE-006",
+            "WINDOWS-SIGNING-007"
+          ]
+        },
+        "native_smoke": {
+          "state": "blocked",
+          "emits_at_most": "native-binaries-reproduced",
+          "blockers": ["WINDOWS-IPC-001", "WINDOWS-PYTHON-002", "WINDOWS-SECRETS-004"]
+        },
+        "independent_acceptance": {
+          "state": "blocked",
+          "emits_at_most": "native-binaries-reproduced",
+          "blockers": ["WINDOWS-NATIVE-006"]
+        }
+      },
+      "blockers": [
+        {
+          "id": "WINDOWS-IPC-001",
+          "severity": "security-blocking",
+          "observed_in": ["artifacts/desktop/src-tauri/src/native_platform.rs"],
+          "condition": "The transport selector names the required owner-only Windows named-pipe contract and deliberately refuses execution because the client/server pipe and caller-identity checks are absent.",
+          "closes_when": "A Windows owner-authenticated named-pipe transport preserves the same bounded typed daemon envelope and passes adversarial lifecycle tests."
+        },
+        {
+          "id": "WINDOWS-PYTHON-002",
+          "severity": "release-blocking",
+          "observed_in": [
+            "artifacts/desktop/src-tauri/src/native_platform.rs",
+            "artifacts/desktop/src-tauri/src/local_product.rs",
+            "artifacts/desktop/src-tauri/src/delivery_integration.rs"
+          ],
+          "condition": "Windows Python/helper discovery now has no ambient PATH candidates and fails closed, but a packaged owner/reparse-verified interpreter policy is not implemented or natively tested.",
+          "closes_when": "Windows helper discovery is explicit, version-checked, non-symlink/reparse-safe, and tested with a cleared environment."
+        },
+        {
+          "id": "WINDOWS-RESOURCE-003",
+          "severity": "release-blocking",
+          "observed_in": [
+            "artifacts/desktop/src-tauri/src/native_platform.rs",
+            "artifacts/desktop/src-tauri/src/local_product.rs",
+            "artifacts/desktop/src-tauri/src/registry_integration.rs"
+          ],
+          "condition": "The platform-explicit resolver selects VibApp/resources and refuses development fallback for the accepted Windows archive shape in macOS-hosted unit tests, but Windows package execution and reparse-point behavior remain untested.",
+          "closes_when": "A fresh Windows runner executes every packaged helper through the accepted resource layout, including missing-resource and reparse-point fail-closed cases."
+        },
+        {
+          "id": "WINDOWS-SECRETS-004",
+          "severity": "security-blocking",
+          "observed_in": ["artifacts/desktop/src-tauri/src/native_platform.rs", "artifacts/desktop/src-tauri/src/model_settings.rs"],
+          "condition": "The secret protection selector requires a Windows owner-only ACL and refuses BYOM secret access before persistence, but the ACL implementation and negative ACL tests are absent.",
+          "closes_when": "A Windows-native owner-only ACL implementation and negative ACL tests pass before any BYOM secret is persisted."
+        },
+        {
+          "id": "WINDOWS-NATIVE-006",
+          "severity": "release-blocking",
+          "observed_in": ["artifacts/desktop/evidence/platform-matrix-20260827.md"],
+          "condition": "No Windows-native compile, GUI, package, install, or runtime smoke has been executed.",
+          "closes_when": "A fresh Windows runner executes the full accepted native matrix and a separate reviewer accepts the exact evidence."
+        },
+        {
+          "id": "WINDOWS-SIGNING-007",
+          "severity": "security-blocking",
+          "observed_in": ["artifacts/desktop/scripts/package-macos.sh"],
+          "condition": "Only the local macOS ad-hoc codesign path exists; no accepted Windows Authenticode signer/verifier policy exists.",
+          "closes_when": "A separate Windows signer/verifier policy binds the exact reproduced ZIP digest and passes independent review."
+        }
+      ]
+    }
+  ]
+}

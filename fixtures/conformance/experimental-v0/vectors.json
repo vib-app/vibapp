@@ -1,0 +1,1026 @@
+{
+  "vector_schema": "vibapp.conformance.experimental-v0.0.1",
+  "contract": "vibapp:experimental-v0@0.0.1",
+  "description": "Hand-authored semantic vectors. Manifest references are relative to this file; mutations are applied only for the named case.",
+  "vectors": [
+    {
+      "id": "current-ui-only-desktop",
+      "class": "positive",
+      "phase": "admission",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "host": { "os": "macos", "arch": "aarch64", "profile": "desktop" },
+        "actual_imports": [
+          "vibapp:experimental-v0/clock@0.0.1",
+          "vibapp:experimental-v0/kv@0.0.1",
+          "vibapp:experimental-v0/log@0.0.1",
+          "vibapp:experimental-v0/host-info@0.0.1",
+          "vibapp:experimental-v0/settings@0.0.1"
+        ],
+        "grants": "all-required"
+      },
+      "expected": { "decision": "accept", "code": null, "executable": true, "launcher_surface": true }
+    },
+    {
+      "id": "current-service-only-linux-arm64-headless",
+      "class": "positive",
+      "phase": "admission",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "host": { "os": "linux", "arch": "aarch64", "profile": "headless", "control_surface": "cli-json" },
+        "actual_imports": [
+          "vibapp:experimental-v0/clock@0.0.1",
+          "vibapp:experimental-v0/scheduler@0.0.1",
+          "vibapp:experimental-v0/kv@0.0.1",
+          "vibapp:experimental-v0/log@0.0.1",
+          "vibapp:experimental-v0/host-info@0.0.1",
+          "vibapp:experimental-v0/settings@0.0.1",
+          "vibapp:experimental-v0/system-metrics@0.0.1",
+          "vibapp:experimental-v0/http@0.0.1"
+        ],
+        "grants": "all-required"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "executable": true,
+        "launcher_surface": false,
+        "cli_operations": ["install", "uninstall", "enable", "disable", "settings", "configure", "permissions", "permission-plan", "permission-commit", "permission-revoke", "status", "logs", "update", "service-start", "service-stop", "alarm-configure", "alarm-enable", "alarm-disable", "alarm-cancel", "alarm-snooze", "alarm-status"]
+      }
+    },
+    {
+      "id": "degradable-http-is-an-unavailable-typed-stub-in-stage0",
+      "class": "positive",
+      "phase": "authorization",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "host": { "os": "linux", "arch": "aarch64", "profile": "headless" },
+        "capability": "vibapp:experimental-v0/http@0.0.1",
+        "necessity": "degradable",
+        "availability": "unavailable",
+        "attempted_calls": 1
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "activated": true,
+        "interface_linked": true,
+        "call_code": "capability-unavailable",
+        "network_requests": 0
+      }
+    },
+    {
+      "id": "mock-http-replay-deduplicates-idempotency-key",
+      "class": "positive",
+      "phase": "idempotency",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "profile": "web-preview",
+        "calls": [
+          { "method": "post", "idempotency_key": "report-occurrence-1" },
+          { "method": "post", "idempotency_key": "report-occurrence-1" }
+        ]
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "logical_broker_operations": 1,
+        "responses_equal": true,
+        "network_requests": 0
+      }
+    },
+    {
+      "id": "log-replay-deduplicates-idempotency-key",
+      "class": "positive",
+      "phase": "idempotency",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "calls": [
+          { "message": "saved", "idempotency_key": "log-event-1" },
+          { "message": "saved", "idempotency_key": "log-event-1" }
+        ]
+      },
+      "expected": { "decision": "accept", "code": null, "logical_log_records": 1, "responses_equal": true }
+    },
+    {
+      "id": "current-hybrid-desktop",
+      "class": "positive",
+      "phase": "admission",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "host": { "os": "linux", "arch": "x86-64", "profile": "desktop" },
+        "actual_imports": [
+          "vibapp:experimental-v0/clock@0.0.1",
+          "vibapp:experimental-v0/scheduler@0.0.1",
+          "vibapp:experimental-v0/notification@0.0.1",
+          "vibapp:experimental-v0/kv@0.0.1",
+          "vibapp:experimental-v0/log@0.0.1",
+          "vibapp:experimental-v0/host-info@0.0.1",
+          "vibapp:experimental-v0/settings@0.0.1"
+        ],
+        "grants": "all-required"
+      },
+      "expected": { "decision": "accept", "code": null, "executable": true, "launcher_surface": true, "service_active_after_enable": true }
+    },
+    {
+      "id": "web-preview-service-uses-mocks",
+      "class": "positive",
+      "phase": "profile",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "host": { "os": "browser", "arch": "wasm32", "profile": "web-preview" },
+        "derived_from_matches_canonical": true,
+        "availability": {
+          "scheduler": "mock",
+          "system-metrics": "mock",
+          "http": "mock"
+        }
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "preview_only": true,
+        "real_hardware_reads": 0,
+        "real_network_requests": 0,
+        "closed_page_reliability_claim": false
+      }
+    },
+    {
+      "id": "web-runtime-ui-is-foreground-only",
+      "class": "positive",
+      "phase": "profile",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "host": {
+          "os": "browser",
+          "arch": "wasm32",
+          "profile": "web-runtime"
+        },
+        "derived_from_matches_canonical": true,
+        "page_state": "open"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "real_ui_state_allowed": true,
+        "background": "foreground-only",
+        "closed_page_reliability_claim": false
+      }
+    },
+    {
+      "id": "cli-manages-ui-package-without-ui-renderer",
+      "class": "positive",
+      "phase": "control-surface",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": { "host": { "os": "linux", "arch": "aarch64", "profile": "headless", "control_surface": "cli-json" } },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "package_management_allowed": true,
+        "launch_decision": "reject",
+        "launch_code": "unsupported-surface",
+        "state_changed_by_failed_launch": false
+      }
+    },
+    {
+      "id": "launcher-and-cli-share-the-daemon-envelope",
+      "class": "positive",
+      "phase": "control-surface",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "world": "daemon-control-reference",
+        "normalized_requests": [
+          { "client": "launcher", "subject": "ai.vibapp.temperature-reporter", "command": "settings" },
+          { "client": "cli", "subject": "ai.vibapp.temperature-reporter", "command": "settings" }
+        ]
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "same_typed_settings_snapshot": true,
+        "same_authorization_and_bounds": true,
+        "transport_specific_semantics": false,
+        "cli_json_is_a_serialized_daemon_response": true
+      }
+    },
+    {
+      "id": "gui-and-cli-alarm-configure-share-canonical-envelope",
+      "class": "positive",
+      "phase": "control-surface",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "isolated_clients": ["launcher", "cli"],
+        "subject": "ai.vibapp.alarm",
+        "idempotency_key": "configure-surface-neutral",
+        "command": {
+          "tag": "alarm-configure",
+          "value": {
+            "alarm_id": "alarm-control",
+            "expected_revision": null,
+            "schedule": {
+              "tag": "recurring",
+              "value": {
+                "kind": "daily",
+                "time": { "hour": 9, "minute": 0, "second": 0 },
+                "start_date": { "year": 2026, "month": 8, "day": 13 },
+                "time_zone": "Asia/Shanghai",
+                "weekdays": [],
+                "gap": "next-valid",
+                "overlap": "earlier"
+              }
+            },
+            "notification": { "title": "Wake up", "body": "Morning alarm", "standard_sound": true }
+          }
+        },
+        "commit_at_utc": "2026-08-13T00:30:00Z"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "semantic_daemon_states_equal": true,
+        "outcome": {
+          "tag": "alarm-command",
+          "value": {
+            "alarm_id": "alarm-control",
+            "outcome": "created",
+            "revision": 1,
+            "enabled": true,
+            "next_occurrence_id": "occ:alarm-control:r1:2026-08-13T01:00:00Z",
+            "snooze_occurrence_id": null,
+            "deduplicated": false
+          }
+        },
+        "projection_round_trips_exactly": true,
+        "gui_processes_for_cli": 0,
+        "renders_for_cli": 0
+      }
+    },
+    {
+      "id": "alarm-cancel-is-typed-disable-alias",
+      "class": "positive",
+      "phase": "control-surface",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "alarm_id": "alarm-1",
+        "revision": 4,
+        "enabled": true,
+        "isolated_commands": ["alarm-disable", "alarm-cancel"]
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "normalized_results_equal": true,
+        "outcome": "disabled",
+        "revision": 5,
+        "enabled": false,
+        "definition_and_projection_retained": true
+      }
+    },
+    {
+      "id": "alarm-status-is-read-only-bounded-and-complete",
+      "class": "positive",
+      "phase": "control-surface",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "command": { "tag": "alarm-status", "value": { "alarm_id": "alarm-cli-status", "occurrence_limit": 10, "effect_limit": 10 } },
+        "semantic_state_digest": "state-before-status"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "outcome": {
+          "tag": "alarm-status",
+          "value": {
+            "app": "ai.vibapp.alarm",
+            "active_generation": "gen-1",
+            "rollback_state": "none",
+            "alarm": {
+              "alarm_id": "alarm-cli-status",
+              "schedule": {
+                "tag": "recurring",
+                "value": {
+                  "kind": "daily",
+                  "time": { "hour": 9, "minute": 0, "second": 0 },
+                  "start_date": { "year": 2026, "month": 8, "day": 13 },
+                  "time_zone": "Asia/Shanghai",
+                  "weekdays": [],
+                  "gap": "next-valid",
+                  "overlap": "earlier"
+                }
+              },
+              "notification": { "title": "Wake up", "body": "Morning alarm", "standard_sound": true },
+              "enabled": true,
+              "revision": 4,
+              "next_occurrence_id": "occ:alarm-cli-status:r4:2026-08-14T01:00:00Z",
+              "occurrences": [
+                {
+                  "occurrence": "occ:alarm-cli-status:r4:2026-08-14T01:00:00Z",
+                  "due_at_utc": "2026-08-14T01:00:00Z",
+                  "state": "scheduled",
+                  "classification": null,
+                  "notification_id": null
+                }
+              ],
+              "occurrences_truncated": false,
+              "effects": [],
+              "effects_truncated": false,
+              "permission_health": "authorized"
+            }
+          }
+        },
+        "semantic_state_digest": "state-before-status",
+        "state_mutations": 0,
+        "renders": 0
+      }
+    },
+    {
+      "id": "alarm-status-zero-limit-is-invalid",
+      "class": "negative",
+      "phase": "control-surface",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "command": { "tag": "alarm-status", "value": { "alarm_id": "alarm-1", "occurrence_limit": 0, "effect_limit": 10 } } },
+      "expected": { "decision": "reject", "code": "invalid-argument", "state_mutations": 0 }
+    },
+    {
+      "id": "close-hybrid-ui-does-not-disable-service",
+      "class": "positive",
+      "phase": "lifecycle",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "app_state": "enabled",
+        "service_instance": "svc-1",
+        "active_schedule_ids": ["schedule-1"],
+        "launcher_event": { "close": { "entrypoint": "alarm-ui", "session": "session-1", "surface": "surface-1" } }
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "closed_surface": "surface-1",
+        "app_state": "enabled",
+        "service_instance": "svc-1",
+        "active_schedule_ids": ["schedule-1"]
+      }
+    },
+    {
+      "id": "disable-service-retains-package-and-state",
+      "class": "positive",
+      "phase": "lifecycle",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "app_state": "enabled",
+        "package_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+        "state_revision": 7,
+        "active_schedule_ids": ["schedule-1"],
+        "pending_occurrence_ids": ["occurrence-1"],
+        "operation": "disable"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "app_state": "disabled",
+        "package_retained": true,
+        "state_revision": 7,
+        "service_instances": [],
+        "active_schedule_ids": [],
+        "schedule_definitions_and_projections_retained": true,
+        "pending_occurrence_ids_retained_but_quiesced": ["occurrence-1"],
+        "new_effects_allowed": false
+      }
+    },
+    {
+      "id": "uninstall-delete-data",
+      "class": "positive",
+      "phase": "lifecycle",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "operation": "uninstall", "data_disposition": "delete", "state_revision": 9 },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "package_present": false,
+        "app_state_present": false,
+        "settings_present": false,
+        "schedules_present": false,
+        "effects_allowed": false,
+        "security_audit_retained_under_host_policy": true
+      }
+    },
+    {
+      "id": "uninstall-retain-data",
+      "class": "positive",
+      "phase": "lifecycle",
+      "manifest": "manifests/service-only.valid.json",
+      "given": { "operation": "uninstall", "data_disposition": "retain", "state_revision": 11 },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "package_present": false,
+        "state_archived": true,
+        "archived_state_accessible_to_guest": false,
+        "schedules_present": false,
+        "effects_allowed": false,
+        "restore_requires_same_publisher_app_and_user_consent": true
+      }
+    },
+    {
+      "id": "valid-launcher-restoration",
+      "class": "positive",
+      "phase": "surface",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "host_issued": { "session": "session-1", "surface": "surface-1", "restore_token": "restore-1" },
+        "event": { "entrypoint": "main", "session": "session-1", "surface": "surface-1", "route": "note-detail", "token": "restore-1", "safe_fields": [{ "field": "query", "value": { "text": "sample" } }] },
+        "sensitive_fields": []
+      },
+      "expected": { "decision": "accept", "code": null, "surface_update_must_echo_host_ids": true, "raw_guest_memory_restored": false }
+    },
+    {
+      "id": "alarm-due-notification-survives-guest-trap",
+      "class": "positive",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "validated_schedule_projection": { "title": "Alarm", "body": "Wake up", "standard_sound": true },
+        "occurrence": "occurrence-42",
+        "scheduled_for_utc": "2026-08-11T01:00:00Z",
+        "dispatched_at_utc": "2026-08-11T01:00:01Z",
+        "classification": "on-time",
+        "guest_result": "trap"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "notification_outbox_created_before_guest": true,
+        "notification_outbox_cancelled_by_guest_trap": false,
+        "guest_event_classification": "on-time",
+        "occurrence_acknowledged": false,
+        "occurrence_durable": true,
+        "guest_store_reused": false
+      }
+    },
+    {
+      "id": "service-trigger-has-no-notification-projection",
+      "class": "positive",
+      "phase": "scheduler",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "schedule_request": { "purpose": "service-trigger", "notification": null },
+        "occurrence": "occurrence-telemetry-1"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "notification_outbox_created": false,
+        "guest_occurrence_event_created": true
+      }
+    },
+    {
+      "id": "alarm-schedule-without-notification-projection",
+      "class": "negative",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "schedule_request": { "purpose": "alarm", "notification": null } },
+      "expected": { "decision": "reject", "code": "invalid-argument", "schedule_persisted": false }
+    },
+    {
+      "id": "alarm-purpose-rejects-utc-instant-shortcut",
+      "class": "negative",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "schedule_request": {
+          "purpose": "alarm",
+          "spec": { "tag": "at-instant", "value": "2026-08-11T01:00:00Z" },
+          "notification": { "title": "Wake up", "body": "Morning alarm", "standard_sound": true }
+        }
+      },
+      "expected": { "decision": "reject", "code": "invalid-argument", "schedule_persisted": false }
+    },
+    {
+      "id": "service-trigger-cannot-create-notification-outbox",
+      "class": "negative",
+      "phase": "scheduler",
+      "manifest": "manifests/service-only.valid.json",
+      "given": { "schedule_request": { "purpose": "service-trigger", "notification": { "title": "forged" } } },
+      "expected": { "decision": "reject", "code": "invalid-argument", "schedule_persisted": false, "notification_outbox_created": false }
+    },
+    {
+      "id": "schedule-disable-retains-definition-and-projection",
+      "class": "positive",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "schedule": "alarm-1",
+        "revision": 4,
+        "enabled": true,
+        "operation": "scheduler.disable",
+        "idempotency_key": "disable-1"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "enabled": false,
+        "revision": 5,
+        "definition_retained": true,
+        "notification_projection_retained": true,
+        "scheduled_occurrences_cancelled": true
+      }
+    },
+    {
+      "id": "schedule-enable-expired-one-shot-fails-closed",
+      "class": "negative",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "schedule": "expired-one-shot",
+        "revision": 8,
+        "enabled": false,
+        "resolved_due_is_before_commit": true,
+        "operation": "scheduler.enable",
+        "idempotency_key": "enable-1"
+      },
+      "expected": {
+        "decision": "reject",
+        "code": "conflict",
+        "detail": "expired-one-shot",
+        "enabled": false,
+        "revision": 8,
+        "materialized_occurrences": 0
+      }
+    },
+    {
+      "id": "alarm-local-time-uses-frozen-dst-policy",
+      "class": "positive",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "schedule_request": {
+          "purpose": "alarm",
+          "spec": {
+            "tag": "at-local",
+            "value": {
+              "when": {
+                "date": { "year": 2026, "month": 3, "day": 8 },
+                "time": { "hour": 2, "minute": 30, "second": 0 },
+                "time_zone": "America/New_York"
+              },
+              "gap": "next-valid",
+              "overlap": "earlier"
+            }
+          },
+          "missed": "fire-once",
+          "notification": { "title": "Wake up", "body": "DST alarm", "standard_sound": true }
+        }
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "resolved_local": { "date": { "year": 2026, "month": 3, "day": 8 }, "time": { "hour": 3, "minute": 30, "second": 0 }, "time_zone": "America/New_York" },
+        "due_at_utc": "2026-03-08T07:30:00Z",
+        "materialized_occurrences": 1
+      }
+    },
+    {
+      "id": "weekly-recurrence-uses-inclusive-start-date",
+      "class": "positive",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "configure_at_utc": "2026-08-11T00:00:00Z",
+        "recurrence": {
+          "kind": "weekly",
+          "time": { "hour": 9, "minute": 0, "second": 0 },
+          "start_date": { "year": 2026, "month": 8, "day": 11 },
+          "time_zone": "Asia/Shanghai",
+          "weekdays": ["tuesday"],
+          "gap": "next-valid",
+          "overlap": "earlier"
+        }
+      },
+      "expected": { "decision": "accept", "code": null, "start_date_inclusive": true, "next_due_at_utc": "2026-08-11T01:00:00Z" }
+    },
+    {
+      "id": "weekly-recurrence-requires-unique-nonempty-weekdays",
+      "class": "negative",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "recurrence": { "kind": "weekly", "start_date": { "year": 2026, "month": 8, "day": 11 }, "weekdays": [] } },
+      "expected": { "decision": "reject", "code": "invalid-argument", "schedule_persisted": false }
+    },
+    {
+      "id": "daily-recurrence-rejects-weekday-list",
+      "class": "negative",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "recurrence": { "kind": "daily", "start_date": { "year": 2026, "month": 8, "day": 11 }, "weekdays": ["tuesday"] } },
+      "expected": { "decision": "reject", "code": "invalid-argument", "schedule_persisted": false }
+    },
+    {
+      "id": "utc-instant-rejects-offset-and-fraction",
+      "class": "negative",
+      "phase": "time-validation",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "invalid_values": ["2026-08-11T01:00:00.000Z", "2026-08-11T09:00:00+08:00", "2026-08-11T01:00:60Z", "2026-02-30T01:00:00Z"] },
+      "expected": { "decision": "reject", "code": "invalid-argument", "accepted_values": 0, "state_mutations": 0 }
+    },
+    {
+      "id": "delivery-classification-is-host-owned",
+      "class": "positive",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "scheduled_for_utc": "2026-08-11T01:00:00Z",
+        "dispatched_at_utc": "2026-08-11T01:05:00Z",
+        "host_classification": "catch-up",
+        "opaque_payload_claims_classification": "on-time"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "delivery_event_classification": "catch-up",
+        "guest_payload_can_override_classification": false
+      }
+    },
+    {
+      "id": "due-permission-denied-is-a-typed-delivery-classification",
+      "class": "positive",
+      "phase": "scheduler",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "scheduled_for_utc": "2026-08-11T01:00:00Z",
+        "dispatched_at_utc": "2026-08-11T01:00:00Z",
+        "notification_permission": "denied"
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "delivery_event_classification": "permission-denied",
+        "notification_outbox_created": false,
+        "guest_occurrence_event_created": true,
+        "background_prompt_count": 0
+      }
+    },
+    {
+      "id": "occurrence-survives-generation-switch",
+      "class": "positive",
+      "phase": "hot-swap",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "old_generation": "gen-4", "new_generation": "gen-5", "pending_occurrence": "occurrence-42" },
+      "expected": { "decision": "accept", "code": null, "delivered_occurrence": "occurrence-42", "duplicate_notification_outboxes": 0, "ack_deduplicated": true }
+    },
+    {
+      "id": "rollback-window-blocks-guest-mutation-but-allows-host-snooze",
+      "class": "positive",
+      "phase": "hot-swap",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "rollback_state": "observation-window", "guest_operations": ["scheduler.upsert", "scheduler.disable", "scheduler.enable"], "host_operation": "snooze" },
+      "expected": { "decision": "accept", "code": null, "guest_operation_code": "upgrade-in-progress", "host_snooze_allowed": true }
+    },
+    {
+      "id": "missing-host-import",
+      "class": "negative",
+      "phase": "compatibility",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "actual_imports": "matches-manifest",
+        "host_supported_imports_excluding": ["vibapp:experimental-v0/scheduler@0.0.1"]
+      },
+      "expected": { "decision": "reject", "code": "missing-interface", "before_instantiation": true, "previous_generation_unchanged": true }
+    },
+    {
+      "id": "unknown-required-import",
+      "class": "negative",
+      "phase": "compatibility",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "manifest_required_imports_add": ["vibapp:experimental-v0/camera@0.0.1"],
+        "actual_imports_add": ["vibapp:experimental-v0/camera@0.0.1"]
+      },
+      "expected": { "decision": "reject", "code": "unknown-interface", "before_instantiation": true }
+    },
+    {
+      "id": "daemon-control-interface-is-not-an-app-capability",
+      "class": "negative",
+      "phase": "schema",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "manifest_required_imports_add": ["vibapp:experimental-v0/control@0.0.1"],
+        "capabilities_add_interface": "vibapp:experimental-v0/control@0.0.1"
+      },
+      "expected": { "decision": "reject", "code": "unknown-interface", "schema_valid": false, "before_instantiation": true }
+    },
+    {
+      "id": "component-import-not-declared-in-manifest",
+      "class": "negative",
+      "phase": "reconciliation",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": { "actual_imports_add": ["vibapp:experimental-v0/http@0.0.1"] },
+      "expected": { "decision": "reject", "code": "incompatible-contract", "before_instantiation": true }
+    },
+    {
+      "id": "manifest-import-not-present-in-component",
+      "class": "negative",
+      "phase": "reconciliation",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "actual_imports_remove": ["vibapp:experimental-v0/notification@0.0.1"] },
+      "expected": { "decision": "reject", "code": "incompatible-contract", "before_instantiation": true }
+    },
+    {
+      "id": "permission-denied-required-capability",
+      "class": "negative",
+      "phase": "authorization",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "denied": ["vibapp:experimental-v0/scheduler@0.0.1"] },
+      "expected": { "decision": "block", "code": "permission-denied", "activated": false, "service_started": false, "previous_generation_unchanged": true }
+    },
+    {
+      "id": "malformed-ui-output",
+      "class": "negative",
+      "phase": "output-validation",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "output": { "root": "missing-root", "nodes": [{ "id": "duplicate", "parent": "duplicate" }, { "id": "duplicate", "parent": null }] }
+      },
+      "expected": { "decision": "reject", "code": "malformed-output", "candidate_generation_disposed": true, "previous_generation_unchanged": true }
+    },
+    {
+      "id": "runtime-output-exceeds-declared-bound",
+      "class": "negative",
+      "phase": "output-validation",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": { "declared_output_bytes": 131072, "actual_output_bytes": 131073 },
+      "expected": { "decision": "reject", "code": "resource-limit", "guest_store_disposed": true, "partial_output_rendered": false }
+    },
+    {
+      "id": "sensitive-setting-plaintext-is-rejected",
+      "class": "negative",
+      "phase": "settings-validation",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "field_sensitive": true,
+        "field_value": { "tag": "text", "value": "plaintext-secret" },
+        "source": "cli-json"
+      },
+      "expected": { "decision": "reject", "code": "invalid-argument", "secret_persisted": false, "secret_logged": false, "required_value_tag": "secret-handle" }
+    },
+    {
+      "id": "cancelled-event-call-cannot-commit-effects",
+      "class": "negative",
+      "phase": "cancellation",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "cancellation_id": "cancel-42",
+        "host_cancels_before_commit": true,
+        "guest_returns_after_cancellation": true
+      },
+      "expected": {
+        "decision": "reject",
+        "code": "cancelled",
+        "guest_store_disposed": true,
+        "kv_commits": 0,
+        "guest_requested_effects": 0,
+        "host_owned_due_outbox_unchanged": true
+      }
+    },
+    {
+      "id": "unsupported-contract-version",
+      "class": "negative",
+      "phase": "compatibility",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": { "replace": { "/runtime/contract": "vibapp:experimental-v0@0.0.2" } },
+      "expected": { "decision": "reject", "code": "unsupported-version", "before_instantiation": true }
+    },
+    {
+      "id": "resource-request-over-limit",
+      "class": "negative",
+      "phase": "schema",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": { "replace": { "/resources/linear_memory_bytes": 67108865 } },
+      "expected": { "decision": "reject", "code": "resource-limit", "schema_valid": false, "before_instantiation": true }
+    },
+    {
+      "id": "permission-query-is-read-only",
+      "class": "positive",
+      "phase": "permission-control",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "subject": "ai.vibapp.alarm",
+        "command": { "tag": "permissions", "value": null },
+        "grants_revision": 3
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "snapshot_app": "ai.vibapp.alarm",
+        "grants_revision": 3,
+        "grants_are_typed_and_bounded": true,
+        "state_mutations": 0
+      }
+    },
+    {
+      "id": "permission-plan-and-commit-use-authoritative-diff",
+      "class": "positive",
+      "phase": "permission-control",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "subject": "ai.vibapp.alarm",
+        "expected_permission_revision": 3,
+        "requested_interfaces": ["vibapp:experimental-v0/notification@0.0.1"],
+        "daemon_resolved_scope_digest_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "trusted_host_confirmation": true,
+        "host_confirmation_token": "host-confirmation-1",
+        "commands": [
+          {
+            "tag": "permission-plan",
+            "value": {
+              "expected_permission_revision": 3,
+              "candidate_package_digest_sha256": null,
+              "profile": "desktop",
+              "desired_granted_interfaces": ["vibapp:experimental-v0/notification@0.0.1"]
+            }
+          },
+          {
+            "tag": "permission-commit",
+            "value": {
+              "plan": "permission-plan-1",
+              "expected_permission_revision": 3,
+              "host_confirmation_token": "host-confirmation-1"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "plan_diff_source": "daemon-verified-manifest",
+        "plan_grants_revision": 3,
+        "confirmation_token_bound_to_plan_app_principal_diff_revision_and_expiry": true,
+        "commit_grants_revision": 4,
+        "applied_changes": ["grant"],
+        "token_reusable": false
+      }
+    },
+    {
+      "id": "permission-revoke-is-explicit-and-revision-checked",
+      "class": "positive",
+      "phase": "permission-control",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "subject": "ai.vibapp.alarm",
+        "plan_changes": ["revoke"],
+        "expected_permission_revision": 4,
+        "trusted_host_confirmation": true,
+        "host_confirmation_token": "host-confirmation-revoke-1",
+        "command": {
+          "tag": "permission-revoke",
+          "value": {
+            "plan": "permission-revoke-plan-1",
+            "expected_permission_revision": 4,
+            "host_confirmation_token": "host-confirmation-revoke-1"
+          }
+        }
+      },
+      "expected": {
+        "decision": "accept",
+        "code": null,
+        "command": "permission-revoke",
+        "grants_revision": 5,
+        "applied_changes": ["revoke"],
+        "revoked_effect_authority": true
+      }
+    },
+    {
+      "id": "noninteractive-cli-permission-commit-without-host-confirmation",
+      "class": "negative",
+      "phase": "permission-control",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "client": "cli",
+        "interactive": false,
+        "command": {
+          "tag": "permission-commit",
+          "value": {
+            "plan": "permission-plan-no-confirmation",
+            "expected_permission_revision": 3,
+            "host_confirmation_token": ""
+          }
+        },
+        "host_confirmation_token": null
+      },
+      "expected": { "decision": "reject", "code": "consent-required", "grants_revision_unchanged": true }
+    },
+    {
+      "id": "stale-permission-plan-revision",
+      "class": "negative",
+      "phase": "permission-control",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "plan_grants_revision": 3,
+        "current_grants_revision": 4,
+        "host_confirmation_token": "host-confirmation-stale"
+      },
+      "expected": { "decision": "reject", "code": "stale-revision", "grants_revision": 4, "changes_applied": 0 }
+    },
+    {
+      "id": "forged-cross-app-permission-token",
+      "class": "negative",
+      "phase": "permission-control",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": {
+        "token_bound_subject": "ai.vibapp.alarm",
+        "daemon_request_subject": "ai.vibapp.other",
+        "host_confirmation_token": "host-confirmation-1"
+      },
+      "expected": { "decision": "reject", "code": "forged-identifier", "changes_applied": 0 }
+    },
+    {
+      "id": "capability-expansion-requires-new-consent",
+      "class": "negative",
+      "phase": "update",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": {
+        "installed_capabilities": ["clock", "kv", "log", "host-info", "settings"],
+        "candidate_imports_add": ["vibapp:experimental-v0/http@0.0.1"],
+        "candidate_manifest_declares_http": true,
+        "new_consent": false,
+        "permission_plan_required": true,
+        "host_confirmation_token": null
+      },
+      "expected": { "decision": "block", "code": "consent-required", "authoritative_diff_includes": "grant", "candidate_activated": false, "old_digest_active": true }
+    },
+    {
+      "id": "forged-surface-id",
+      "class": "negative",
+      "phase": "surface",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "host_issued_surface": "surface-1", "guest_output_surface": "surface-other" },
+      "expected": { "decision": "reject", "code": "forged-identifier", "surface_changed": false, "candidate_health_penalty": true }
+    },
+    {
+      "id": "forged-management-target-from-gui-or-cli",
+      "class": "negative",
+      "phase": "control-surface",
+      "manifest": "manifests/service-only.valid.json",
+      "given": {
+        "authenticated_app_scope": "ai.vibapp.temperature-reporter",
+        "daemon_request": { "client": "cli", "subject": "ai.vibapp.other", "command": "disable" }
+      },
+      "expected": { "decision": "reject", "code": "forged-identifier", "app_state_unchanged": true }
+    },
+    {
+      "id": "disabled-service-attempts-effect",
+      "class": "negative",
+      "phase": "lifecycle",
+      "manifest": "manifests/service-only.valid.json",
+      "given": { "app_state": "disabled", "attempt": "http.send" },
+      "expected": { "decision": "reject", "code": "app-disabled", "host_calls_performed": 0 }
+    },
+    {
+      "id": "uninstall-disposition-not-allowed",
+      "class": "negative",
+      "phase": "lifecycle",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": { "manifest_allowed_dispositions_override": ["delete"], "operation_disposition": "retain" },
+      "expected": { "decision": "reject", "code": "invalid-argument", "package_present": true, "state_unchanged": true }
+    },
+    {
+      "id": "service-kind-forges-launcher-entrypoint",
+      "class": "negative",
+      "phase": "schema",
+      "manifest": "manifests/service-only.valid.json",
+      "given": { "entrypoints_add_kind": "launcher-ui" },
+      "expected": { "decision": "reject", "code": "incompatible-contract", "schema_valid": false }
+    },
+    {
+      "id": "ui-kind-missing-launcher-entrypoint",
+      "class": "negative",
+      "phase": "schema",
+      "manifest": "manifests/ui-only.valid.json",
+      "given": { "remove_entrypoint_kind": "launcher-ui" },
+      "expected": { "decision": "reject", "code": "incompatible-contract", "schema_valid": false }
+    },
+    {
+      "id": "web-preview-requests-live-hardware",
+      "class": "negative",
+      "phase": "profile",
+      "manifest": "manifests/service-only.valid.json",
+      "given": { "replace_web_preview_system_metrics_availability": "native" },
+      "expected": { "decision": "reject", "code": "incompatible-contract", "reason": "web-preview hardware and background capabilities must be mock, denied or unavailable" }
+    },
+    {
+      "id": "browser-derived-digest-does-not-reference-canonical",
+      "class": "negative",
+      "phase": "integrity",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "replace": { "/artifacts/browser_derivations/0/derived_from_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" } },
+      "expected": { "decision": "reject", "code": "integrity-failure", "before_loading_derived_code": true }
+    },
+    {
+      "id": "rollback-window-guest-disable-rejected",
+      "class": "negative",
+      "phase": "hot-swap",
+      "manifest": "manifests/hybrid.valid.json",
+      "given": { "rollback_state": "observation-window", "guest_operation": "scheduler.disable" },
+      "expected": { "decision": "reject", "code": "upgrade-in-progress", "schedule_unchanged": true }
+    }
+  ]
+}

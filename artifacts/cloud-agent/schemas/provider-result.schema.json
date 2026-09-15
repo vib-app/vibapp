@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/cloud-codeagent-provider-result.experimental-v1.schema.json",
+  "title": "Schema-constrained final response from the cloud CodeAgent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "job_id",
+    "status",
+    "summary",
+    "wit_world",
+    "app_kind",
+    "declared_capabilities",
+    "source_files",
+    "unresolved"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "vibapp.cloud-codeagent-provider-result.experimental-v1" },
+    "document_type": { "type": "string", "const": "cloud-codeagent-provider-result" },
+    "job_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "status": { "type": "string", "const": "source-generated" },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "wit_world": {
+      "type": "string",
+      "enum": [
+        "ui-only-reference",
+        "service-only-reference",
+        "hybrid-reference",
+        "web-preview-reference"
+      ]
+    },
+    "app_kind": { "type": "string", "enum": ["ui", "service", "hybrid"] },
+    "declared_capabilities": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+    },
+    "source_files": {
+      "description": "Exact inventory of every file below source/, including worker-preseeded Cargo.toml and wit/contract.wit; inventory does not claim provider authorship.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 256,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 240,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]*$"
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+    }
+  }
+}

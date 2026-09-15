@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/cloud-codeagent-task.experimental-v2.schema.json",
+  "title": "VibApp consent-gated cloud CodeAgent task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "job_id",
+    "need_spec_complete",
+    "need_spec_current_revision",
+    "need_spec_digest_sha256",
+    "immutable_task_digest_sha256",
+    "need_spec",
+    "package_intent",
+    "remote_processing_consent",
+    "consent",
+    "provider",
+    "model",
+    "target",
+    "limits"
+  ],
+  "properties": {
+    "schema_version": { "const": "vibapp.cloud-codeagent-task.experimental-v2" },
+    "document_type": { "const": "cloud-codeagent-task" },
+    "job_id": { "$ref": "#/$defs/identifier" },
+    "need_spec_complete": { "type": "boolean" },
+    "need_spec_current_revision": { "type": "integer", "minimum": 1 },
+    "need_spec_digest_sha256": { "$ref": "#/$defs/sha256" },
+    "immutable_task_digest_sha256": { "$ref": "#/$defs/sha256" },
+    "need_spec": { "$ref": "#/$defs/need_spec" },
+    "package_intent": { "$ref": "#/$defs/package_intent" },
+    "remote_processing_consent": { "type": "boolean" },
+    "consent": { "$ref": "#/$defs/consent" },
+    "provider": {
+      "enum": ["openai-codex", "anthropic-claude-code", "opencode", "google-gemini-cli"]
+    },
+    "model": { "$ref": "#/$defs/model" },
+    "target": { "$ref": "#/$defs/target" },
+    "limits": { "$ref": "#/$defs/limits" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?=\\S)(?=.*\\S$)[^-\\u0000-\\u001F\\u007F][^\\u0000-\\u001F\\u007F]{0,255}$"
+    },
+    "app_identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "principal_kind"],
+      "properties": {
+        "principal_id": { "$ref": "#/$defs/identifier" },
+        "principal_kind": { "enum": ["user", "service"] }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement_id", "text", "priority", "acceptance_examples"],
+      "properties": {
+        "requirement_id": { "$ref": "#/$defs/identifier" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "priority": { "enum": ["must-have", "nice-to-have"] },
+        "acceptance_examples": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+        }
+      }
+    },
+    "negative_constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraint_id", "kind", "value", "source"],
+      "properties": {
+        "constraint_id": { "$ref": "#/$defs/identifier" },
+        "kind": {
+          "enum": [
+            "forbidden-capability",
+            "forbidden-publisher",
+            "forbidden-package",
+            "privacy",
+            "platform",
+            "profile",
+            "other"
+          ]
+        },
+        "value": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "source": { "enum": ["user", "rejection-feedback", "policy"] }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "profile"],
+      "properties": {
+        "os": { "enum": ["macos", "windows", "linux", "browser"] },
+        "arch": { "enum": ["aarch64", "x86-64", "wasm32"] },
+        "profile": { "enum": ["desktop", "web-preview", "web-runtime", "headless"] }
+      }
+    },
+    "permission_ceiling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_interfaces", "forbidden_interfaces", "maximum_scope_digests"],
+      "properties": {
+        "allowed_interfaces": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "forbidden_interfaces": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "maximum_scope_digests": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "need_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "need_id",
+        "owner",
+        "goal",
+        "requirements",
+        "negative_constraints",
+        "platforms",
+        "profiles",
+        "permission_ceiling",
+        "privacy_requirement",
+        "created_at_utc",
+        "revision"
+      ],
+      "properties": {
+        "schema_version": { "const": "vibapp.need-spec.product-v0.0.1" },
+        "document_type": { "const": "need-spec" },
+        "need_id": { "$ref": "#/$defs/identifier" },
+        "owner": { "$ref": "#/$defs/principal" },
+        "goal": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "requirements": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/requirement" }
+        },
+        "negative_constraints": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/negative_constraint" }
+        },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/platform" }
+        },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["desktop", "web-preview", "web-runtime", "headless"] }
+        },
+        "permission_ceiling": { "$ref": "#/$defs/permission_ceiling" },
+        "privacy_requirement": { "enum": ["local-private", "remote-private", "public"] },
+        "created_at_utc": { "$ref": "#/$defs/utc_instant" },
+        "revision": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "utc_instant": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    },
+    "package_intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["app_id", "version", "display_name", "description", "entrypoints"],
+      "properties": {
+        "app_id": { "$ref": "#/$defs/app_identifier" },
+        "version": { "$ref": "#/$defs/semver" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "entrypoints": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "label", "initial_route"],
+            "properties": {
+              "id": { "$ref": "#/$defs/identifier" },
+              "kind": { "enum": ["launcher-ui", "service", "settings"] },
+              "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "triggers": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "uniqueItems": true,
+                "items": { "enum": ["on-enable", "scheduler", "manual"] }
+              },
+              "initial_route": {
+                "type": ["string", "null"],
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        }
+      }
+    },
+    "consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "consent_id",
+        "consent_type",
+        "decision",
+        "subject",
+        "job_id",
+        "provider",
+        "model",
+        "payload_digest_sha256",
+        "uploaded_data_classes",
+        "single_use",
+        "issued_at_utc",
+        "expires_at_utc",
+        "policy_version",
+        "contract_digest_sha256",
+        "instructions_digest_sha256"
+      ],
+      "properties": {
+        "consent_id": { "$ref": "#/$defs/identifier" },
+        "consent_type": { "const": "remote-processing" },
+        "decision": { "enum": ["granted", "denied", "revoked"] },
+        "subject": { "$ref": "#/$defs/principal" },
+        "job_id": { "$ref": "#/$defs/identifier" },
+        "provider": {
+          "enum": ["openai-codex", "anthropic-claude-code", "opencode", "google-gemini-cli"]
+        },
+        "model": { "$ref": "#/$defs/model" },
+        "payload_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "uploaded_data_classes": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "prefixItems": [
+            { "const": "need" },
+            { "const": "package-intent" },
+            { "const": "target-contract" },
+            { "const": "execution-limits" },
+            { "const": "generation-policy" },
+            { "const": "authoritative-contract" }
+          ],
+          "items": false
+        },
+        "single_use": { "type": "boolean" },
+        "issued_at_utc": { "$ref": "#/$defs/utc_instant" },
+        "expires_at_utc": { "$ref": "#/$defs/utc_instant" },
+        "policy_version": { "const": "vibapp.cloud-codeagent-policy.experimental-v6" },
+        "contract_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "instructions_digest_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract",
+        "wasi",
+        "rust_target",
+        "wit_world",
+        "app_kind",
+        "profiles",
+        "required_imports",
+        "required_capabilities"
+      ],
+      "properties": {
+        "contract": { "const": "vibapp:experimental-v0@0.0.1" },
+        "wasi": { "const": "0.2" },
+        "rust_target": { "const": "wasm32-wasip2" },
+        "wit_world": {
+          "enum": [
+            "ui-only-reference",
+            "service-only-reference",
+            "hybrid-reference",
+            "web-preview-reference"
+          ]
+        },
+        "app_kind": { "enum": ["ui", "service", "hybrid"] },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["desktop", "web-preview", "web-runtime", "headless"] }
+        },
+        "required_imports": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "required_capabilities": {
+          "description": "App-specific must-have authority; a unique subset of structural required_imports.",
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wall_time_seconds",
+        "cpu_seconds",
+        "memory_bytes",
+        "pids",
+        "workspace_bytes",
+        "stdout_bytes",
+        "stderr_bytes",
+        "source_bytes",
+        "source_files"
+      ],
+      "properties": {
+        "wall_time_seconds": { "type": "integer", "minimum": 1, "maximum": 900 },
+        "cpu_seconds": { "type": "integer", "minimum": 1, "maximum": 900 },
+        "memory_bytes": { "type": "integer", "minimum": 268435456, "maximum": 4294967296 },
+        "pids": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "workspace_bytes": { "type": "integer", "minimum": 1024, "maximum": 67108864 },
+        "stdout_bytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+        "stderr_bytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+        "source_bytes": { "type": "integer", "minimum": 1024, "maximum": 16777216 },
+        "source_files": { "type": "integer", "minimum": 2, "maximum": 256 }
+      }
+    }
+  }
+}

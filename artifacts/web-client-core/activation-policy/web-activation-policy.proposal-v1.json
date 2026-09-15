@@ -1,0 +1,101 @@
+{
+  "schema_version": "vibapp.web-activation-policy.proposal-v1",
+  "document_type": "product-only-web-activation-policy-proposal",
+  "status": "locally-executable-awaiting-contract-and-independent-acceptance",
+  "authority": {
+    "accepted_stage0_source": false,
+    "formal_web_activation": false,
+    "public_activation": false,
+    "publication": false
+  },
+  "exact_toolchain": {
+    "canonical_component_target": "wasm32-wasip2",
+    "canonical_rust": "1.93.0",
+    "derivation_package": "@bytecodealliance/jco",
+    "derivation_version": "1.15.4",
+    "derivation_flags": [
+      "--no-typescript",
+      "--no-wasi-shim",
+      "--base64-cutoff=1000000"
+    ],
+    "resolution": "offline-content-addressed-reviewed-cache",
+    "ambient_or_latest_tools": "forbidden"
+  },
+  "manifest_requirements": {
+    "package_format": "experimental-v0",
+    "contract": "vibapp:experimental-v0@0.0.1",
+    "wasi": "0.2",
+    "profile": "web-preview",
+    "platform_os": "browser",
+    "platform_arch": "wasm32",
+    "artifact_role": "browser-derived",
+    "matching_browser_derivation_required": true,
+    "derived_from_must_equal_canonical_component": true,
+    "required_capability_rows_must_be_complete": true,
+    "live_background_hardware_and_network": "forbidden"
+  },
+  "derivation_requirements": {
+    "source_state": "candidate-ready",
+    "source_verification_authority": "independent-verifier",
+    "all_files_content_addressed": true,
+    "complete_file_inventory": true,
+    "attestation_content_addressed": true,
+    "attestation_verified_by_fresh_independent_owner": true,
+    "two_clean_derivations_byte_equal": true,
+    "executable_blob_or_data_urls": false,
+    "fallback_to_unverified_code": false
+  },
+  "runtime_requirements": {
+    "dedicated_worker": true,
+    "guest_dom": false,
+    "browser_storage": false,
+    "service_worker": false,
+    "credentials": false,
+    "install_or_permission_authority": false,
+    "background_reliability": "foreground-only",
+    "launcher_origin_relation": "distinct-from-preview-shell",
+    "bootstrap": "exact-origin-one-time-message-port-full-envelope",
+    "csp": {
+      "script_src": [
+        "self",
+        "wasm-unsafe-eval"
+      ],
+      "worker_src": [
+        "self"
+      ],
+      "connect_src": [
+        "self"
+      ],
+      "executable_blob_or_data": false,
+      "static_server_allowlist": true,
+      "credential_headers_rejected": true
+    },
+    "invalid_bootstrap_audit": {
+      "durable": true,
+      "healthy_required": true,
+      "payload_storage": false,
+      "bounded_size_and_count": true,
+      "retention_and_rotation": true,
+      "complete_record_corruption": "fail-closed"
+    }
+  },
+  "required_negative_fixture_ids": [
+    "manifest-browser-profile-missing",
+    "manifest-derived-digest-mismatch",
+    "derivation-executable-data-url",
+    "runtime-live-network-authority",
+    "runtime-same-origin-sandbox",
+    "runtime-audit-unhealthy",
+    "verification-self-certified"
+  ],
+  "current_product_assessment": {
+    "eligible": false,
+    "blockers": [
+      "canonical-manifest-declares-desktop-only-and-no-browser-derivation",
+      "jco-and-browser-runtime-policy-are-not-accepted-stage0-source",
+      "browser-derivation-has-no-fresh-formal-independent-acceptance",
+      "preview-shell-and-nested-launcher-currently-share-an-origin",
+      "csp-still-needs-wasm-unsafe-eval-and-same-origin-connect"
+    ]
+  }
+}

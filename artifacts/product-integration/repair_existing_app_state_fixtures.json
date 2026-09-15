@@ -1,0 +1,31 @@
+{
+  "schema_version": "vibapp.repair-state-fixtures.v1",
+  "source": "independent synthetic legacy-codec fixtures; no user data",
+  "usage": "isolated new runtime only; not authorization to write user app state",
+  "fixtures": [
+    {
+      "id": "multiline-existing-whitespace",
+      "app_id": "ai.vibapp.e2e.multiline-notes",
+      "state_schema_version": 1,
+      "key": "note/body",
+      "value_hex": "e7acace4b880e8a18c0a0a20e7acace4ba8ce8a18c20",
+      "expected_text": "第一行\n\n 第二行 "
+    },
+    {
+      "id": "sticky-existing-ordered-notes",
+      "app_id": "ai.vibapp.everyday.sticky-notes",
+      "state_schema_version": 1,
+      "key": "sticky-notes/state-v1",
+      "value_hex": "534e303104000000000000000003030000000101004302000000000100420100000000010041",
+      "expected": {"next_id": 4, "editor": "closed", "pending_delete": null, "error": null, "draft": "", "notes": [{"id": 3, "pinned": true, "body": "C"}, {"id": 2, "pinned": false, "body": "B"}, {"id": 1, "pinned": false, "body": "A"}]}
+    },
+    {
+      "id": "sticky-existing-editor-and-confirmation",
+      "app_id": "ai.vibapp.everyday.sticky-notes",
+      "state_schema_version": 1,
+      "key": "sticky-notes/state-v1",
+      "value_hex": "534e30310400000002020000000101000000010900e8afb7e6a380e69fa51300e4b9b0e7899be5a5b60ae7acace4ba8ce8a18c03030000000101004302000000000100420100000000010041",
+      "expected": {"next_id": 4, "editor": {"edit": 2}, "pending_delete": 1, "error": "请检查", "draft": "买牛奶\n第二行", "notes": [{"id": 3, "pinned": true, "body": "C"}, {"id": 2, "pinned": false, "body": "B"}, {"id": 1, "pinned": false, "body": "A"}]}
+    }
+  ]
+}

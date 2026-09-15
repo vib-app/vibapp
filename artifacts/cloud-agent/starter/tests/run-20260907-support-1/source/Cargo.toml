@@ -1,0 +1,13 @@
+[package]
+name = "vibapp-support-smoke"
+version = "0.1.0"
+edition = "2024"
+publish = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+[lib]
+crate-type = ["cdylib"]
+[dependencies]
+wit-bindgen = { version = "=0.60.0", default-features = false, features = ["bitflags", "macro-string", "macros", "realloc"] }

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>VibApp</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="native-shell">
+      <header class="app-header">
+        <button class="wordmark" data-route="home" data-locale-aria-key="wordmark_home_label" aria-label="VibApp home">
+          <span class="brand-glyph" aria-hidden="true">V</span>
+          <span data-locale-key="app_title">VibApp</span>
+        </button>
+        <nav class="header-nav" aria-label="Main navigation" data-locale-aria-key="header_nav_label">
+          <button class="nav-button active" data-route="home">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/></svg>
+            <span data-locale-key="nav_home">Discover</span>
+          </button>
+          <button class="nav-button" data-route="apps">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg>
+            <span data-locale-key="nav_apps">Library</span>
+          </button>
+          <button class="nav-button" data-route="builds">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9m7 10V5m7 14v-7"/></svg>
+            <span data-locale-key="nav_builds">Activity</span>
+          </button>
+          <button class="nav-button" data-route="settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v2.5m0 15v2.5m9-9h-2.5m-13 0H2m16.5-6.5-1.7 1m-9.6 5.5-1.7 1m12.3 0 1.7 1m-12.7 0 1.7-1m16.5-6.5-1.7 1m-12.3 0 1.7-1M12 4a8 8 0 0 1 0 16 8 8 0 0 1 0-16Z"/></svg>
+            <span data-locale-key="nav_settings">Settings</span>
+          </button>
+        </nav>
+        <div class="header-tools">
+        <a class="client-download" data-client-download data-locale-key="download_client" href="https://github.com/vib-app/vibapp/releases" target="_blank" rel="noopener noreferrer" hidden>Download</a>
+        <label class="header-language">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z"/></svg>
+          <span class="sr-only" data-locale-key="settings_gui_locale">Language</span>
+          <select data-setting-locale data-locale-aria-key="settings_gui_locale" aria-label="Language">
+            <option value="auto" data-locale-key="settings_language_auto">Automatic</option>
+            <option value="en-US" lang="en">English</option>
+            <option value="zh-CN" lang="zh-CN">简体中文</option>
+          </select>
+        </label>
+        </div>
+      </header>
+
+      <main id="main" tabindex="-1">
+        <section id="view" aria-live="polite">
+          <div class="boot-state"><span class="spinner" aria-hidden="true"></span><span data-locale-key="boot_loading">Opening VibApp…</span></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js" defer></script>
+  </body>
+</html>

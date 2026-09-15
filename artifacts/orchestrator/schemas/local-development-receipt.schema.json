@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/local-development-receipt.experimental-v2.schema.json",
+  "title": "VibApp local development queue receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "queue_id",
+    "job_id",
+    "need_id",
+    "title",
+    "idempotency_key",
+    "canonical_task_sha256",
+    "immutable_task_digest_sha256",
+    "execution_attempt",
+    "provider_execution_identity_sha256",
+    "status",
+    "validation",
+    "dry_run",
+    "external_request_attempted",
+    "external_request_observed",
+    "gateway_request_id",
+    "authorities",
+    "created_at_utc",
+    "updated_at_utc"
+  ],
+  "properties": {
+    "schema_version": { "const": "vibapp.local-development-receipt.experimental-v2" },
+    "document_type": { "const": "local-development-receipt" },
+    "queue_id": { "type": "string", "pattern": "^local-[0-9a-f]{32}$" },
+    "job_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "need_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "idempotency_key": { "type": "string", "pattern": "^codeagent-[0-9a-f]{64}-attempt-[0-9]{4}-[0-9a-f]{16}$" },
+    "canonical_task_sha256": { "$ref": "#/$defs/sha256" },
+    "immutable_task_digest_sha256": { "$ref": "#/$defs/sha256" },
+    "execution_attempt": { "$ref": "#/$defs/execution_attempt" },
+    "provider_execution_identity_sha256": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["queued-for-codeagent", "waiting-for-external-runner", "dry-run-complete"] },
+    "validation": { "$ref": "#/$defs/local_result" },
+    "dry_run": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "handoff_relative_path",
+            "handoff_sha256",
+            "external_request_attempted",
+            "external_request_observed"
+          ],
+          "properties": {
+            "status": { "const": "source-handoff-created" },
+            "handoff_relative_path": { "type": "string", "minLength": 1, "maxLength": 512 },
+            "handoff_sha256": { "$ref": "#/$defs/sha256" },
+            "external_request_attempted": { "const": false },
+            "external_request_observed": { "const": false }
+          }
+        }
+      ]
+    },
+    "external_request_attempted": { "const": false },
+    "external_request_observed": { "const": false },
+    "gateway_request_id": { "const": null },
+    "authorities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_embedding", "remote_processing", "public_publication", "builder"],
+      "properties": {
+        "registry_embedding": { "const": "separate-prior-decision" },
+        "remote_processing": { "const": "granted-single-use-not-consumed-by-local-dry-run" },
+        "public_publication": { "const": "separate-not-performed" },
+        "builder": { "const": "not-invoked" }
+      }
+    },
+    "created_at_utc": { "$ref": "#/$defs/utc" },
+    "updated_at_utc": { "$ref": "#/$defs/utc" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "execution_attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "ordinal"],
+      "properties": {
+        "attempt_id": { "type": "string", "pattern": "^attempt-[0-9]{4}-[0-9a-f]{16}$" },
+        "ordinal": { "type": "integer", "minimum": 1, "maximum": 9999 }
+      }
+    },
+    "utc": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$" },
+    "local_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "external_request_attempted", "external_request_observed"],
+      "properties": {
+        "status": { "const": "valid-consented-task" },
+        "external_request_attempted": { "const": false },
+        "external_request_observed": { "const": false }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "required": ["status", "dry_run"],
+      "properties": {
+        "status": { "enum": ["queued-for-codeagent", "waiting-for-external-runner"] },
+        "dry_run": { "const": null }
+      }
+    },
+    {
+      "required": ["status", "dry_run"],
+      "properties": {
+        "status": { "const": "dry-run-complete" },
+        "dry_run": { "type": "object" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": "vibapp.need-spec.product-v0.0.1",
+  "document_type": "need-spec",
+  "need_id": "need.focus.local.1",
+  "owner": {"principal_id": "user.local.1", "principal_kind": "user"},
+  "goal": "Plan focused work sessions locally without network access.",
+  "requirements": [
+    {
+      "requirement_id": "requirement.focus-plan",
+      "text": "Show a focus task list and progress view.",
+      "priority": "must-have",
+      "acceptance_examples": ["A task list is visible during a focus session."]
+    },
+    {
+      "requirement_id": "requirement.private-notes",
+      "text": "Keep session notes in local state.",
+      "priority": "nice-to-have",
+      "acceptance_examples": ["Notes remain available on the same device."]
+    }
+  ],
+  "negative_constraints": [
+    {
+      "constraint_id": "constraint.no-http",
+      "kind": "forbidden-capability",
+      "value": "vibapp:experimental-v0/http@0.0.1",
+      "source": "user"
+    }
+  ],
+  "platforms": [
+    {"os": "macos", "arch": "aarch64", "profile": "desktop"}
+  ],
+  "profiles": ["desktop"],
+  "permission_ceiling": {
+    "allowed_interfaces": [
+      "vibapp:experimental-v0/clock@0.0.1",
+      "vibapp:experimental-v0/kv@0.0.1",
+      "vibapp:experimental-v0/log@0.0.1",
+      "vibapp:experimental-v0/host-info@0.0.1",
+      "vibapp:experimental-v0/settings@0.0.1"
+    ],
+    "forbidden_interfaces": ["vibapp:experimental-v0/http@0.0.1"],
+    "maximum_scope_digests": []
+  },
+  "privacy_requirement": "local-private",
+  "created_at_utc": "2026-08-24T02:00:00Z",
+  "revision": 1
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.local/schemas/web-activation-policy.proposal-v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "authority",
+    "exact_toolchain",
+    "manifest_requirements",
+    "derivation_requirements",
+    "runtime_requirements",
+    "required_negative_fixture_ids",
+    "current_product_assessment"
+  ],
+  "properties": {
+    "schema_version": { "const": "vibapp.web-activation-policy.proposal-v1" },
+    "document_type": { "const": "product-only-web-activation-policy-proposal" },
+    "status": { "const": "locally-executable-awaiting-contract-and-independent-acceptance" },
+    "authority": { "type": "object" },
+    "exact_toolchain": { "type": "object" },
+    "manifest_requirements": { "type": "object" },
+    "derivation_requirements": { "type": "object" },
+    "runtime_requirements": { "type": "object" },
+    "required_negative_fixture_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "current_product_assessment": { "type": "object" }
+  }
+}

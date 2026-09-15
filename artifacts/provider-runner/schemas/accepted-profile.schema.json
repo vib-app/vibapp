@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/provider-runner-accepted-profile.experimental-v1.schema.json",
+  "title": "Independently accepted external runner profile",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "provisionedIdentifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "not": {
+        "anyOf": [
+          {"pattern": "^[Uu][Nn][._-]*[Pp][Rr][Oo][Vv][Ii][Ss][Ii][Oo][Nn][Ee][Dd]"},
+          {"pattern": "^[Pp][Ll][Aa][Cc][Ee][._-]*[Hh][Oo][Ll][Dd][Ee][Rr]"},
+          {"pattern": "^[Rr][Ee][Pp][Ll][Aa][Cc][Ee]"},
+          {"pattern": "^0+$"}
+        ]
+      }
+    },
+    "nonZeroSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "not": {"const": "0000000000000000000000000000000000000000000000000000000000000000"}
+    }
+  },
+  "required": [
+    "schema_version",
+    "document_type",
+    "runner_id",
+    "runner_identity_sha256",
+    "runner_policy_sha256",
+    "executable_sha256",
+    "receipt_key_id",
+    "gateway_key_id",
+    "destination_policy_sha256",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {"const": "vibapp.provider-runner-accepted-profile.experimental-v1"},
+    "document_type": {"const": "provider-runner-accepted-profile"},
+    "runner_id": {"$ref": "#/$defs/provisionedIdentifier"},
+    "runner_identity_sha256": {"$ref": "#/$defs/nonZeroSha256"},
+    "runner_policy_sha256": {"$ref": "#/$defs/nonZeroSha256"},
+    "executable_sha256": {"$ref": "#/$defs/nonZeroSha256"},
+    "receipt_key_id": {"$ref": "#/$defs/provisionedIdentifier"},
+    "gateway_key_id": {"$ref": "#/$defs/provisionedIdentifier"},
+    "destination_policy_sha256": {"$ref": "#/$defs/nonZeroSha256"},
+    "status": {"const": "independently-accepted"}
+  }
+}

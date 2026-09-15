@@ -1,0 +1,31 @@
+{
+  "schema_version": "vibapp.existing-app-repair-plan.v1",
+  "strategy": "fresh-consented-version-with-explicit-state-compatibility",
+  "automatic_user_upgrade": false,
+  "apps": [
+    {
+      "key": "multiline-notes",
+      "app_id": "ai.vibapp.e2e.multiline-notes",
+      "name": "多行便签",
+      "app_kind": "ui",
+      "version": "0.1.1",
+      "baseline_digest": "cb4e9acf15997ca43be914e9670730fa18de9432c479513d176b1765e14acf66",
+      "capabilities": ["kv"],
+      "description": "修复原多行便签为同一应用0.1.1，保留离线UI应用及launcher.main/home入口。一个真正支持换行的便签编辑框，保存按钮，明确保存结果；保存后刷新、关闭重开保持中文、空行、换行和首尾空格，不得trim正文。必须兼容原状态schema 1：唯一持久键note/body，值是原始UTF-8字节，不是JSON、不加头或长度前缀；旧数据原样读取，保存到同键，不清空或重命名；无数据时显示空白编辑器。保留字段ID note和操作ID save；KV事务沿用宿主idempotency_key，不伪造成功，保存失败保留输入可重试。旧版describe第一次分配会陷阱：自制分配器CAS把原子值0替换成heap-base作为expected，失败后从0分配返回空指针；不要复制该错误分配器，使用已有的vibapp_support支持代码和正确有界内存管理，describe/launch必须真实成功。不得硬依赖clock/log/host-info/settings等仅结构导入。界面简洁、编辑区真正可输入多行，不显示技术ID或重复宿主head，建议窗口600×420，窄窗响应式。不使用网络、通知或后台服务。保持旧数据schema及迁移范围为1，迁移不重写业务数据。",
+      "acceptance": "空数据可启动；先在隔离KV放入键note/body原始UTF-8字节“第一行\n\n 第二行 ”，首次启动必须原样显示；输入“新内容\n第三行”并保存，宿主刷新及关闭重开仍保留换行。保存后的KV值必须就是UTF-8正文，无JSON包装。多次编辑保存无陷阱；describe与所有UI事件通过真实运行器。不得清空旧状态。",
+      "state_contract": {"schema_version": 1, "key": "note/body", "encoding": "raw-utf8", "field_id": "note", "action_id": "save"}
+    },
+    {
+      "key": "sticky-notes",
+      "app_id": "ai.vibapp.everyday.sticky-notes",
+      "name": "便签",
+      "app_kind": "ui",
+      "version": "0.1.1",
+      "baseline_digest": "8a1b4f9a9c8359a9e32e20c7a665e6af25e3c71d6d18a1021fc51e19f186e462",
+      "capabilities": ["kv", "settings"],
+      "description": "修复原便签板为同一应用0.1.1，保留离线UI、launcher.main/home入口和旧数据schema 1。支持新建、编辑、保存、删除确认/取消、置顶/取消置顶、分组内上移下移；最多20张，每张500字符，拒绝空白；置顶组永远在前，组内顺序持久化。空板有可用添加入口，窄窗360像素可用，建议760×580；不要重复宿主head或显示技术ID。修复旧版空板两个按钮共享add-note导致宿主duplicate action拒绝：同一视图中每个action ID全局唯一，包括确认/取消等；可只保留一个添加按钮，或给不同入口独立action并分发到同一业务功能。不要删掉真实功能绕过检查。必须读写旧键sticky-notes/state-v1，保留SN01二进制而非改JSON：4字节ASCII SN01；next_id为u32LE；editor为u8(0关闭/1新建/2编辑，2后跟u32LE ID)；pending_delete为u8(0无/1有，1后跟u32LE ID)；error为u8(0无/1有，1后跟字符串)；draft字符串；notes数量u8；每项顺序是id u32LE、pinned u8(0/1)、body字符串。所有字符串均u16LE字节长度+UTF-8；不加尾字节。next_id>所有非零唯一ID，置顶组在前，最多20条/每条500字符，draft最多8192字节，总值最多65536字节。读取已有编辑状态、待删ID、错误、草稿、便签内容和排序不丢失，损坏数据明确报错且不覆盖；迁移保持schema1且不重写。KV写用当前revision和宿主幂等键。多次编辑/关闭重开保持内容、顺序及置顶。结构clock/log/host-info可降级，不联网或后台通知。",
+      "acceptance": "空板首次launch必须通过真实宿主且action ID无重复；创建A/B/C，C置顶，A下移得到C/B/A；编辑B为买牛奶保存、关闭重开保持。删除确认取消不丢数据；空白和第21张拒绝后仍可继续操作。必须能读旧SN01 fixture中C置顶、B/A普通组及next_id=4，且后续写入保持同一SN01编码和原ID；保留旧草稿及待删标识。",
+      "state_contract": {"schema_version": 1, "key": "sticky-notes/state-v1", "encoding": "SN01-little-endian-v1", "maximum_bytes": 65536}
+    }
+  ]
+}

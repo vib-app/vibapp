@@ -1,0 +1,5 @@
+[net]
+offline = true
+
+[build]
+target-dir = "target"

@@ -1,0 +1,276 @@
+{
+  "schema_version": "vibapp.manifest.experimental-v0.0.1",
+  "package_format": "vibapp.package.experimental-v0",
+  "app": {
+    "id": "ai.vibapp.temperature-reporter",
+    "version": "0.1.0",
+    "kind": "service",
+    "display_name": "Temperature Reporter",
+    "description": "A headless service fixture that periodically reports brokered CPU temperature samples.",
+    "publisher": {
+      "id": "ai.vibapp",
+      "display_name": "VibApp Fixtures"
+    }
+  },
+  "artifacts": {
+    "canonical_component": {
+      "path": "component.wasm",
+      "media_type": "application/wasm",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "size_bytes": 8192
+    },
+    "assets": [],
+    "browser_derivations": [
+      {
+        "profile": "web-preview",
+        "format": "jco-esm",
+        "derived_from_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "entry": {
+          "path": "web-preview/temperature-reporter.mjs",
+          "media_type": "text/javascript",
+          "sha256": "2323232323232323232323232323232323232323232323232323232323232323",
+          "size_bytes": 2048
+        },
+        "files": [
+          {
+            "path": "web-preview/temperature-reporter.mjs",
+            "media_type": "text/javascript",
+            "sha256": "2323232323232323232323232323232323232323232323232323232323232323",
+            "size_bytes": 2048
+          },
+          {
+            "path": "web-preview/temperature-reporter.core.wasm",
+            "media_type": "application/wasm",
+            "sha256": "2424242424242424242424242424242424242424242424242424242424242424",
+            "size_bytes": 6144
+          }
+        ],
+        "derivation_attestation": {
+          "path": "web-preview/derivation.json",
+          "media_type": "application/json",
+          "sha256": "2525252525252525252525252525252525252525252525252525252525252525",
+          "size_bytes": 512
+        }
+      }
+    ],
+    "provenance": {
+      "path": "provenance.json",
+      "media_type": "application/json",
+      "sha256": "abababababababababababababababababababababababababababababababab",
+      "size_bytes": 512
+    },
+    "sbom": {
+      "path": "sbom.cdx.json",
+      "media_type": "application/vnd.cyclonedx+json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "size_bytes": 1024
+    }
+  },
+  "runtime": {
+    "contract": "vibapp:experimental-v0@0.0.1",
+    "wasi": "0.2",
+    "world": "service-only-reference",
+    "required_imports": [
+      "vibapp:experimental-v0/clock@0.0.1",
+      "vibapp:experimental-v0/scheduler@0.0.1",
+      "vibapp:experimental-v0/kv@0.0.1",
+      "vibapp:experimental-v0/log@0.0.1",
+      "vibapp:experimental-v0/host-info@0.0.1",
+      "vibapp:experimental-v0/settings@0.0.1",
+      "vibapp:experimental-v0/system-metrics@0.0.1",
+      "vibapp:experimental-v0/http@0.0.1"
+    ],
+    "profiles": [
+      {
+        "profile": "desktop",
+        "mode": "degraded",
+        "background": "daemon",
+        "artifact_role": "canonical-component",
+        "degradation": "Stage 0 collects and logs samples but links HTTP only as an unavailable typed stub; no network is performed."
+      },
+      {
+        "profile": "headless",
+        "mode": "degraded",
+        "background": "process",
+        "artifact_role": "canonical-component",
+        "degradation": "Managed through the surface-neutral control API or CLI; samples are local because Stage 0 exposes no live HTTP broker."
+      },
+      {
+        "profile": "web-preview",
+        "mode": "preview",
+        "background": "foreground-only",
+        "artifact_role": "browser-derived",
+        "degradation": "Uses sample temperature data, a simulated schedule and a captured HTTP response; it never claims closed-page reporting."
+      }
+    ],
+    "platforms": [
+      { "os": "macos", "arch": "aarch64", "profiles": ["desktop", "headless"] },
+      { "os": "windows", "arch": "x86-64", "profiles": ["desktop", "headless"] },
+      { "os": "linux", "arch": "x86-64", "profiles": ["headless"] },
+      { "os": "linux", "arch": "aarch64", "profiles": ["headless"] },
+      { "os": "browser", "arch": "wasm32", "profiles": ["web-preview"] }
+    ]
+  },
+  "entrypoints": [
+    {
+      "id": "temperature-reporter",
+      "kind": "service",
+      "label": "Temperature Reporter",
+      "profiles": ["desktop", "headless", "web-preview"],
+      "triggers": ["on-enable", "scheduler", "manual"],
+      "health_check_interval_seconds": 60
+    },
+    {
+      "id": "settings",
+      "kind": "settings",
+      "label": "Reporter Settings",
+      "profiles": ["desktop", "headless", "web-preview"],
+      "schema_export": "get-settings-schema"
+    }
+  ],
+  "capabilities": [
+    {
+      "interface": "vibapp:experimental-v0/clock@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Timestamp brokered samples.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Uses the daemon clock." },
+        { "profile": "headless", "availability": "native", "behavior": "Uses the headless host clock." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Uses a deterministic preview clock." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/scheduler@0.0.1",
+      "necessity": "required",
+      "grant": "user",
+      "reason": "Run the reporting trigger at the configured interval.",
+      "scope": { "maximum_schedules": 4 },
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Daemon-owned durable schedule." },
+        { "profile": "headless", "availability": "native", "behavior": "Host-process durable schedule." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Runs one simulated foreground occurrence." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/kv@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Persist service configuration and acknowledged occurrence IDs.",
+      "scope": { "maximum_storage_bytes": 1048576 },
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "App-scoped daemon storage." },
+        { "profile": "headless", "availability": "native", "behavior": "App-scoped host storage." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Disposable preview state." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/log@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Expose bounded diagnostics to GUI and CLI status surfaces.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Daemon log stream." },
+        { "profile": "headless", "availability": "native", "behavior": "Structured CLI/JSON log stream." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Preview log sink." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/host-info@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Discover whether capabilities are live or simulated.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Reports desktop capability state." },
+        { "profile": "headless", "availability": "native", "behavior": "Reports headless capability state." },
+        { "profile": "web-preview", "availability": "native", "behavior": "Reports preview mock state." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/settings@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Read typed endpoint and interval settings persisted by the host.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Host-owned settings." },
+        { "profile": "headless", "availability": "native", "behavior": "CLI/JSON-managed host settings." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Sample settings." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/system-metrics@0.0.1",
+      "necessity": "required",
+      "grant": "user",
+      "reason": "Read only the brokered CPU temperature metric.",
+      "scope": { "metrics": ["cpu-temperature-celsius"] },
+      "profiles": [
+        { "profile": "desktop", "availability": "brokered", "behavior": "Host broker returns CPU temperature when supported." },
+        { "profile": "headless", "availability": "brokered", "behavior": "Linux host broker returns CPU temperature when supported." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Returns labeled sample data with simulated=true." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/http@0.0.1",
+      "necessity": "degradable",
+      "grant": "user",
+      "reason": "POST temperature reports only to the configured telemetry origin.",
+      "scope": {
+        "origins": ["https://telemetry.example.com"],
+        "methods": ["POST"],
+        "maximum_requests_per_hour": 60
+      },
+      "profiles": [
+        { "profile": "desktop", "availability": "unavailable", "behavior": "Stage 0 links a typed stub that returns capability-unavailable and performs no network." },
+        { "profile": "headless", "availability": "unavailable", "behavior": "Stage 0 links a typed stub that returns capability-unavailable and performs no network." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Returns a captured sample response; no network request occurs." }
+      ]
+    }
+  ],
+  "resources": {
+    "linear_memory_bytes": 16777216,
+    "event_wall_time_ms": 100,
+    "health_migration_wall_time_ms": 1000,
+    "output_bytes": 65536,
+    "stored_data_bytes": 1048576,
+    "durable_schedules": 4,
+    "log_bytes_per_day": 262144
+  },
+  "state": {
+    "schema": 1,
+    "migratable_from_min": 1,
+    "migratable_from_max": 1
+  },
+  "lifecycle": {
+    "disable": {
+      "retains_package": true,
+      "retains_state": true,
+      "stops_services": true,
+      "cancels_schedules": true
+    },
+    "uninstall": {
+      "allowed_data_dispositions": ["delete", "retain", "export-then-delete"],
+      "default_data_disposition": "retain"
+    }
+  },
+  "source": {
+    "language": "rust",
+    "revision": "fixture-service-only-1",
+    "cargo_lock_sha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "builder_image_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "license": {
+    "spdx_expression": "Apache-2.0"
+  },
+  "privacy": {
+    "stores_personal_data": false,
+    "network_access": "scoped-broker"
+  },
+  "verification": {
+    "status": "fixture",
+    "revocation": "not-revoked"
+  }
+}

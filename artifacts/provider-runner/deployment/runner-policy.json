@@ -1,0 +1,109 @@
+{
+  "schema_version": "vibapp.external-one-job-runner-policy.experimental-v1",
+  "document_type": "external-one-job-runner-policy",
+  "status": "deployment-unprovisioned",
+  "runtime_boundary": "one-job-rootless-oci-or-microvm",
+  "identity": {
+    "allocation": "fresh-uid-gid-and-namespace-per-job",
+    "uid_min": 200000,
+    "uid_max": 599999,
+    "reuse": "never"
+  },
+  "filesystem": {
+    "rootfs": "read-only",
+    "host_mounts": [],
+    "input": "digest-bound-read-only-copy",
+    "output": "digest-bound-quarantine-copy",
+    "temporary": "bounded-tmpfs",
+    "container_socket": "absent"
+  },
+  "environment": {
+    "inheritance": "none",
+    "allowed": [
+      "LANG",
+      "LC_ALL",
+      "PATH",
+      "TZ",
+      "TMPDIR",
+      "VIBAPP_CREDENTIAL_HANDLE_FD",
+      "VIBAPP_INPUT_DIR",
+      "VIBAPP_ISOLATE_ID",
+      "VIBAPP_OUTPUT_DIR",
+      "VIBAPP_PROVIDER_GATEWAY"
+    ],
+    "explicitly_denied": [
+      "ALL_PROXY",
+      "CODEX_HOME",
+      "CONTAINER_HOST",
+      "DOCKER_HOST",
+      "HOME",
+      "HTTPS_PROXY",
+      "HTTP_PROXY",
+      "NO_PROXY",
+      "SSH_AUTH_SOCK",
+      "all_proxy",
+      "http_proxy",
+      "https_proxy",
+      "no_proxy"
+    ]
+  },
+  "credential_broker": {
+    "delivery": "opaque-single-use-handle-on-fd",
+    "credential_bytes_in_workload": false,
+    "handle_redeemable_by": "trusted-provider-gateway-only",
+    "handle_ttl_seconds_max": 900
+  },
+  "network": {
+    "workload_egress": "trusted-provider-gateway-only",
+    "dns": "denied",
+    "metadata_routes": "denied",
+    "private_routes": "denied",
+    "gateway_transport": "private-mtls-ip-port-pin",
+    "gateway_destination_policy": "deployment/gateway-egress-policy.json"
+  },
+  "resource_ceilings": {
+    "wall_time_seconds": 900,
+    "cpu_seconds": 900,
+    "rss_bytes": 4294967296,
+    "pids": 64,
+    "disk_bytes": 67108864,
+    "stdout_bytes": 1048576,
+    "stderr_bytes": 1048576,
+    "output_files": 512
+  },
+  "whole_job_lifecycle": {
+    "kill_scope": "whole-isolate",
+    "timeout_action": "destroy-isolate",
+    "cancel_action": "destroy-isolate",
+    "leader_exit_action": "destroy-isolate",
+    "quiescence": "supervisor-observed-no-tasks"
+  },
+  "request": {
+    "version": "vibapp.provider-runner-request.experimental-v2",
+    "document_type": "provider-runner-request",
+    "execution_attempt_required": true,
+    "provider_execution_identity_required": true,
+    "provider_execution_identity_digest_required": true
+  },
+  "receipt": {
+    "version": "vibapp.provider-runner-receipt.experimental-v3",
+    "document_type": "provider-runner-receipt",
+    "canonical_body": "sorted-utf8-json-integer-string-boolean-null-vocabulary",
+    "execution_attempt_bound": true,
+    "provider_execution_identity_digest_bound": true,
+    "detached_signature_required": true
+  },
+  "gateway_observation": {
+    "authority": "trusted-gateway-signed-receipt-only",
+    "workload_self_report_trusted": false
+  },
+  "immutable_runtime_inputs": {
+    "provider_executable_in_image": "/opt/vibapp/bin/codex",
+    "provider_result_schema_in_image": "/opt/vibapp/contracts/provider-result.schema.json",
+    "provider_result_schema_sha256": "fe7c40611e940e3a86fa16f63fc45d6b592384d23b8fa5614c6418c44cff75d9",
+    "provider_result_schema_version": "vibapp.cloud-codeagent-provider-result.experimental-v1",
+    "provider_result_document_type": "cloud-codeagent-provider-result",
+    "job_work_directory": "/job/work",
+    "provider_last_message": "/job/work/provider-last-message.json"
+  }
+}

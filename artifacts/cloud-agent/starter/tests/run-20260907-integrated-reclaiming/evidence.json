@@ -1,0 +1,91 @@
+{
+  "state": "local-support-smoke-passed-not-release-acceptance",
+  "scope": "synthetic-infrastructure-only-non-public",
+  "install": false,
+  "publish": false,
+  "promotion": false,
+  "component_sha256": "d35cfdacae8007be8e91103aae0c53b7975af8feb6c861bf98271f450ea9a503",
+  "component_bytes": 109646,
+  "support_sha256": "2c99d83eda5ffb3c4383357e90a5605384dddf1105f8c9ec4845acf375e8bd25",
+  "component_imports": [
+    "vibapp:experimental-v0/clock@0.0.1",
+    "vibapp:experimental-v0/common@0.0.1",
+    "vibapp:experimental-v0/host-info@0.0.1",
+    "vibapp:experimental-v0/kv@0.0.1",
+    "vibapp:experimental-v0/log@0.0.1",
+    "vibapp:experimental-v0/scheduler@0.0.1",
+    "vibapp:experimental-v0/settings@0.0.1",
+    "vibapp:experimental-v0/ui@0.0.1"
+  ],
+  "capability_imports": [
+    "vibapp:experimental-v0/clock@0.0.1",
+    "vibapp:experimental-v0/host-info@0.0.1",
+    "vibapp:experimental-v0/kv@0.0.1",
+    "vibapp:experimental-v0/log@0.0.1",
+    "vibapp:experimental-v0/settings@0.0.1"
+  ],
+  "wasm_checks": [
+    {
+      "id": "wasm-tools-validate",
+      "outcome": "pass",
+      "tool": "wasm-tools 1.256.0",
+      "detail": "exact component bytes validate"
+    },
+    {
+      "id": "component-import-reconciliation",
+      "outcome": "pass",
+      "tool": "wasm-tools component wit",
+      "detail": "required imports and guest export are exact; ambient WASI denied"
+    },
+    {
+      "id": "component-tool-metadata",
+      "outcome": "pass",
+      "tool": "wasm-tools metadata show",
+      "detail": "wit-bindgen-rust 0.60.0 metadata observed"
+    }
+  ],
+  "descriptor_check": {
+    "id": "guest-descriptor-reconciliation",
+    "outcome": "pass",
+    "tool": "vibapp-component-inspector sha256:588497fddd25",
+    "detail": "app identity/display name and every entrypoint id/kind/label/initial route match one-to-one; no extra Guest entrypoints"
+  },
+  "guest_checks": "describe executed allocator alignment/grow/shrink/prefix/ceiling, memcmp, Vec/String realloc, field typing/duplicates, surface IDs/close, settings and migration assertions",
+  "cargo_jobs": 1,
+  "build_observation": {
+    "tool_versions": {
+      "rust": "1.93.0",
+      "cargo": "1.93.0",
+      "target": "wasm32-wasip2",
+      "host_linker": "xcode-clang-byte-bound",
+      "host_sdk": "xcode-sdk-settings-byte-bound"
+    },
+    "isolation": {
+      "claim": "local-macos-process-experimental",
+      "network": "sandbox-denied",
+      "home": "synthetic-empty",
+      "docker_socket": "not-mounted",
+      "source_execution_observed": true,
+      "production_isolation": false
+    },
+    "limits": {
+      "wall_seconds": 180,
+      "cpu_seconds": 120,
+      "memory_bytes": 2147483648,
+      "pids": 32,
+      "disk_bytes": 536870912,
+      "stdout_bytes": 524288,
+      "stderr_bytes": 524288,
+      "open_files": 256,
+      "concurrent_jobs": 1
+    },
+    "resource_observations": {
+      "peak_rss_bytes": 572866560,
+      "peak_pids": 4,
+      "disk_bytes": 135560854,
+      "elapsed_ms": 22097
+    }
+  },
+  "build_observation_note": null,
+  "reproducibility": "not checked; one build only"
+}

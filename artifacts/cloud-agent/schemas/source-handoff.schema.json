@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/codeagent-source-handoff.experimental-v2.schema.json",
+  "title": "Untrusted source handoff from CodeAgent to a separate Builder",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "status",
+    "job_id",
+    "need_spec_digest_sha256",
+    "source_tree_sha256",
+    "source_directory",
+    "files",
+    "package_intent",
+    "target",
+    "provider_execution",
+    "authority",
+    "created_at_utc"
+  ],
+  "properties": {
+    "schema_version": { "const": "vibapp.codeagent-source-handoff.experimental-v2" },
+    "document_type": { "const": "codeagent-source-handoff" },
+    "status": { "const": "untrusted-source-awaiting-builder" },
+    "job_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "need_spec_digest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "source_tree_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "source_directory": { "const": "source" },
+    "files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size_bytes", "role"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+          },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 1, "maximum": 16777216 },
+          "role": { "enum": ["generated-source", "authoritative-contract-copy"] }
+        }
+      }
+    },
+    "package_intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["app_id", "version", "display_name", "description", "entrypoints"],
+      "properties": {
+        "app_id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$" },
+        "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "entrypoints": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "label", "initial_route"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "kind": { "enum": ["launcher-ui", "service", "settings"] },
+              "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "triggers": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "uniqueItems": true,
+                "items": { "enum": ["on-enable", "scheduler", "manual"] }
+              },
+              "initial_route": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract", "wasi", "rust_target", "wit_world", "app_kind", "profiles", "required_imports", "required_capabilities"],
+      "properties": {
+        "contract": { "const": "vibapp:experimental-v0@0.0.1" },
+        "wasi": { "const": "0.2" },
+        "rust_target": { "const": "wasm32-wasip2" },
+        "wit_world": {
+          "enum": ["ui-only-reference", "service-only-reference", "hybrid-reference", "web-preview-reference"]
+        },
+        "app_kind": { "enum": ["ui", "service", "hybrid"] },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "enum": ["desktop", "web-preview", "web-runtime", "headless"] }
+        },
+        "required_imports": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        },
+        "required_capabilities": {
+          "description": "App-specific must-have authority; a unique subset of required_imports. Structural-only imports remain degradable typed stubs.",
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+        }
+      }
+    },
+    "provider_execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "adapter",
+        "provider_id",
+        "external_request_attempted",
+        "external_request_observed",
+        "gateway_request_id",
+        "executable_sha256",
+        "isolation_policy_version",
+        "runner_id",
+        "runner_identity_sha256",
+        "isolation_policy_sha256",
+        "receipt_digest_sha256"
+      ],
+      "properties": {
+        "mode": { "enum": ["dry-run-fixture", "live-explicit-opt-in", "direct-local-explicit-opt-in", "docker-local-explicit-opt-in"] },
+        "adapter": { "enum": ["local-static-fixture", "external-isolated-provider-runner", "local-codeagent-adapter", "docker-codeagent-launcher"] },
+        "provider_id": { "enum": ["static-fixture", "codex", "claude-code", "opencode", "gemini-cli"] },
+        "external_request_attempted": { "type": "boolean" },
+        "external_request_observed": { "type": "boolean" },
+        "gateway_request_id": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+        "executable_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "isolation_policy_version": {
+          "type": ["string", "null"],
+          "enum": [null, "vibapp.provider-runner-isolation.experimental-v1", "vibapp.docker-source-v1"]
+        },
+        "runner_id": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+        "runner_identity_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "isolation_policy_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "receipt_digest_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "docker-local-explicit-opt-in" } }, "required": ["mode"] },
+          "then": {
+            "properties": {
+              "adapter": { "const": "docker-codeagent-launcher" },
+              "provider_id": { "const": "codex" },
+              "external_request_attempted": { "const": true },
+              "external_request_observed": { "const": true },
+              "gateway_request_id": { "type": "string" },
+              "executable_sha256": { "type": "string" },
+              "isolation_policy_version": { "const": "vibapp.docker-source-v1" },
+              "runner_id": { "type": "string" },
+              "runner_identity_sha256": { "type": "string" },
+              "isolation_policy_sha256": { "type": "string" },
+              "receipt_digest_sha256": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "dry-run-fixture" } }, "required": ["mode"] },
+          "then": {
+            "properties": {
+              "adapter": { "const": "local-static-fixture" },
+              "provider_id": { "const": "static-fixture" },
+              "external_request_attempted": { "const": false },
+              "external_request_observed": { "const": false },
+              "gateway_request_id": { "const": null },
+              "executable_sha256": { "const": null },
+              "isolation_policy_version": { "const": null },
+              "runner_id": { "const": null },
+              "runner_identity_sha256": { "const": null },
+              "isolation_policy_sha256": { "const": null },
+              "receipt_digest_sha256": { "const": null }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "live-explicit-opt-in" } }, "required": ["mode"] },
+          "then": {
+            "properties": {
+              "adapter": { "const": "external-isolated-provider-runner" },
+              "provider_id": { "const": "codex" },
+              "external_request_attempted": { "const": true },
+              "external_request_observed": { "const": true },
+              "gateway_request_id": { "type": "string", "minLength": 1 },
+              "executable_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "isolation_policy_version": { "const": "vibapp.provider-runner-isolation.experimental-v1" },
+              "runner_id": { "type": "string" },
+              "runner_identity_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "isolation_policy_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "receipt_digest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "direct-local-explicit-opt-in" } }, "required": ["mode"] },
+          "then": {
+            "properties": {
+              "adapter": { "const": "local-codeagent-adapter" },
+              "provider_id": { "enum": ["codex", "claude-code", "opencode", "gemini-cli"] },
+              "external_request_attempted": { "const": true },
+              "external_request_observed": { "const": false },
+              "gateway_request_id": { "const": null },
+              "executable_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "isolation_policy_version": { "const": null },
+              "runner_id": { "const": null },
+              "runner_identity_sha256": { "const": null },
+              "isolation_policy_sha256": { "const": null },
+              "receipt_digest_sha256": { "const": null }
+            }
+          }
+        }
+      ]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compile", "verify", "install", "publish"],
+      "properties": {
+        "compile": { "const": "separate-builder" },
+        "verify": { "const": "separate-verifier" },
+        "install": { "const": "none" },
+        "publish": { "const": "none" }
+      }
+    },
+    "created_at_utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    }
+  }
+}

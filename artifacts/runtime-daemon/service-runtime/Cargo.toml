@@ -1,0 +1,19 @@
+[package]
+name = "vibapp-service-runtime"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+libc = "=0.2.189"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+sha2 = "=0.10.9"
+wasmtime = { version = "=36.0.13", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "none"

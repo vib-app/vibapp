@@ -1,0 +1,12 @@
+{
+  "schema_version": "vibapp.provider-runner-accepted-profile.experimental-v1",
+  "document_type": "provider-runner-accepted-profile",
+  "runner_id": "UNPROVISIONED",
+  "runner_identity_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "runner_policy_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "executable_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "receipt_key_id": "UNPROVISIONED",
+  "gateway_key_id": "UNPROVISIONED",
+  "destination_policy_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "status": "unprovisioned"
+}

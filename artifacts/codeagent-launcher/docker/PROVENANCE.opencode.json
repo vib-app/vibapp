@@ -1,0 +1,35 @@
+{
+  "schema_version": "vibapp.opencode-image-provenance.v1",
+  "observed_date": "2026-09-07",
+  "base_image": "node@sha256:25b3eb23a00590b7499f2a2ce939322727fcce1b15fdd69754fcd09536a3ae2c",
+  "wrapper": {
+    "name": "opencode-ai",
+    "version": "1.18.27",
+    "url": "https://registry.npmjs.org/opencode-ai/-/opencode-ai-1.18.27.tgz",
+    "integrity": "sha512-5xrG2gQEwV2sLus30SZX9GyLbPX3z57BCxddedDM0wx1bgnwlHVLOS/FD2uve7fEZlmkr7KYFbvs65ySz1rwzA=="
+  },
+  "verified_local_native": {
+    "name": "opencode-linux-arm64",
+    "version": "1.18.27",
+    "url": "https://registry.npmjs.org/opencode-linux-arm64/-/opencode-linux-arm64-1.18.27.tgz",
+    "integrity": "sha512-6PPJ+m5kuzA7uUS+Kem6+h2Nn0Dl2siz7B36h/9Y21ga3WNN6a0klo2Obu+Vbq63i8Th2XRFflvsi/r5u76PcA==",
+    "executable_sha256": "de1ea3ebe0233d813c994228ec21a0f61b7dd2cb0818b3ffe9585d6ff4820f1c"
+  },
+  "observed_local_image_id": "sha256:9c43b9ad66f4310675d7e22b0c415d3e1e3bb05374dfce34b3bd6d8e8520ed5a",
+  "observed_bundle_sha256": "7384045b625b2d17ad17ed7801211ef0f5f23329fcaaec0341bc9b49585402e6",
+  "observed_bridge_sha256": "d2e586588ca3082d22110776fc0e7c22e3463a0a4dd2ae5b621da1729daebc79",
+  "relay_policy": {
+    "mode": "localai-native-json-to-sse-v1",
+    "upstream_stream": false,
+    "downstream_stream": true,
+    "reason": "fixed-localai-stream-tool-truncation",
+    "tool_names": "preserve-native-sdk-case-repair"
+  },
+  "client_context_setting": 32768,
+  "client_output_setting": 16384,
+  "server_yaml_context_observed_by_main": 120000,
+  "package_scripts_executed": false,
+  "global_user_configuration_read": false,
+  "live_model_calls_in_adapter_verification": false,
+  "verification": ["actual-version-and-run-help", "actual-uid1000-isolated-debug-config", "actual-source-only-system-prompt", "synthetic-native-json-to-sse-real-sdk-tool-case-repair-export-and-cleanup", "real-cli-writes-sibling-module-beside-immutable-support", "real-cli-same-session-compiler-repair-retains-task-and-tool-history", "unavailable-grep-denied-real-bounded-read-verified"]
+}

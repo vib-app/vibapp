@@ -1,0 +1,5 @@
+{
+  "schema_version": "vibapp.cloud-codeagent-task.experimental-v3",
+  "document_type": "cloud-codeagent-task",
+  "unexpected": "strict schema must reject this object"
+}

@@ -1,0 +1,210 @@
+name: VibApp native platform evidence (template)
+
+# This file is intentionally stored below the ignored product prototype. It is not an
+# active repository workflow and creates no CI evidence until a product repository or
+# an accepted root workflow installs these exact bytes.
+on:
+  workflow_dispatch:
+    inputs:
+      run_linux_native:
+        description: Run compile/test/reproducibility on the provisioned Linux runner
+        required: true
+        default: false
+        type: boolean
+      run_windows_native:
+        description: Run compile/test/reproducibility on the provisioned Windows runner
+        required: true
+        default: false
+        type: boolean
+      probe_blocked_package_gates:
+        description: Intentionally exercise package gates; the jobs must fail closed
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  definition:
+    runs-on: [self-hosted, linux, vibapp-rust-1.93-offline]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Validate definition and fail-closed rules
+        run: |
+          python3 artifacts/desktop/ci/validate_native_matrix.py validate
+          python3 -m unittest \
+            artifacts.desktop.ci.test_validate_native_matrix \
+            artifacts.desktop.ci.test_assemble_native_package -v
+
+  linux-native-build:
+    if: ${{ inputs.run_linux_native }}
+    needs: definition
+    runs-on: [self-hosted, linux, vibapp-rust-1.93-offline]
+    timeout-minutes: 60
+    env:
+      VIBAPP_NATIVE_CARGO: ${{ vars.VIBAPP_LINUX_CARGO_1_93 }}
+      VIBAPP_NATIVE_RUSTC: ${{ vars.VIBAPP_LINUX_RUSTC_1_93 }}
+      VIBAPP_NATIVE_RUSTDOC: ${{ vars.VIBAPP_LINUX_RUSTDOC_1_93 }}
+      VIBAPP_NATIVE_CARGO_HOME: ${{ vars.VIBAPP_LINUX_CARGO_HOME_1_93_OFFLINE }}
+      CARGO_NET_OFFLINE: "true"
+      CARGO_INCREMENTAL: "0"
+      CARGO_BUILD_JOBS: "1"
+      RUSTUP_AUTO_INSTALL: "0"
+      TZ: UTC
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Enforce the native compile ceiling
+        run: python3 artifacts/desktop/ci/validate_native_matrix.py preflight --target linux-x86_64 --phase compile
+      - name: Verify explicit tools and build twice offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          for native_tool in "$VIBAPP_NATIVE_CARGO" "$VIBAPP_NATIVE_RUSTC" "$VIBAPP_NATIVE_RUSTDOC"; do
+            test "${native_tool#/}" != "$native_tool"
+            test -f "$native_tool"
+            test ! -L "$native_tool"
+          done
+          test "${VIBAPP_NATIVE_CARGO_HOME#/}" != "$VIBAPP_NATIVE_CARGO_HOME"
+          test -d "$VIBAPP_NATIVE_CARGO_HOME"
+          test ! -L "$VIBAPP_NATIVE_CARGO_HOME"
+          "$VIBAPP_NATIVE_RUSTC" --version --verbose | grep -Fx 'release: 1.93.0'
+          "$VIBAPP_NATIVE_CARGO" --version | grep -E '^cargo 1\.93\.0 '
+          unset RUSTFLAGS RUSTDOCFLAGS RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER CARGO_TARGET_DIR
+          native_root=$(mktemp -d "$RUNNER_TEMP/vibapp-linux-native.XXXXXX")
+          trap 'case "$native_root" in "$RUNNER_TEMP"/vibapp-linux-native.*) rm -rf -- "$native_root" ;; *) exit 70 ;; esac' EXIT
+          source_epoch=$(git show -s --format=%ct "$GITHUB_SHA")
+          export SOURCE_DATE_EPOCH="$source_epoch"
+          export CARGO_HOME="$VIBAPP_NATIVE_CARGO_HOME"
+          export RUSTC="$VIBAPP_NATIVE_RUSTC"
+          export RUSTDOC="$VIBAPP_NATIVE_RUSTDOC"
+          "$VIBAPP_NATIVE_CARGO" fmt --manifest-path artifacts/desktop/src-tauri/Cargo.toml --all -- --check
+          "$VIBAPP_NATIVE_CARGO" test --manifest-path artifacts/desktop/src-tauri/Cargo.toml --locked --offline --jobs 1 --target-dir "$native_root/tests"
+          "$VIBAPP_NATIVE_CARGO" test --manifest-path artifacts/desktop/src-tauri/Cargo.toml --locked --offline --jobs 1 --target-dir "$native_root/tests" native_platform::tests
+          for build_id in a b; do
+            "$VIBAPP_NATIVE_CARGO" build --manifest-path artifacts/desktop/src-tauri/Cargo.toml --release --bins --locked --offline --jobs 1 --target-dir "$native_root/desktop-$build_id"
+            "$VIBAPP_NATIVE_CARGO" build --manifest-path artifacts/runtime-daemon/service-runtime/Cargo.toml --release --locked --offline --jobs 1 --target-dir "$native_root/service-$build_id"
+          done
+          cmp "$native_root/desktop-a/release/vibapp-launcher" "$native_root/desktop-b/release/vibapp-launcher"
+          cmp "$native_root/desktop-a/release/vibapp-runtime" "$native_root/desktop-b/release/vibapp-runtime"
+          cmp "$native_root/service-a/release/vibapp-service-runtime" "$native_root/service-b/release/vibapp-service-runtime"
+          sha256sum "$native_root/desktop-a/release/vibapp-launcher" "$native_root/desktop-a/release/vibapp-runtime" "$native_root/service-a/release/vibapp-service-runtime"
+          echo 'evidence_label=native-binaries-reproduced; package_support=not-verified'
+
+  windows-native-build:
+    if: ${{ inputs.run_windows_native }}
+    needs: definition
+    runs-on: [self-hosted, windows, vibapp-rust-1.93-offline]
+    timeout-minutes: 60
+    env:
+      VIBAPP_NATIVE_CARGO: ${{ vars.VIBAPP_WINDOWS_CARGO_1_93 }}
+      VIBAPP_NATIVE_RUSTC: ${{ vars.VIBAPP_WINDOWS_RUSTC_1_93 }}
+      VIBAPP_NATIVE_RUSTDOC: ${{ vars.VIBAPP_WINDOWS_RUSTDOC_1_93 }}
+      VIBAPP_NATIVE_CARGO_HOME: ${{ vars.VIBAPP_WINDOWS_CARGO_HOME_1_93_OFFLINE }}
+      CARGO_NET_OFFLINE: "true"
+      CARGO_INCREMENTAL: "0"
+      CARGO_BUILD_JOBS: "1"
+      RUSTUP_AUTO_INSTALL: "0"
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Enforce the native compile ceiling
+        shell: pwsh
+        run: py -3.11 artifacts/desktop/ci/validate_native_matrix.py preflight --target windows-x86_64 --phase compile
+      - name: Verify explicit tools and build twice offline
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          foreach ($nativeTool in @($env:VIBAPP_NATIVE_CARGO, $env:VIBAPP_NATIVE_RUSTC, $env:VIBAPP_NATIVE_RUSTDOC)) {
+            if (-not [IO.Path]::IsPathFullyQualified($nativeTool) -or -not (Test-Path -LiteralPath $nativeTool -PathType Leaf) -or (Get-Item -LiteralPath $nativeTool).LinkType) { throw "untrusted native tool path" }
+          }
+          if (-not [IO.Path]::IsPathFullyQualified($env:VIBAPP_NATIVE_CARGO_HOME) -or -not (Test-Path -LiteralPath $env:VIBAPP_NATIVE_CARGO_HOME -PathType Container) -or (Get-Item -LiteralPath $env:VIBAPP_NATIVE_CARGO_HOME).LinkType) { throw "untrusted Cargo home" }
+          if (-not ((& $env:VIBAPP_NATIVE_RUSTC --version --verbose) -contains "release: 1.93.0")) { throw "wrong rustc release" }
+          if (-not ((& $env:VIBAPP_NATIVE_CARGO --version) -match '^cargo 1\.93\.0 ')) { throw "wrong cargo release" }
+          Remove-Item Env:RUSTFLAGS, Env:RUSTDOCFLAGS, Env:RUSTC_WRAPPER, Env:RUSTC_WORKSPACE_WRAPPER, Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
+          $nativeRoot = Join-Path $env:RUNNER_TEMP ("vibapp-windows-native-" + [guid]::NewGuid().ToString("N"))
+          New-Item -ItemType Directory -Path $nativeRoot | Out-Null
+          try {
+            $env:SOURCE_DATE_EPOCH = git show -s --format=%ct $env:GITHUB_SHA
+            $env:CARGO_HOME = $env:VIBAPP_NATIVE_CARGO_HOME
+            $env:RUSTC = $env:VIBAPP_NATIVE_RUSTC
+            $env:RUSTDOC = $env:VIBAPP_NATIVE_RUSTDOC
+            & $env:VIBAPP_NATIVE_CARGO fmt --manifest-path artifacts/desktop/src-tauri/Cargo.toml --all -- --check
+            & $env:VIBAPP_NATIVE_CARGO test --manifest-path artifacts/desktop/src-tauri/Cargo.toml --locked --offline --jobs 1 --target-dir (Join-Path $nativeRoot tests)
+            & $env:VIBAPP_NATIVE_CARGO test --manifest-path artifacts/desktop/src-tauri/Cargo.toml --locked --offline --jobs 1 --target-dir (Join-Path $nativeRoot tests) native_platform::tests
+            foreach ($buildId in @("a", "b")) {
+              & $env:VIBAPP_NATIVE_CARGO build --manifest-path artifacts/desktop/src-tauri/Cargo.toml --release --bins --locked --offline --jobs 1 --target-dir (Join-Path $nativeRoot "desktop-$buildId")
+              & $env:VIBAPP_NATIVE_CARGO build --manifest-path artifacts/runtime-daemon/service-runtime/Cargo.toml --release --locked --offline --jobs 1 --target-dir (Join-Path $nativeRoot "service-$buildId")
+            }
+            foreach ($relative in @("desktop-a/release/vibapp-launcher.exe", "desktop-a/release/vibapp-runtime.exe", "service-a/release/vibapp-service-runtime.exe")) {
+              $other = $relative -replace '-a/', '-b/'
+              $left = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $nativeRoot $relative)).Hash
+              $right = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $nativeRoot $other)).Hash
+              if ($left -ne $right) { throw "non-reproducible native binary: $relative" }
+              Write-Output "$left  $relative"
+            }
+            Write-Output "evidence_label=native-binaries-reproduced; package_support=not-verified"
+          } finally {
+            if ($nativeRoot.StartsWith((Join-Path $env:RUNNER_TEMP "vibapp-windows-native-"), [StringComparison]::OrdinalIgnoreCase)) { Remove-Item -LiteralPath $nativeRoot -Recurse -Force }
+          }
+
+  linux-package-gate-probe:
+    if: ${{ inputs.probe_blocked_package_gates }}
+    needs: definition
+    runs-on: [self-hosted, linux, vibapp-rust-1.93-offline]
+    timeout-minutes: 5
+    env:
+      VIBAPP_NATIVE_PACKAGE_INPUT: ${{ vars.VIBAPP_LINUX_PACKAGE_INPUT }}
+      VIBAPP_NATIVE_PACKAGE_OUTPUT_A: ${{ vars.VIBAPP_LINUX_PACKAGE_OUTPUT_A }}
+      VIBAPP_NATIVE_PACKAGE_OUTPUT_B: ${{ vars.VIBAPP_LINUX_PACKAGE_OUTPUT_B }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Gate, assemble twice, and compare exact definition outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 artifacts/desktop/ci/validate_native_matrix.py preflight --target linux-x86_64 --phase package
+          python3 artifacts/desktop/ci/assemble_native_package.py --input "$VIBAPP_NATIVE_PACKAGE_INPUT" --output-directory "$VIBAPP_NATIVE_PACKAGE_OUTPUT_A"
+          python3 artifacts/desktop/ci/assemble_native_package.py --input "$VIBAPP_NATIVE_PACKAGE_INPUT" --output-directory "$VIBAPP_NATIVE_PACKAGE_OUTPUT_B"
+          diff -u \
+            <(cd "$VIBAPP_NATIVE_PACKAGE_OUTPUT_A" && shasum -a 256 *) \
+            <(cd "$VIBAPP_NATIVE_PACKAGE_OUTPUT_B" && shasum -a 256 *)
+
+  windows-package-gate-probe:
+    if: ${{ inputs.probe_blocked_package_gates }}
+    needs: definition
+    runs-on: [self-hosted, windows, vibapp-rust-1.93-offline]
+    timeout-minutes: 5
+    env:
+      VIBAPP_NATIVE_PACKAGE_INPUT: ${{ vars.VIBAPP_WINDOWS_PACKAGE_INPUT }}
+      VIBAPP_NATIVE_PACKAGE_OUTPUT_A: ${{ vars.VIBAPP_WINDOWS_PACKAGE_OUTPUT_A }}
+      VIBAPP_NATIVE_PACKAGE_OUTPUT_B: ${{ vars.VIBAPP_WINDOWS_PACKAGE_OUTPUT_B }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Gate, assemble twice, and compare exact definition outputs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          py -3.11 artifacts/desktop/ci/validate_native_matrix.py preflight --target windows-x86_64 --phase package
+          py -3.11 artifacts/desktop/ci/assemble_native_package.py --input $env:VIBAPP_NATIVE_PACKAGE_INPUT --output-directory $env:VIBAPP_NATIVE_PACKAGE_OUTPUT_A
+          py -3.11 artifacts/desktop/ci/assemble_native_package.py --input $env:VIBAPP_NATIVE_PACKAGE_INPUT --output-directory $env:VIBAPP_NATIVE_PACKAGE_OUTPUT_B
+          $first = Get-ChildItem -LiteralPath $env:VIBAPP_NATIVE_PACKAGE_OUTPUT_A -File | Sort-Object Name
+          $second = Get-ChildItem -LiteralPath $env:VIBAPP_NATIVE_PACKAGE_OUTPUT_B -File | Sort-Object Name
+          if (($first.Name -join "`n") -ne ($second.Name -join "`n")) { throw "package output inventory differs" }
+          foreach ($item in $first) {
+            $peer = Join-Path $env:VIBAPP_NATIVE_PACKAGE_OUTPUT_B $item.Name
+            if ((Get-FileHash -Algorithm SHA256 -LiteralPath $item.FullName).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $peer).Hash) { throw "package bytes differ: $($item.Name)" }
+          }

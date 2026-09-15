@@ -1,0 +1,166 @@
+{
+  "schema_version": "vibapp.cloud-codeagent-task.experimental-v3",
+  "document_type": "cloud-codeagent-task",
+  "job_id": "job-cloud-ui-denied-001",
+  "execution_attempt": {
+    "attempt_id": "attempt-0001-fedcba9876543210",
+    "ordinal": 1
+  },
+  "need_spec_complete": true,
+  "need_spec_current_revision": 1,
+  "need_spec_digest_sha256": "2e82f4fd2342bf1a5df642778eaba41082a94c2a4abd1471a7a248fba82e3116",
+  "immutable_task_digest_sha256": "31a8965d90f1b52179a3d9e4d5890bf20803fbfca311f15ba688096a032198bf",
+  "need_spec": {
+    "schema_version": "vibapp.need-spec.product-v0.0.1",
+    "document_type": "need-spec",
+    "need_id": "need-meeting-001",
+    "owner": {
+      "principal_id": "user-local-001",
+      "principal_kind": "user"
+    },
+    "goal": "Create a private launcher UI that helps a user prepare and track meeting coordination requests.",
+    "requirements": [
+      {
+        "requirement_id": "req-capture",
+        "text": "Capture a meeting topic and a list of participants in a host-rendered form.",
+        "priority": "must-have",
+        "acceptance_examples": [
+          "The first launcher view exposes labelled topic and participant fields."
+        ]
+      },
+      {
+        "requirement_id": "req-summary",
+        "text": "Render a confirmation summary without sending network requests.",
+        "priority": "must-have",
+        "acceptance_examples": [
+          "Submitting the form renders the entered topic in the same launcher surface."
+        ]
+      }
+    ],
+    "negative_constraints": [
+      {
+        "constraint_id": "no-http",
+        "kind": "forbidden-capability",
+        "value": "vibapp:experimental-v0/http@0.0.1",
+        "source": "user"
+      }
+    ],
+    "platforms": [
+      {
+        "os": "macos",
+        "arch": "aarch64",
+        "profile": "desktop"
+      }
+    ],
+    "profiles": ["desktop"],
+    "permission_ceiling": {
+      "allowed_interfaces": [
+        "vibapp:experimental-v0/clock@0.0.1",
+        "vibapp:experimental-v0/kv@0.0.1",
+        "vibapp:experimental-v0/log@0.0.1",
+        "vibapp:experimental-v0/host-info@0.0.1",
+        "vibapp:experimental-v0/settings@0.0.1"
+      ],
+      "forbidden_interfaces": ["vibapp:experimental-v0/http@0.0.1"],
+      "maximum_scope_digests": []
+    },
+    "privacy_requirement": "remote-private",
+    "created_at_utc": "2026-08-23T20:00:00Z",
+    "revision": 1
+  },
+  "package_intent": {
+    "app_id": "ai.vibapp.meeting-prep",
+    "version": "0.1.0",
+    "display_name": "Meeting Prep",
+    "description": "A private launcher UI for preparing meeting coordination requests.",
+    "entrypoints": [
+      {
+        "id": "main",
+        "kind": "launcher-ui",
+        "label": "Meeting Prep",
+        "initial_route": "home"
+      }
+    ]
+  },
+  "remote_processing_consent": false,
+  "consent": {
+    "consent_id": "consent-cloud-ui-denied-001",
+    "consent_type": "remote-processing",
+    "decision": "denied",
+    "subject": {
+      "principal_id": "user-local-001",
+      "principal_kind": "user"
+    },
+    "job_id": "job-cloud-ui-denied-001",
+    "attempt_id": "attempt-0001-fedcba9876543210",
+    "provider": "openai-codex",
+    "model": "gpt-5.6-sol",
+    "provider_execution_identity_sha256": "c8183557c4b017cb8e892ac62a6cb31cd78799b4790bebe00f9f007f5c80e3bb",
+    "payload_digest_sha256": "31a8965d90f1b52179a3d9e4d5890bf20803fbfca311f15ba688096a032198bf",
+    "uploaded_data_classes": [
+      "need",
+      "package-intent",
+      "target-contract",
+      "execution-limits",
+      "generation-policy",
+      "authoritative-contract",
+      "provider-execution-identity"
+    ],
+    "single_use": true,
+    "issued_at_utc": "2026-08-23T20:30:00Z",
+    "expires_at_utc": "2026-08-23T21:30:00Z",
+    "policy_version": "vibapp.cloud-codeagent-policy.experimental-v7",
+    "contract_digest_sha256": "ec94f06652886cf9eea0aba8afc028165b135b91103faccf62a2ccc6828d3c38",
+    "instructions_digest_sha256": "49fe02f64ab181e3c9a1ce22729bd3ec1309a5afa7b8a4b39e14391d95650536"
+  },
+  "provider": "openai-codex",
+  "model": "gpt-5.6-sol",
+  "provider_execution_identity": {
+    "schema_version": "vibapp.provider-execution-identity.experimental-v1",
+    "endpoint": {
+      "kind": "provider-managed",
+      "canonical_endpoint": "provider-managed",
+      "endpoint_sha256": "f00a1383141531909b2ef6443458fa25a772de340ec4833c38a440200a1b19ee"
+    },
+    "runtime": {
+      "adapter_id": "local-codeagent-adapter",
+      "adapter_version": "experimental-v1",
+      "adapter_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "package_id": "openai-codex-cli",
+      "package_version": "0.149.1",
+      "executable_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "non_secret_config_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "identity_sha256": "c8183557c4b017cb8e892ac62a6cb31cd78799b4790bebe00f9f007f5c80e3bb"
+  },
+  "target": {
+    "contract": "vibapp:experimental-v0@0.0.1",
+    "wasi": "0.2",
+    "rust_target": "wasm32-wasip2",
+    "wit_world": "ui-only-reference",
+    "app_kind": "ui",
+    "profiles": ["desktop"],
+    "required_imports": [
+      "vibapp:experimental-v0/clock@0.0.1",
+      "vibapp:experimental-v0/kv@0.0.1",
+      "vibapp:experimental-v0/log@0.0.1",
+      "vibapp:experimental-v0/host-info@0.0.1",
+      "vibapp:experimental-v0/settings@0.0.1"
+    ],
+    "required_capabilities": [
+      "vibapp:experimental-v0/kv@0.0.1",
+      "vibapp:experimental-v0/settings@0.0.1"
+    ]
+  },
+  "limits": {
+    "wall_time_seconds": 300,
+    "cpu_seconds": 240,
+    "memory_bytes": 2147483648,
+    "pids": 16,
+    "workspace_bytes": 16777216,
+    "stdout_bytes": 262144,
+    "stderr_bytes": 262144,
+    "source_bytes": 8388608,
+    "source_files": 128
+  }
+}

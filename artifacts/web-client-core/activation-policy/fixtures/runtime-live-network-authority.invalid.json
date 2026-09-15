@@ -1,0 +1,5 @@
+{
+  "case_id": "runtime-live-network-authority",
+  "mutation": { "path": "manifest.browser_derivation.live_background_hardware_or_network", "value": true },
+  "expected_reason": "manifest-live-authority"
+}

@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/desktop-native-platform-matrix.experimental-v1.json",
+  "title": "VibApp desktop native platform build plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_labels",
+    "toolchain",
+    "targets"
+  ],
+  "properties": {
+    "$schema": { "const": "./native-platform-matrix.schema.json" },
+    "schema_version": {
+      "const": "vibapp.desktop-native-platform-matrix.experimental-v1"
+    },
+    "evidence_labels": {
+      "type": "array",
+      "minItems": 9,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rust_release",
+        "network_during_build",
+        "cargo_flags",
+        "required_environment",
+        "launcher_platform_policy",
+        "lockfiles",
+        "package_assembler"
+      ],
+      "properties": {
+        "rust_release": { "const": "1.93.0" },
+        "network_during_build": { "const": "denied" },
+        "cargo_flags": {
+          "const": ["--locked", "--offline", "--jobs", "1"]
+        },
+        "required_environment": {
+          "const": [
+            "VIBAPP_NATIVE_CARGO",
+            "VIBAPP_NATIVE_RUSTC",
+            "VIBAPP_NATIVE_RUSTDOC",
+            "VIBAPP_NATIVE_CARGO_HOME"
+          ]
+        },
+        "launcher_platform_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "validation_scope", "native_execution"],
+          "properties": {
+            "path": { "const": "artifacts/desktop/src-tauri/src/native_platform.rs" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "validation_scope": { "const": "macos-hosted-policy-tests-only" },
+            "native_execution": { "const": "not-run" }
+          }
+        },
+        "lockfiles": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/lockedInput" }
+        },
+        "package_assembler": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256", "input_schema_version", "maximum_files", "maximum_file_bytes", "maximum_total_bytes"],
+          "properties": {
+            "path": { "const": "artifacts/desktop/ci/assemble_native_package.py" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "input_schema_version": { "const": "vibapp.native-package-input.experimental-v1" },
+            "maximum_files": { "const": 512 },
+            "maximum_file_bytes": { "const": 67108864 },
+            "maximum_total_bytes": { "const": 134217728 }
+          }
+        }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/target" }
+    }
+  },
+  "$defs": {
+    "lockedInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^[a-zA-Z0-9._/-]+$" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "observed_in", "condition", "closes_when"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^(LINUX|WINDOWS)-[A-Z]+-[0-9]{3}$" },
+        "severity": { "enum": ["release-blocking", "security-blocking"] },
+        "observed_in": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+        "condition": { "type": "string", "minLength": 1 },
+        "closes_when": { "type": "string", "minLength": 1 }
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "emits_at_most", "blockers"],
+      "properties": {
+        "state": { "enum": ["runnable-on-matching-native-runner", "blocked"] },
+        "emits_at_most": { "type": "string" },
+        "blockers": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+      }
+    },
+    "currentEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["definition", "package_definition", "native_compile", "native_tests", "package", "native_smoke", "independent_acceptance", "support_claim"],
+      "properties": {
+        "definition": { "const": "authored-not-independently-accepted" },
+        "package_definition": { "const": "synthetic-fixture-reproduced-not-native" },
+        "native_compile": { "const": "not-run" },
+        "native_tests": { "const": "not-run" },
+        "package": { "const": "not-produced" },
+        "native_smoke": { "const": "not-run" },
+        "independent_acceptance": { "const": "not-run" },
+        "support_claim": { "const": "not-verified" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "host_os",
+        "rust_target",
+        "runner_labels",
+        "package_format",
+        "release_eligible",
+        "current_evidence",
+        "archive_layout",
+        "phases",
+        "blockers"
+      ],
+      "properties": {
+        "id": { "enum": ["linux-x86_64", "windows-x86_64"] },
+        "host_os": { "enum": ["linux", "windows"] },
+        "rust_target": { "enum": ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"] },
+        "runner_labels": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "type": "string" } },
+        "package_format": { "enum": ["tar.gz", "zip"] },
+        "release_eligible": { "const": false },
+        "current_evidence": { "$ref": "#/$defs/currentEvidence" },
+        "archive_layout": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["root", "embedded_manifest", "launcher", "runtime", "service_runtime", "resources_prefix", "timestamp", "ordinary_files_only", "sorted_utf8_paths"],
+          "properties": {
+            "root": { "type": "string" },
+            "embedded_manifest": { "type": "string" },
+            "launcher": { "type": "string" },
+            "runtime": { "type": "string" },
+            "service_runtime": { "type": "string" },
+            "resources_prefix": { "type": "string" },
+            "timestamp": { "const": "source_date_epoch-even-utc-second" },
+            "ordinary_files_only": { "const": true },
+            "sorted_utf8_paths": { "const": true }
+          }
+        },
+        "phases": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["compile", "package", "native_smoke", "independent_acceptance"],
+          "properties": {
+            "compile": { "$ref": "#/$defs/phase" },
+            "package": { "$ref": "#/$defs/phase" },
+            "native_smoke": { "$ref": "#/$defs/phase" },
+            "independent_acceptance": { "$ref": "#/$defs/phase" }
+          }
+        },
+        "blockers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/blocker" } }
+      }
+    }
+  }
+}

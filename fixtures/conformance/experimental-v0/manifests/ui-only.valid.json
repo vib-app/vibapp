@@ -1,0 +1,268 @@
+{
+  "schema_version": "vibapp.manifest.experimental-v0.0.1",
+  "package_format": "vibapp.package.experimental-v0",
+  "app": {
+    "id": "ai.vibapp.notes",
+    "version": "0.1.0",
+    "kind": "ui",
+    "display_name": "Fixture Notes",
+    "description": "A launcher-rendered UI-only conformance fixture.",
+    "publisher": {
+      "id": "ai.vibapp",
+      "display_name": "VibApp Fixtures"
+    }
+  },
+  "artifacts": {
+    "canonical_component": {
+      "path": "component.wasm",
+      "media_type": "application/wasm",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "size_bytes": 4096
+    },
+    "assets": [],
+    "browser_derivations": [
+      {
+        "profile": "web-preview",
+        "format": "jco-esm",
+        "derived_from_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "entry": {
+          "path": "web-preview/notes.mjs",
+          "media_type": "text/javascript",
+          "sha256": "1212121212121212121212121212121212121212121212121212121212121212",
+          "size_bytes": 2048
+        },
+        "files": [
+          {
+            "path": "web-preview/notes.mjs",
+            "media_type": "text/javascript",
+            "sha256": "1212121212121212121212121212121212121212121212121212121212121212",
+            "size_bytes": 2048
+          },
+          {
+            "path": "web-preview/notes.core.wasm",
+            "media_type": "application/wasm",
+            "sha256": "1313131313131313131313131313131313131313131313131313131313131313",
+            "size_bytes": 3072
+          }
+        ],
+        "derivation_attestation": {
+          "path": "web-preview/derivation.json",
+          "media_type": "application/json",
+          "sha256": "1414141414141414141414141414141414141414141414141414141414141414",
+          "size_bytes": 512
+        }
+      },
+      {
+        "profile": "web-runtime",
+        "format": "jco-esm",
+        "derived_from_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "entry": {
+          "path": "web-runtime/notes.mjs",
+          "media_type": "text/javascript",
+          "sha256": "1515151515151515151515151515151515151515151515151515151515151515",
+          "size_bytes": 2048
+        },
+        "files": [
+          {
+            "path": "web-runtime/notes.mjs",
+            "media_type": "text/javascript",
+            "sha256": "1515151515151515151515151515151515151515151515151515151515151515",
+            "size_bytes": 2048
+          },
+          {
+            "path": "web-runtime/notes.core.wasm",
+            "media_type": "application/wasm",
+            "sha256": "1616161616161616161616161616161616161616161616161616161616161616",
+            "size_bytes": 3072
+          }
+        ],
+        "derivation_attestation": {
+          "path": "web-runtime/derivation.json",
+          "media_type": "application/json",
+          "sha256": "1717171717171717171717171717171717171717171717171717171717171717",
+          "size_bytes": 512
+        }
+      }
+    ],
+    "provenance": {
+      "path": "provenance.json",
+      "media_type": "application/json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size_bytes": 512
+    },
+    "sbom": {
+      "path": "sbom.cdx.json",
+      "media_type": "application/vnd.cyclonedx+json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "size_bytes": 1024
+    }
+  },
+  "runtime": {
+    "contract": "vibapp:experimental-v0@0.0.1",
+    "wasi": "0.2",
+    "world": "ui-only-reference",
+    "required_imports": [
+      "vibapp:experimental-v0/clock@0.0.1",
+      "vibapp:experimental-v0/kv@0.0.1",
+      "vibapp:experimental-v0/log@0.0.1",
+      "vibapp:experimental-v0/host-info@0.0.1",
+      "vibapp:experimental-v0/settings@0.0.1"
+    ],
+    "profiles": [
+      {
+        "profile": "desktop",
+        "mode": "full",
+        "background": "not-applicable",
+        "artifact_role": "canonical-component",
+        "degradation": ""
+      },
+      {
+        "profile": "web-preview",
+        "mode": "preview",
+        "background": "foreground-only",
+        "artifact_role": "browser-derived",
+        "degradation": "Clock and durable state use isolated preview data; no closed-page behavior is promised."
+      },
+      {
+        "profile": "web-runtime",
+        "mode": "degraded",
+        "background": "foreground-only",
+        "artifact_role": "browser-derived",
+        "degradation": "Runs the real UI with browser-brokered state only while the page is alive; no closed-page behavior is promised."
+      }
+    ],
+    "platforms": [
+      { "os": "macos", "arch": "x86-64", "profiles": ["desktop"] },
+      { "os": "macos", "arch": "aarch64", "profiles": ["desktop"] },
+      { "os": "windows", "arch": "x86-64", "profiles": ["desktop"] },
+      { "os": "linux", "arch": "x86-64", "profiles": ["desktop"] },
+      { "os": "linux", "arch": "aarch64", "profiles": ["desktop"] },
+      { "os": "browser", "arch": "wasm32", "profiles": ["web-preview", "web-runtime"] }
+    ]
+  },
+  "entrypoints": [
+    {
+      "id": "main",
+      "kind": "launcher-ui",
+      "label": "Notes",
+      "profiles": ["desktop", "web-preview", "web-runtime"],
+      "routes": {
+        "initial": "notes",
+        "allowed": ["notes", "note-detail"]
+      },
+      "restoration": "safe-fields"
+    },
+    {
+      "id": "settings",
+      "kind": "settings",
+      "label": "Notes Settings",
+      "profiles": ["desktop", "web-preview", "web-runtime"],
+      "schema_export": "get-settings-schema"
+    }
+  ],
+  "capabilities": [
+    {
+      "interface": "vibapp:experimental-v0/clock@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Timestamp user-created notes.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Uses the host clock." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Uses a deterministic preview clock." },
+        { "profile": "web-runtime", "availability": "native", "behavior": "Uses the browser host clock while the page is alive." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/kv@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Persist notes inside the app-scoped namespace.",
+      "scope": { "maximum_storage_bytes": 1048576 },
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Uses app-scoped daemon storage." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Uses disposable sample storage." },
+        { "profile": "web-runtime", "availability": "brokered", "behavior": "Uses app-scoped browser storage with no background guarantee." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/log@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Emit bounded diagnostics.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Writes to the daemon log stream." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Writes to the preview console sink." },
+        { "profile": "web-runtime", "availability": "native", "behavior": "Writes to the bounded web host log sink." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/host-info@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Select supported profile behavior without escalating authority.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Reports desktop capability state." },
+        { "profile": "web-preview", "availability": "native", "behavior": "Reports preview and mock capability state." },
+        { "profile": "web-runtime", "availability": "native", "behavior": "Reports foreground-only browser capability state." }
+      ]
+    },
+    {
+      "interface": "vibapp:experimental-v0/settings@0.0.1",
+      "necessity": "required",
+      "grant": "automatic",
+      "reason": "Read host-rendered settings after validation.",
+      "scope": {},
+      "profiles": [
+        { "profile": "desktop", "availability": "native", "behavior": "Reads host-owned settings." },
+        { "profile": "web-preview", "availability": "mock", "behavior": "Reads disposable sample settings." },
+        { "profile": "web-runtime", "availability": "brokered", "behavior": "Reads host-owned browser settings while the page is alive." }
+      ]
+    }
+  ],
+  "resources": {
+    "linear_memory_bytes": 16777216,
+    "event_wall_time_ms": 100,
+    "health_migration_wall_time_ms": 1000,
+    "output_bytes": 131072,
+    "stored_data_bytes": 1048576,
+    "durable_schedules": 0,
+    "log_bytes_per_day": 131072
+  },
+  "state": {
+    "schema": 1,
+    "migratable_from_min": 1,
+    "migratable_from_max": 1
+  },
+  "lifecycle": {
+    "disable": {
+      "retains_package": true,
+      "retains_state": true,
+      "stops_services": true,
+      "cancels_schedules": true
+    },
+    "uninstall": {
+      "allowed_data_dispositions": ["delete", "retain", "export-then-delete"],
+      "default_data_disposition": "delete"
+    }
+  },
+  "source": {
+    "language": "rust",
+    "revision": "fixture-ui-only-1",
+    "cargo_lock_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "builder_image_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "license": {
+    "spdx_expression": "Apache-2.0"
+  },
+  "privacy": {
+    "stores_personal_data": true,
+    "network_access": "none"
+  },
+  "verification": {
+    "status": "fixture",
+    "revocation": "not-revoked"
+  }
+}

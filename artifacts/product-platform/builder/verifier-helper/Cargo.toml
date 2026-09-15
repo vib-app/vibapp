@@ -1,0 +1,8 @@
+[package]
+name = "vibapp-product-platform-manifest-verifier"
+version = "0.0.1"
+edition = "2024"
+publish = false
+
+[dependencies]
+vibapp-protocol = { path = "../../repo/crates/protocol" }

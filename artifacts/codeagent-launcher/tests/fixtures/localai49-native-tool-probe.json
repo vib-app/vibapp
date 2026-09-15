@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "stream": false,
+  "tools_executed": false,
+  "finish_reasons": ["tool_calls"],
+  "tool_calls": [
+    {
+      "function": {"arguments": "{\"command\":\"pwd\"}", "name": "Bash"},
+      "id": "570cfe4e-d7f5-4725-8e65-68d25fab458f",
+      "index": 0,
+      "type": "function"
+    }
+  ]
+}

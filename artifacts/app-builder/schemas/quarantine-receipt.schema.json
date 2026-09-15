@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/builder-quarantine.experimental-v2.schema.json",
+  "title": "Untrusted Builder quarantine receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "state",
+    "scope",
+    "job_id",
+    "need_spec_digest_sha256",
+    "source_tree_sha256",
+    "required_capabilities",
+    "package_entrypoints",
+    "source_directory",
+    "package_directory",
+    "package_digest_sha256",
+    "package_files",
+    "component_sha256",
+    "manifest_sha256",
+    "build_log_sha256",
+    "builder",
+    "limits",
+    "terminal_outcome",
+    "authority",
+    "created_at_utc"
+  ],
+  "properties": {
+    "schema_version": { "const": "vibapp.builder-quarantine.experimental-v2" },
+    "document_type": { "const": "builder-quarantine-receipt" },
+    "state": { "const": "quarantined-awaiting-verifier" },
+    "scope": { "const": "local-product-prototype" },
+    "job_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "need_spec_digest_sha256": { "$ref": "#/$defs/sha256" },
+    "source_tree_sha256": { "$ref": "#/$defs/sha256" },
+    "required_capabilities": {
+      "description": "Consent-bound app requirement subset copied from the independently checked source handoff.",
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+    },
+    "package_entrypoints": {
+      "description": "Exact consent-bound package entrypoint and lifecycle-trigger projection copied from the source handoff.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/package_entrypoint" }
+    },
+    "source_directory": { "const": "source" },
+    "package_directory": { "const": "package" },
+    "package_digest_sha256": { "$ref": "#/$defs/sha256" },
+    "package_files": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "size_bytes"],
+        "properties": {
+          "path": { "enum": ["manifest.json", "component.wasm", "provenance.json", "sbom.cdx.json"] },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "size_bytes": { "type": "integer", "minimum": 1, "maximum": 67108864 }
+        }
+      }
+    },
+    "component_sha256": { "$ref": "#/$defs/sha256" },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "presentation": {
+      "description": "Optional untrusted Builder hint; the verifier independently derives and compares it. Legacy receipts may omit it.",
+      "$ref": "#/$defs/presentation"
+    },
+    "build_log_sha256": { "$ref": "#/$defs/sha256" },
+    "builder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "runner_identity_sha256", "execution_mode", "source_execution_observed", "production_isolation"],
+      "properties": {
+        "version": { "const": "app-builder.experimental-v1" },
+        "runner_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "execution_mode": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "source_execution_observed": { "type": "boolean" },
+        "production_isolation": { "type": "boolean" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wall_seconds", "cpu_seconds", "memory_bytes", "pids", "disk_bytes", "stdout_bytes", "stderr_bytes", "open_files", "concurrent_jobs"],
+      "properties": {
+        "wall_seconds": { "type": "integer", "minimum": 1 },
+        "cpu_seconds": { "type": "integer", "minimum": 1 },
+        "memory_bytes": { "type": "integer", "minimum": 1 },
+        "pids": { "type": "integer", "minimum": 1 },
+        "disk_bytes": { "type": "integer", "minimum": 1 },
+        "stdout_bytes": { "type": "integer", "minimum": 1 },
+        "stderr_bytes": { "type": "integer", "minimum": 1 },
+        "open_files": { "type": "integer", "minimum": 1 },
+        "concurrent_jobs": { "const": 1 }
+      }
+    },
+    "terminal_outcome": { "const": "build-output-untrusted" },
+    "authority": {
+      "const": {
+        "builder": "quarantine-only",
+        "verify": "independent-verifier",
+        "install": "none",
+        "publish": "none"
+      }
+    },
+    "created_at_utc": { "$ref": "#/$defs/utc" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    },
+    "package_entrypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "initial_route", "triggers"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "kind": { "enum": ["launcher-ui", "service", "settings"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "initial_route": { "type": ["string", "null"], "maxLength": 128 },
+        "triggers": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "enum": ["on-enable", "scheduler", "manual"] }
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "preferred_width", "preferred_height", "minimum_width", "minimum_height", "resizable"],
+      "properties": {
+        "schema_version": { "const": "vibapp.host-presentation.experimental-v1" },
+        "preferred_width": { "type": "integer", "minimum": 320, "maximum": 1920 },
+        "preferred_height": { "type": "integer", "minimum": 240, "maximum": 1200 },
+        "minimum_width": { "type": "integer", "minimum": 320, "maximum": 1280 },
+        "minimum_height": { "type": "integer", "minimum": 240, "maximum": 960 },
+        "resizable": { "type": "boolean" }
+      }
+    }
+  }
+}

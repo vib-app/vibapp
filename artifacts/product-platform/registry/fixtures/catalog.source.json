@@ -1,0 +1,92 @@
+{
+  "fixture_version": "vibapp.fast-registry-fixtures.2026-08-24.1",
+  "status": "synthetic-product-platform-local-hold",
+  "apps": [
+    {
+      "fixture_id": "focus-board",
+      "app_id": "ai.vibapp.fixture.focus-board",
+      "version": "0.1.0",
+      "kind": "ui",
+      "display_name": "Focus Board (Fixture)",
+      "summary": "Plan focused work sessions with a local task list and progress view.",
+      "wit_world": "ui-only-reference",
+      "profiles": ["desktop"],
+      "platforms": [
+        {"os": "macos", "arch": "aarch64", "profile": "desktop"},
+        {"os": "windows", "arch": "x86-64", "profile": "desktop"}
+      ],
+      "tags": ["focus", "productivity", "task-list", "专注", "任务"],
+      "capability_labels": ["foreground-ui", "local-state", "no-network"]
+    },
+    {
+      "fixture_id": "local-notes",
+      "app_id": "ai.vibapp.fixture.local-notes",
+      "version": "0.1.0",
+      "kind": "ui",
+      "display_name": "Local Notes (Fixture)",
+      "summary": "Keep private notes and checklists in app-scoped local storage.",
+      "wit_world": "ui-only-reference",
+      "profiles": ["desktop"],
+      "platforms": [
+        {"os": "macos", "arch": "aarch64", "profile": "desktop"},
+        {"os": "linux", "arch": "aarch64", "profile": "desktop"}
+      ],
+      "tags": ["notes", "checklist", "private", "笔记", "清单"],
+      "capability_labels": ["foreground-ui", "local-state", "no-network"]
+    },
+    {
+      "fixture_id": "alarm-steward",
+      "app_id": "ai.vibapp.fixture.alarm-steward",
+      "version": "0.1.0",
+      "kind": "hybrid",
+      "display_name": "Alarm Steward (Fixture)",
+      "summary": "Configure alarms in a launcher view while the host owns durable schedules and notifications.",
+      "wit_world": "hybrid-reference",
+      "profiles": ["desktop"],
+      "platforms": [
+        {"os": "macos", "arch": "aarch64", "profile": "desktop"}
+      ],
+      "tags": ["alarm", "schedule", "reminder", "闹钟", "提醒"],
+      "capability_labels": ["host-scheduler", "notification", "local-state"]
+    },
+    {
+      "fixture_id": "device-pulse",
+      "app_id": "ai.vibapp.fixture.device-pulse",
+      "version": "0.1.0",
+      "kind": "service",
+      "display_name": "Device Pulse (Fixture)",
+      "summary": "Report simulated device metrics through a bounded service fixture.",
+      "wit_world": "service-only-reference",
+      "profiles": ["headless"],
+      "platforms": [
+        {"os": "linux", "arch": "aarch64", "profile": "headless"}
+      ],
+      "tags": ["metrics", "temperature", "headless", "温度", "监控"],
+      "capability_labels": ["background-service", "system-metrics", "scoped-http"]
+    },
+    {
+      "fixture_id": "weather-preview",
+      "app_id": "ai.vibapp.fixture.weather-preview",
+      "version": "0.1.0",
+      "kind": "ui",
+      "display_name": "Weather Preview (Fixture)",
+      "summary": "Show a foreground-only simulated weather preview with no install authority.",
+      "wit_world": "web-preview-reference",
+      "profiles": ["web-preview"],
+      "platforms": [
+        {"os": "browser", "arch": "wasm32", "profile": "web-preview"}
+      ],
+      "browser_derivation": {
+        "profile": "web-preview",
+        "artifact_path": "/launcher/weather-preview.core.wasm",
+        "artifact_media_type": "application/wasm",
+        "artifact_format": "core-wasm",
+        "artifact_sha256": "a5cd7802b1e10dde41d64bd0c1921ab6f775032c76dcad590d33b1b39ace1012",
+        "artifact_size_bytes": 44,
+        "canonical_component_reference_sha256": "ad9f8feba53f3b505ad4907fbbfa145791472f317e8da6ad69450b0ddeffc04c"
+      },
+      "tags": ["weather", "forecast", "preview", "天气", "预报"],
+      "capability_labels": ["foreground-only", "simulated-metrics", "mock-http"]
+    }
+  ]
+}

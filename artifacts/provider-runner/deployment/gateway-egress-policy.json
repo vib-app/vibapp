@@ -1,0 +1,32 @@
+{
+  "schema_version": "vibapp.provider-gateway-egress-policy.experimental-v1",
+  "document_type": "provider-gateway-egress-policy",
+  "status": "deployment-unprovisioned",
+  "workload_network_namespace": "per-job-private",
+  "default_egress": "deny",
+  "allowed_egress": [
+    {
+      "destination_role": "trusted-provider-gateway",
+      "transport": "tcp-mtls",
+      "address_source": "independently-pinned-private-address",
+      "ports": [443],
+      "dns_required": false
+    }
+  ],
+  "denied_routes": [
+    "0.0.0.0/0-except-pinned-gateway",
+    "::/0-except-pinned-gateway",
+    "100.64.0.0/10",
+    "127.0.0.0/8",
+    "169.254.0.0/16",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "224.0.0.0/4",
+    "10.0.0.0/8",
+    "fc00::/7",
+    "fe80::/10"
+  ],
+  "provider_destinations_enforced_by": "trusted-provider-gateway",
+  "gateway_receipt_required": true,
+  "gateway_receipt_version": "vibapp.provider-gateway-receipt.experimental-v1"
+}

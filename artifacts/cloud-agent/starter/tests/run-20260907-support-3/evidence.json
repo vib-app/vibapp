@@ -1,0 +1,58 @@
+{
+  "state": "local-support-smoke-passed-not-release-acceptance",
+  "scope": "synthetic-infrastructure-only-non-public",
+  "install": false,
+  "publish": false,
+  "promotion": false,
+  "component_sha256": "0763592e021dc0f6999c6e8d00e55447969a3a0daf7cfe3387e266993a8572df",
+  "component_bytes": 94591,
+  "support_sha256": "1f100bd5e8da98fcd304ed1955bc8c31299ef6f9b58164cf13986bea0f2dc2a5",
+  "component_imports": [
+    "vibapp:experimental-v0/clock@0.0.1",
+    "vibapp:experimental-v0/common@0.0.1",
+    "vibapp:experimental-v0/host-info@0.0.1",
+    "vibapp:experimental-v0/kv@0.0.1",
+    "vibapp:experimental-v0/log@0.0.1",
+    "vibapp:experimental-v0/scheduler@0.0.1",
+    "vibapp:experimental-v0/settings@0.0.1",
+    "vibapp:experimental-v0/ui@0.0.1"
+  ],
+  "capability_imports": [
+    "vibapp:experimental-v0/clock@0.0.1",
+    "vibapp:experimental-v0/host-info@0.0.1",
+    "vibapp:experimental-v0/kv@0.0.1",
+    "vibapp:experimental-v0/log@0.0.1",
+    "vibapp:experimental-v0/settings@0.0.1"
+  ],
+  "wasm_checks": [
+    {
+      "id": "wasm-tools-validate",
+      "outcome": "pass",
+      "tool": "wasm-tools 1.256.0",
+      "detail": "exact component bytes validate"
+    },
+    {
+      "id": "component-import-reconciliation",
+      "outcome": "pass",
+      "tool": "wasm-tools component wit",
+      "detail": "required imports and guest export are exact; ambient WASI denied"
+    },
+    {
+      "id": "component-tool-metadata",
+      "outcome": "pass",
+      "tool": "wasm-tools metadata show",
+      "detail": "wit-bindgen-rust 0.60.0 metadata observed"
+    }
+  ],
+  "descriptor_check": {
+    "id": "guest-descriptor-reconciliation",
+    "outcome": "pass",
+    "tool": "vibapp-component-inspector sha256:588497fddd25",
+    "detail": "app identity/display name and every entrypoint id/kind/label/initial route match one-to-one; no extra Guest entrypoints"
+  },
+  "guest_checks": "describe executed allocator alignment/grow/shrink/prefix/ceiling, memcmp, Vec/String realloc, field typing/duplicates, surface IDs/close, settings and migration assertions",
+  "cargo_jobs": 1,
+  "build_observation": null,
+  "build_observation_note": "original successful compile preceded wrapper accounting repair; see build.stderr",
+  "reproducibility": "not checked; one build only"
+}

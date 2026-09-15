@@ -1,0 +1,65 @@
+name: Client Release
+on:
+  workflow_dispatch:
+  push:
+    tags: ['client-v*']
+  pull_request:
+    paths: ['.github/workflows/client-release.yml', 'artifacts/desktop/ci/**', 'artifacts/desktop/scripts/**']
+permissions:
+  contents: read
+concurrency:
+  group: client-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: roomhash/headless
+          ref: 03345ed558c1f3e38a5cdf0ab95a20467aa1d333
+          path: generated/release-deps/RoomHash/headless
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.23.2'
+      - name: Shared UI regression tests
+        run: node --test artifacts/desktop/ui/tests/app-ui.test.mjs artifacts/desktop/scripts/tests/desktop-build-inputs.test.mjs
+      - name: Compile, package and verify client
+        run: node artifacts/desktop/ci/build-release.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: client-macos-arm64
+          path: generated/client-release/*
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    if: startsWith(github.ref, 'refs/tags/client-v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: client-macos-arm64
+          path: release
+      - name: Verify transferred artifacts
+        working-directory: release
+        run: sha256sum --check SHA256SUMS
+      - name: Publish preview only after all checks pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          gh release create "$RELEASE_TAG" release/*
+          --verify-tag --prerelease --title "VibApp $RELEASE_TAG"
+          --notes-file docs/product/client-release-notes.md

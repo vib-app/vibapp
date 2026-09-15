@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:vibapp:codeagent-launcher:submit-request:experimental-v0",
+  "title": "Experimental CodeAgent Launcher submit request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_id",
+    "attempt_id",
+    "idempotency_key",
+    "provider_profile_id",
+    "provider_id",
+    "model",
+    "task_digest_sha256",
+    "input_digest_sha256",
+    "prompt_digest_sha256",
+    "resource_policy_id",
+    "network_policy_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "codeagent-launcher.experimental-v0"
+    },
+    "job_id": {
+      "$ref": "#/$defs/id"
+    },
+    "attempt_id": {
+      "$ref": "#/$defs/id"
+    },
+    "idempotency_key": {
+      "$ref": "#/$defs/id"
+    },
+    "provider_profile_id": {
+      "$ref": "#/$defs/id"
+    },
+    "provider_id": {
+      "$ref": "#/$defs/id"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!-)(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
+    },
+    "task_digest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "input_digest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "prompt_digest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "resource_policy_id": {
+      "$ref": "#/$defs/id"
+    },
+    "network_policy_id": {
+      "$ref": "#/$defs/id"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

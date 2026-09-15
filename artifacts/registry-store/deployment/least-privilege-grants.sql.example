@@ -1,0 +1,51 @@
+-- Deployment-owner template. Replace these psql variables with pre-created,
+-- non-owner NOLOGIN/LOGIN roles according to the deployment's identity system.
+-- This file is not a migration and is never run by local tests.
+
+\set ON_ERROR_STOP on
+
+\if :{?registry_search_role}
+GRANT USAGE ON SCHEMA registry TO :"registry_search_role";
+GRANT EXECUTE ON FUNCTION registry.search_preflight_v1(jsonb,text,text) TO :"registry_search_role";
+GRANT EXECUTE ON FUNCTION registry.search_v1(jsonb,text,text,public.vector,jsonb,text) TO :"registry_search_role";
+GRANT SELECT ON registry.public_release_facts_v1 TO :"registry_search_role";
+\else
+DO $$ BEGIN
+  RAISE EXCEPTION 'registry_search_role must be supplied';
+END $$;
+\endif
+
+\if :{?registry_ingest_role}
+GRANT USAGE ON SCHEMA registry TO :"registry_ingest_role";
+GRANT EXECUTE ON FUNCTION registry.upsert_release_v1(jsonb,text,text) TO :"registry_ingest_role";
+\else
+DO $$ BEGIN
+  RAISE EXCEPTION 'registry_ingest_role must be supplied';
+END $$;
+\endif
+
+-- Trust, verification, authority, publication and revocation functions are
+-- intentionally omitted. Give each to a distinct operational role only after
+-- its independent authorization/audit design is approved.
+
+-- Optional, distinct TRUSTED archive worker: never supply a publisher, browser,
+-- CodeAgent, ingestion or public search role here. It attests remote read-back.
+\if :{?registry_archive_role}
+GRANT USAGE ON SCHEMA registry TO :"registry_archive_role";
+GRANT EXECUTE ON FUNCTION registry.record_github_source_archive_v1(registry.sha256_hex,jsonb) TO :"registry_archive_role";
+\endif
+
+-- Optional authenticated publication-service principal. It has no ability to
+-- insert archive receipts. User-to-publisher authentication stays in the service.
+\if :{?registry_publication_role}
+GRANT USAGE ON SCHEMA registry TO :"registry_publication_role";
+GRANT SELECT ON registry.source_archive_input_v1 TO :"registry_publication_role";
+GRANT EXECUTE ON FUNCTION registry.publish_release_v1(registry.sha256_hex,registry.sha256_hex) TO :"registry_publication_role";
+\endif
+
+-- Optional trusted metadata projector, not an upload authority. Join to
+-- public_release_facts_v1 by package/source digests before emitting public data.
+\if :{?registry_projection_role}
+GRANT USAGE ON SCHEMA registry TO :"registry_projection_role";
+GRANT SELECT ON registry.public_release_facts_v1, registry.github_source_archive_facts_v1 TO :"registry_projection_role";
+\endif

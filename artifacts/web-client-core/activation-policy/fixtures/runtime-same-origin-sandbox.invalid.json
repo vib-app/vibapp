@@ -1,0 +1,5 @@
+{
+  "case_id": "runtime-same-origin-sandbox",
+  "mutation": { "path": "runtime.launcher_origin_relation", "value": "same-as-preview-shell" },
+  "expected_reason": "runtime-origin-isolation"
+}

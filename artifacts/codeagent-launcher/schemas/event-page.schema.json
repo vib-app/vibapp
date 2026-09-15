@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:vibapp:codeagent-launcher:event-page:experimental-v0",
+  "title": "Experimental CodeAgent Launcher event page",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_id",
+    "attempt_id",
+    "after_sequence",
+    "events",
+    "cursor",
+    "has_more"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "codeagent-launcher.experimental-v0"
+    },
+    "job_id": {
+      "$ref": "#/$defs/id"
+    },
+    "attempt_id": {
+      "$ref": "#/$defs/id"
+    },
+    "after_sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sequence", "phase", "code"],
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9223372036854775807
+          },
+          "phase": {
+            "enum": ["queued", "starting", "running", "quiescing", "terminal"]
+          },
+          "code": {
+            "enum": [
+              "job-queued",
+              "executor-starting",
+              "backend-running",
+              "cancel-requested",
+              "cleanup-pending",
+              "job-succeeded",
+              "job-failed",
+              "job-cancelled",
+              "job-held"
+            ]
+          }
+        }
+      }
+    },
+    "cursor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "has_more": {
+      "type": "boolean"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    }
+  }
+}

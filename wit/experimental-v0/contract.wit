@@ -1,0 +1,1228 @@
+package vibapp:experimental-v0@0.0.1;
+
+/// Shared scalar types and closed error vocabulary for the unpublished Stage 0 contract.
+interface common {
+    type app-id = string;
+    type app-version = string;
+    type entrypoint-id = string;
+    type route-id = string;
+    type session-id = string;
+    type surface-id = string;
+    type service-instance-id = string;
+    type event-id = string;
+    type occurrence-id = string;
+    type idempotency-key = string;
+    type cancellation-id = string;
+    type restore-token = string;
+    type state-revision = u64;
+    /// Canonical RFC 3339 UTC at whole-second precision: YYYY-MM-DDTHH:MM:SSZ.
+    /// Hosts reject every offset, fractional, malformed, or non-calendar value as invalid-argument.
+    type utc-instant = string;
+    type generation-id = string;
+    type monotonic-milliseconds = u64;
+
+    enum app-kind {
+        ui,
+        service,
+        hybrid,
+    }
+
+    enum execution-profile {
+        desktop,
+        web-preview,
+        web-runtime,
+        headless,
+    }
+
+    enum entrypoint-kind {
+        launcher-ui,
+        service,
+        settings,
+    }
+
+    enum data-disposition {
+        delete,
+        retain,
+        export-then-delete,
+    }
+
+    /// Validated and persisted by the host when a schedule is accepted.
+    record notification-projection {
+        title: string,
+        body: string,
+        standard-sound: bool,
+    }
+
+    enum error-code {
+        invalid-argument,
+        incompatible-contract,
+        unsupported-version,
+        unknown-interface,
+        missing-interface,
+        permission-denied,
+        consent-required,
+        capability-unavailable,
+        unsupported-surface,
+        resource-limit,
+        deadline-exceeded,
+        cancelled,
+        app-disabled,
+        app-uninstalled,
+        upgrade-in-progress,
+        integrity-failure,
+        not-found,
+        conflict,
+        stale-revision,
+        malformed-output,
+        forged-identifier,
+        internal,
+    }
+
+    record host-error {
+        code: error-code,
+        message: string,
+        retryable: bool,
+    }
+
+    record app-error {
+        code: error-code,
+        message: string,
+        retryable: bool,
+    }
+
+    record call-context {
+        event-id: event-id,
+        idempotency-key: idempotency-key,
+        cancellation: cancellation-id,
+        generation: generation-id,
+        profile: execution-profile,
+        deadline-monotonic-ms: monotonic-milliseconds,
+    }
+
+    record local-date {
+        year: u16,
+        month: u8,
+        day: u8,
+    }
+
+    record local-time {
+        hour: u8,
+        minute: u8,
+        second: u8,
+    }
+
+    record local-date-time {
+        date: local-date,
+        time: local-time,
+        time-zone: string,
+    }
+}
+
+/// Flat, semantic, host-rendered launcher surfaces. There are no DOM or GUI framework values.
+interface ui {
+    use common.{local-date, local-time, route-id, session-id, surface-id};
+
+    type node-id = string;
+    type action-id = string;
+    type field-id = string;
+
+    enum text-style {
+        body,
+        caption,
+        title,
+        heading,
+        status,
+    }
+
+    enum button-style {
+        primary,
+        secondary,
+        destructive,
+        quiet,
+    }
+
+    enum field-kind {
+        text,
+        integer,
+        decimal,
+        boolean,
+        date,
+        time,
+        time-zone,
+        choice,
+    }
+
+    variant field-value {
+        empty,
+        text(string),
+        /// Opaque host-secret-store handle; sensitive fields never carry plaintext.
+        secret-handle(string),
+        integer(s64),
+        decimal(string),
+        boolean(bool),
+        date(local-date),
+        time(local-time),
+        time-zone(string),
+        choice(string),
+    }
+
+    record choice-option {
+        value: string,
+        label: string,
+    }
+
+    record text-node {
+        text: string,
+        style: text-style,
+    }
+
+    record button-node {
+        label: string,
+        action: action-id,
+        style: button-style,
+        disabled: bool,
+    }
+
+    record field-node {
+        field: field-id,
+        label: string,
+        kind: field-kind,
+        value: field-value,
+        required: bool,
+        sensitive: bool,
+        choices: list<choice-option>,
+        validation-message: option<string>,
+    }
+
+    record list-node {
+        label: option<string>,
+    }
+
+    record progress-node {
+        label: string,
+        current: u32,
+        total: option<u32>,
+    }
+
+    record confirmation-node {
+        title: string,
+        message: string,
+        confirm-action: action-id,
+        cancel-action: action-id,
+        destructive: bool,
+    }
+
+    variant node-kind {
+        text(text-node),
+        button(button-node),
+        field(field-node),
+        list-container(list-node),
+        progress(progress-node),
+        confirmation(confirmation-node),
+    }
+
+    record node {
+        id: node-id,
+        parent: option<node-id>,
+        kind: node-kind,
+    }
+
+    record view {
+        title: string,
+        root: node-id,
+        nodes: list<node>,
+    }
+
+    record field-change {
+        field: field-id,
+        value: field-value,
+    }
+
+    record action-event {
+        session: session-id,
+        surface: surface-id,
+        route: route-id,
+        action: action-id,
+        fields: list<field-change>,
+    }
+
+    record surface-update {
+        session: session-id,
+        surface: surface-id,
+        route: route-id,
+        view: view,
+    }
+}
+
+/// Typed settings schema rendered and persisted by the host.
+interface settings {
+    use common.{host-error};
+    use ui.{choice-option, field-kind, field-value};
+
+    type setting-key = string;
+
+    record setting-definition {
+        key: setting-key,
+        label: string,
+        description: string,
+        kind: field-kind,
+        required: bool,
+        sensitive: bool,
+        default-value: option<field-value>,
+        choices: list<choice-option>,
+    }
+
+    record settings-schema {
+        schema-revision: u64,
+        settings: list<setting-definition>,
+    }
+
+    record setting-value {
+        key: setting-key,
+        value: field-value,
+    }
+
+    record settings-snapshot {
+        schema-revision: u64,
+        config-revision: u64,
+        values: list<setting-value>,
+    }
+
+    record settings-validation {
+        accepted: bool,
+        field-errors: list<setting-field-error>,
+        service-restart-required: bool,
+    }
+
+    record setting-field-error {
+        key: setting-key,
+        message: string,
+    }
+
+    /// Returns the host-owned configuration visible to this app generation.
+    current: func() -> result<settings-snapshot, host-error>;
+}
+
+/// Read-only clock and time-zone capability.
+interface clock {
+    use common.{host-error, monotonic-milliseconds, utc-instant};
+
+    record wall-clock {
+        now-utc: utc-instant,
+        time-zone: string,
+        utc-offset-seconds: s32,
+    }
+
+    wall-now: func() -> result<wall-clock, host-error>;
+    monotonic-now: func() -> monotonic-milliseconds;
+}
+
+/// Host-owned durable scheduler. The guest never waits in a timer loop.
+interface scheduler {
+    use common.{host-error, idempotency-key, local-date, local-date-time, local-time, notification-projection, occurrence-id, utc-instant};
+
+    type schedule-id = string;
+    type schedule-key = string;
+
+    enum weekday {
+        monday,
+        tuesday,
+        wednesday,
+        thursday,
+        friday,
+        saturday,
+        sunday,
+    }
+
+    enum gap-policy {
+        reject,
+        next-valid,
+    }
+
+    enum overlap-policy {
+        earlier,
+        later,
+    }
+
+    enum missed-policy {
+        skip,
+        fire-once,
+    }
+
+    enum schedule-purpose {
+        alarm,
+        service-trigger,
+    }
+
+    enum recurrence-kind {
+        daily,
+        weekly,
+    }
+
+    record local-one-shot {
+        when: local-date-time,
+        gap: gap-policy,
+        overlap: overlap-policy,
+    }
+
+    record local-recurrence {
+        kind: recurrence-kind,
+        time: local-time,
+        start-date: local-date,
+        time-zone: string,
+        /// Empty for daily; non-empty and unique for weekly.
+        weekdays: list<weekday>,
+        gap: gap-policy,
+        overlap: overlap-policy,
+    }
+
+    variant schedule-spec {
+        at-instant(utc-instant),
+        at-local(local-one-shot),
+        recurring-local(local-recurrence),
+    }
+
+    record schedule-request {
+        key: schedule-key,
+        purpose: schedule-purpose,
+        spec: schedule-spec,
+        missed: missed-policy,
+        payload: list<u8>,
+        /// Required for purpose=alarm and forbidden for purpose=service-trigger.
+        notification: option<notification-projection>,
+        idempotency-key: idempotency-key,
+    }
+
+    record schedule-record {
+        id: schedule-id,
+        key: schedule-key,
+        purpose: schedule-purpose,
+        spec: schedule-spec,
+        revision: u64,
+        enabled: bool,
+        next-occurrence-id: option<occurrence-id>,
+        notification: option<notification-projection>,
+    }
+
+    record delivery-event {
+        schedule: schedule-id,
+        key: schedule-key,
+        occurrence: occurrence-id,
+        scheduled-for-utc: utc-instant,
+        dispatched-at-utc: utc-instant,
+        classification: delivery-classification,
+        attempt: u32,
+        payload: list<u8>,
+    }
+
+    enum delivery-classification {
+        on-time,
+        catch-up,
+        missed,
+        permission-denied,
+    }
+
+    enum occurrence-outcome {
+        observed,
+        applied,
+        failed,
+    }
+
+    upsert: func(request: schedule-request) -> result<schedule-record, host-error>;
+    /// Disables while retaining the validated definition and notification projection.
+    disable: func(id: schedule-id, idempotency-key: idempotency-key) -> result<_, host-error>;
+    /// Re-enables using a new revision; an expired one-shot returns conflict and stays disabled.
+    enable: func(id: schedule-id, idempotency-key: idempotency-key) -> result<schedule-record, host-error>;
+    list-schedules: func() -> result<list<schedule-record>, host-error>;
+    acknowledge-occurrence: func(occurrence: occurrence-id, outcome: occurrence-outcome, idempotency-key: idempotency-key) -> result<_, host-error>;
+}
+
+/// Permission-checked notification capability.
+interface notification {
+    use common.{host-error, idempotency-key, notification-projection};
+
+    record notification-request {
+        projection: notification-projection,
+        idempotency-key: idempotency-key,
+    }
+
+    record notification-receipt {
+        notification-id: string,
+        deduplicated: bool,
+    }
+
+    show: func(request: notification-request) -> result<notification-receipt, host-error>;
+}
+
+/// App-scoped, host-owned transactional key/value storage.
+interface kv {
+    use common.{host-error, idempotency-key, state-revision};
+
+    type key = string;
+
+    record entry {
+        key: key,
+        value: list<u8>,
+        revision: state-revision,
+    }
+
+    record put-operation {
+        key: key,
+        value: list<u8>,
+        expected-revision: option<state-revision>,
+    }
+
+    record delete-operation {
+        key: key,
+        expected-revision: option<state-revision>,
+    }
+
+    variant write-operation {
+        put(put-operation),
+        delete(delete-operation),
+    }
+
+    record transaction-request {
+        operations: list<write-operation>,
+        idempotency-key: idempotency-key,
+    }
+
+    record transaction-result {
+        state-revision: state-revision,
+        deduplicated: bool,
+    }
+
+    get: func(key: key) -> result<option<entry>, host-error>;
+    scan-prefix: func(prefix: string, limit: u32) -> result<list<entry>, host-error>;
+    transact: func(request: transaction-request) -> result<transaction-result, host-error>;
+}
+
+/// Size- and rate-limited structured logs.
+interface log {
+    use common.{host-error, idempotency-key};
+
+    enum level {
+        debug,
+        info,
+        warn,
+        error,
+    }
+
+    record field {
+        key: string,
+        value: string,
+    }
+
+    write: func(level: level, message: string, fields: list<field>, idempotency-key: idempotency-key) -> result<_, host-error>;
+}
+
+/// Capability, profile, and degradation discovery. This reports availability, not authority escalation.
+interface host-info {
+    use common.{execution-profile};
+
+    enum availability {
+        native,
+        brokered,
+        mock,
+        denied,
+        unavailable,
+    }
+
+    enum background-reliability {
+        daemon,
+        process,
+        foreground-only,
+        not-applicable,
+    }
+
+    record capability-state {
+        interface-name: string,
+        availability: availability,
+        granted: bool,
+        detail: string,
+    }
+
+    record host-description {
+        profile: execution-profile,
+        background: background-reliability,
+        capabilities: list<capability-state>,
+    }
+
+    describe-host: func() -> host-description;
+}
+
+/// Brokered system metrics; no ambient hardware/device handle is exposed.
+interface system-metrics {
+    use common.{host-error, utc-instant};
+
+    enum metric-name {
+        cpu-temperature-celsius,
+        cpu-utilization-percent,
+        memory-utilization-percent,
+    }
+
+    record sample {
+        metric: metric-name,
+        value: f64,
+        observed-at-utc: utc-instant,
+        simulated: bool,
+    }
+
+    read: func(metrics: list<metric-name>) -> result<list<sample>, host-error>;
+}
+
+/// Origin- and method-scoped HTTP broker; no raw socket or DNS API is exposed.
+interface http {
+    use common.{host-error, idempotency-key};
+
+    enum method {
+        get,
+        post,
+        put,
+        patch,
+        delete,
+    }
+
+    record header {
+        name: string,
+        value: string,
+    }
+
+    record request {
+        method: method,
+        url: string,
+        headers: list<header>,
+        body: list<u8>,
+        timeout-ms: u32,
+        maximum-response-bytes: u32,
+        idempotency-key: idempotency-key,
+    }
+
+    record response {
+        status: u16,
+        headers: list<header>,
+        body: list<u8>,
+        simulated: bool,
+    }
+
+    send: func(request: request) -> result<response, host-error>;
+}
+
+/// Surface-neutral daemon control contract. The desktop launcher and CLI serialize the
+/// same envelope; this interface is never imported by an untrusted app component.
+interface control {
+    use common.{app-id, app-kind, app-version, data-disposition, entrypoint-id, error-code, execution-profile, generation-id, host-error, idempotency-key, notification-projection, occurrence-id, route-id, session-id, surface-id, utc-instant};
+    use scheduler.{delivery-classification, local-one-shot, local-recurrence};
+    use settings.{setting-value, settings-snapshot};
+
+    type control-request-id = string;
+    type alarm-id = string;
+    type permission-plan-id = string;
+
+    enum client-kind {
+        launcher,
+        cli,
+        web,
+    }
+
+    record search-request {
+        query: string,
+        limit: u32,
+    }
+
+    record install-request {
+        package-digest-sha256: string,
+        enable-after-install: bool,
+    }
+
+    record uninstall-request {
+        disposition: data-disposition,
+    }
+
+    record settings-configure-request {
+        expected-config-revision: option<u64>,
+        values: list<setting-value>,
+    }
+
+    record logs-request {
+        cursor: option<string>,
+        limit: u32,
+    }
+
+    record update-request {
+        package-digest-sha256: string,
+    }
+
+    record service-control-request {
+        entrypoint: entrypoint-id,
+    }
+
+    record launch-request {
+        entrypoint: entrypoint-id,
+        route: option<route-id>,
+    }
+
+    variant alarm-schedule {
+        one-shot(local-one-shot),
+        recurring(local-recurrence),
+    }
+
+    record alarm-configure-request {
+        alarm-id: alarm-id,
+        expected-revision: option<u64>,
+        schedule: alarm-schedule,
+        notification: notification-projection,
+    }
+
+    record alarm-target-request {
+        alarm-id: alarm-id,
+        expected-revision: option<u64>,
+    }
+
+    record alarm-snooze-request {
+        parent-occurrence-id: occurrence-id,
+        os-action-id: string,
+        action-received-at-utc: utc-instant,
+        duration-seconds: u32,
+    }
+
+    record alarm-status-request {
+        alarm-id: alarm-id,
+        occurrence-limit: u32,
+        effect-limit: u32,
+    }
+
+    enum permission-state {
+        granted,
+        denied,
+        unavailable,
+    }
+
+    record permission-grant {
+        interface-name: string,
+        state: permission-state,
+        scope-digest-sha256: string,
+        reason: string,
+    }
+
+    record permission-snapshot {
+        app: app-id,
+        grants-revision: u64,
+        grants: list<permission-grant>,
+    }
+
+    record permission-plan-request {
+        expected-permission-revision: u64,
+        candidate-package-digest-sha256: option<string>,
+        profile: execution-profile,
+        desired-granted-interfaces: list<string>,
+    }
+
+    enum permission-change-kind {
+        grant,
+        revoke,
+        widen-scope,
+        narrow-scope,
+    }
+
+    record permission-change {
+        interface-name: string,
+        change: permission-change-kind,
+        current-scope-digest-sha256: option<string>,
+        proposed-scope-digest-sha256: option<string>,
+        rationale: string,
+    }
+
+    record permission-plan {
+        id: permission-plan-id,
+        app: app-id,
+        grants-revision: u64,
+        expires-at-utc: utc-instant,
+        changes: list<permission-change>,
+        confirmation-required: bool,
+        /// Present only after a trusted interactive host confirmation.
+        host-confirmation-token: option<string>,
+    }
+
+    record permission-commit-request {
+        plan: permission-plan-id,
+        expected-permission-revision: u64,
+        host-confirmation-token: string,
+    }
+
+    record permission-revoke-request {
+        plan: permission-plan-id,
+        expected-permission-revision: u64,
+        host-confirmation-token: string,
+    }
+
+    record permission-change-result {
+        snapshot: permission-snapshot,
+        applied-changes: list<permission-change>,
+    }
+
+    variant control-command {
+        search(search-request),
+        install(install-request),
+        uninstall(uninstall-request),
+        enable,
+        disable,
+        settings,
+        configure(settings-configure-request),
+        permissions,
+        permission-plan(permission-plan-request),
+        permission-commit(permission-commit-request),
+        permission-revoke(permission-revoke-request),
+        alarm-configure(alarm-configure-request),
+        alarm-enable(alarm-target-request),
+        alarm-disable(alarm-target-request),
+        alarm-cancel(alarm-target-request),
+        alarm-snooze(alarm-snooze-request),
+        alarm-status(alarm-status-request),
+        status,
+        logs(logs-request),
+        update(update-request),
+        service-start(service-control-request),
+        service-stop(service-control-request),
+        launch(launch-request),
+    }
+
+    record daemon-request {
+        request-id: control-request-id,
+        idempotency-key: idempotency-key,
+        client: client-kind,
+        /// None only for search/install. Every installed-app operation has one subject.
+        subject: option<app-id>,
+        command: control-command,
+    }
+
+    record search-hit {
+        app: app-id,
+        version: app-version,
+        kind: app-kind,
+        display-name: string,
+        summary: string,
+        package-digest-sha256: string,
+    }
+
+    record app-status {
+        app: app-id,
+        version: app-version,
+        kind: app-kind,
+        enabled: bool,
+        active-profile: option<execution-profile>,
+        active-service-entrypoints: list<entrypoint-id>,
+        last-error: option<error-code>,
+    }
+
+    enum alarm-command-outcome {
+        created,
+        updated,
+        enabled,
+        disabled,
+        unchanged,
+        snoozed,
+    }
+
+    record alarm-command-result {
+        alarm-id: alarm-id,
+        outcome: alarm-command-outcome,
+        revision: u64,
+        enabled: bool,
+        next-occurrence-id: option<occurrence-id>,
+        snooze-occurrence-id: option<occurrence-id>,
+        deduplicated: bool,
+    }
+
+    enum notification-permission-health {
+        authorized,
+        denied,
+        not-determined,
+    }
+
+    enum rollback-state {
+        none,
+        observation-window,
+        rolling-back,
+    }
+
+    enum occurrence-state {
+        scheduled,
+        cancelled,
+        missed,
+        permission-denied,
+        delivery-pending,
+        notification-accepted,
+        notification-failed,
+    }
+
+    enum guest-effect-outcome {
+        pending,
+        acked,
+        dead-lettered,
+    }
+
+    record occurrence-status {
+        occurrence: occurrence-id,
+        due-at-utc: utc-instant,
+        state: occurrence-state,
+        classification: option<delivery-classification>,
+        notification-id: option<string>,
+    }
+
+    enum notification-effect-outcome {
+        pending,
+        accepted,
+        failed,
+    }
+
+    record notification-effect {
+        notification-id: string,
+        occurrence: occurrence-id,
+        outcome: notification-effect-outcome,
+        attempts: u32,
+    }
+
+    record guest-effect {
+        guest-event-id: string,
+        occurrence: occurrence-id,
+        outcome: guest-effect-outcome,
+        attempts: u32,
+    }
+
+    record snooze-action-effect {
+        os-action-id: string,
+        parent-occurrence-id: occurrence-id,
+        snooze-occurrence-id: occurrence-id,
+        deduplicated: bool,
+    }
+
+    variant effect-ledger-entry {
+        notification(notification-effect),
+        guest-event(guest-effect),
+        snooze-action(snooze-action-effect),
+    }
+
+    record alarm-status {
+        alarm-id: alarm-id,
+        schedule: alarm-schedule,
+        notification: notification-projection,
+        enabled: bool,
+        revision: u64,
+        next-occurrence-id: option<occurrence-id>,
+        occurrences: list<occurrence-status>,
+        occurrences-truncated: bool,
+        effects: list<effect-ledger-entry>,
+        effects-truncated: bool,
+        permission-health: notification-permission-health,
+    }
+
+    record alarm-status-snapshot {
+        app: app-id,
+        active-generation: option<generation-id>,
+        rollback-state: rollback-state,
+        alarm: alarm-status,
+    }
+
+    record log-entry {
+        sequence: u64,
+        level: string,
+        message: string,
+    }
+
+    record log-page {
+        entries: list<log-entry>,
+        next-cursor: option<string>,
+    }
+
+    record launched-surface {
+        session: session-id,
+        surface: surface-id,
+        route: route-id,
+    }
+
+    variant control-result {
+        accepted,
+        search(list<search-hit>),
+        status(app-status),
+        settings(settings-snapshot),
+        permissions(permission-snapshot),
+        permission-plan(permission-plan),
+        permission-commit(permission-change-result),
+        permission-revoke(permission-change-result),
+        alarm-command(alarm-command-result),
+        alarm-status(alarm-status-snapshot),
+        logs(log-page),
+        launched(launched-surface),
+    }
+
+    record daemon-response {
+        request-id: control-request-id,
+        outcome: control-result,
+    }
+
+    execute: func(request: daemon-request) -> result<daemon-response, host-error>;
+}
+
+/// Guest exports used by the launcher and daemon. Management remains host-authoritative.
+interface guest {
+    use common.{app-error, app-id, app-kind, app-version, call-context, data-disposition, entrypoint-id, entrypoint-kind, restore-token, route-id, service-instance-id, session-id, state-revision, surface-id};
+    use scheduler.{delivery-event};
+    use settings.{settings-schema, settings-snapshot, settings-validation};
+    use ui.{action-event, field-change, surface-update};
+
+    record entrypoint-descriptor {
+        id: entrypoint-id,
+        kind: entrypoint-kind,
+        label: string,
+        initial-route: option<route-id>,
+    }
+
+    record app-descriptor {
+        id: app-id,
+        version: app-version,
+        kind: app-kind,
+        display-name: string,
+        entrypoints: list<entrypoint-descriptor>,
+    }
+
+    enum open-reason {
+        user,
+        deep-link,
+        restore,
+    }
+
+    record launch-event {
+        entrypoint: entrypoint-id,
+        session: session-id,
+        surface: surface-id,
+        route: route-id,
+        reason: open-reason,
+    }
+
+    record open-event {
+        entrypoint: entrypoint-id,
+        session: session-id,
+        surface: surface-id,
+        route: route-id,
+        reason: open-reason,
+    }
+
+    record close-event {
+        entrypoint: entrypoint-id,
+        session: session-id,
+        surface: surface-id,
+    }
+
+    record focus-event {
+        entrypoint: entrypoint-id,
+        session: session-id,
+        surface: surface-id,
+        focused: bool,
+    }
+
+    record restore-event {
+        entrypoint: entrypoint-id,
+        session: session-id,
+        surface: surface-id,
+        route: route-id,
+        token: restore-token,
+        safe-fields: list<field-change>,
+    }
+
+    variant launcher-event {
+        launch(launch-event),
+        open(open-event),
+        close(close-event),
+        focus(focus-event),
+        restore(restore-event),
+        action(action-event),
+    }
+
+    enum disable-reason {
+        user,
+        policy,
+        unhealthy,
+        update,
+    }
+
+    record installed-event {
+        previous-version: option<app-version>,
+    }
+
+    record enabled-event {
+        previous-state-revision: state-revision,
+    }
+
+    record disable-event {
+        reason: disable-reason,
+    }
+
+    record configured-event {
+        config-revision: u64,
+        changed-keys: list<string>,
+    }
+
+    record uninstalling-event {
+        disposition: data-disposition,
+    }
+
+    variant management-event {
+        installed(installed-event),
+        enabled(enabled-event),
+        disabling(disable-event),
+        configured(configured-event),
+        uninstalling(uninstalling-event),
+    }
+
+    enum service-start-reason {
+        enabled,
+        host-restart,
+        update,
+        manual,
+    }
+
+    enum service-stop-reason {
+        disabled,
+        update,
+        uninstall,
+        unhealthy,
+        host-shutdown,
+    }
+
+    record service-start-event {
+        entrypoint: entrypoint-id,
+        instance: service-instance-id,
+        reason: service-start-reason,
+    }
+
+    record service-stop-event {
+        entrypoint: entrypoint-id,
+        instance: service-instance-id,
+        reason: service-stop-reason,
+    }
+
+    record service-trigger-event {
+        entrypoint: entrypoint-id,
+        instance: service-instance-id,
+        trigger-id: string,
+        payload: list<u8>,
+    }
+
+    variant service-event {
+        start(service-start-event),
+        stop(service-stop-event),
+        trigger(service-trigger-event),
+    }
+
+    variant app-event {
+        launcher(launcher-event),
+        management(management-event),
+        service(service-event),
+        scheduled(delivery-event),
+    }
+
+    record event-output {
+        surfaces: list<surface-update>,
+        diagnostic: option<string>,
+    }
+
+    enum health-status {
+        healthy,
+        degraded,
+        unhealthy,
+    }
+
+    record health-request {
+        service-entrypoint: option<entrypoint-id>,
+        include-dependencies: bool,
+    }
+
+    record health-check {
+        name: string,
+        status: health-status,
+        message: string,
+    }
+
+    record health-report {
+        status: health-status,
+        checks: list<health-check>,
+    }
+
+    record migration-request {
+        from-schema: u32,
+        to-schema: u32,
+        source-state-revision: state-revision,
+        target-state-revision: state-revision,
+    }
+
+    enum migration-status {
+        unchanged,
+        migrated,
+    }
+
+    record migration-result {
+        status: migration-status,
+        target-state-revision: state-revision,
+    }
+
+    describe: func() -> result<app-descriptor, app-error>;
+    get-settings-schema: func() -> result<option<settings-schema>, app-error>;
+    validate-settings: func(context: call-context, proposed: settings-snapshot) -> result<settings-validation, app-error>;
+    handle-event: func(context: call-context, event: app-event) -> result<event-output, app-error>;
+    health: func(context: call-context, request: health-request) -> result<health-report, app-error>;
+    migrate: func(context: call-context, request: migration-request) -> result<migration-result, app-error>;
+}
+
+/// Hand-authored reference world for the UI-only conformance package.
+world ui-only-reference {
+    import clock;
+    import kv;
+    import log;
+    import host-info;
+    import settings;
+    export guest;
+}
+
+/// Hand-authored reference world for the temperature-reporting service fixture.
+world service-only-reference {
+    import clock;
+    import scheduler;
+    import kv;
+    import log;
+    import host-info;
+    import settings;
+    import system-metrics;
+    import http;
+    export guest;
+}
+
+/// Hand-authored reference world for a launcher UI plus persistent alarm service.
+world hybrid-reference {
+    import clock;
+    import scheduler;
+    import notification;
+    import kv;
+    import log;
+    import host-info;
+    import settings;
+    export guest;
+}
+
+/// Preview world. Hardware/background capabilities must be mock or unavailable by manifest policy.
+world web-preview-reference {
+    import clock;
+    import scheduler;
+    import kv;
+    import log;
+    import host-info;
+    import settings;
+    import system-metrics;
+    import http;
+    export guest;
+}
+
+/// Reference daemon API consumed identically by GUI, CLI, and future web control adapters.
+world daemon-control-reference {
+    export control;
+}

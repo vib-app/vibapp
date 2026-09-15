@@ -1,0 +1,5 @@
+{
+  "case_id": "verification-self-certified",
+  "mutation": { "path": "verification.fresh_independent_owner", "value": false },
+  "expected_reason": "independent-verifier"
+}

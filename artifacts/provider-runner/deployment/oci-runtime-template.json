@@ -1,0 +1,36 @@
+{
+  "schema_version": "vibapp.provider-runner-oci-template.experimental-v1",
+  "status": "deployment-unprovisioned",
+  "image": "sha256:REPLACE_WITH_INDEPENDENTLY_REVIEWED_IMAGE_DIGEST",
+  "process": {
+    "user": "PER_JOB_UID_GID",
+    "no_new_privileges": true,
+    "capabilities": [],
+    "environment_inheritance": "none",
+    "environment_allowlist_source": "runner-policy.json"
+  },
+  "rootfs": {
+    "readonly": true
+  },
+  "linux": {
+    "namespaces": ["pid", "ipc", "uts", "mount", "user", "network", "cgroup"],
+    "masked_paths": ["/proc/acpi", "/proc/kcore", "/proc/keys", "/proc/timer_list", "/sys/firmware"],
+    "readonly_paths": ["/proc/asound", "/proc/bus", "/proc/fs", "/proc/irq", "/proc/sys", "/proc/sysrq-trigger"],
+    "seccomp": "REPLACE_WITH_INDEPENDENTLY_REVIEWED_PROFILE_DIGEST",
+    "devices": []
+  },
+  "mounts": [
+    {"destination": "/job/input", "source": "DIGEST_BOUND_INPUT_COPY", "type": "bind", "options": ["ro", "nosuid", "nodev", "noexec"]},
+    {"destination": "/job/work", "source": "FRESH_WORK_COPY_THEN_OUTPUT_QUARANTINE", "type": "bind", "options": ["rw", "nosuid", "nodev", "noexec"]},
+    {"destination": "/tmp", "source": "tmpfs", "type": "tmpfs", "options": ["rw", "nosuid", "nodev", "noexec", "size=67108864"]}
+  ],
+  "host_mounts": [],
+  "network": {
+    "default": "deny",
+    "policy": "gateway-egress-policy.json"
+  },
+  "lifecycle": {
+    "scope": "whole-container-cgroup",
+    "termination": "TERM-then-KILL-then-cgroup-empty-observation"
+  }
+}

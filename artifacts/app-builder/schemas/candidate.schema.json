@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/builder-candidate.experimental-v1.schema.json",
+  "title": "Verifier-promoted local VibApp candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "state",
+    "job_id",
+    "source_tree_sha256",
+    "package_digest_sha256",
+    "package_directory",
+    "component",
+    "manifest",
+    "quarantine_receipt_sha256",
+    "verification",
+    "authority"
+  ],
+  "properties": {
+    "schema_version": { "const": "vibapp.builder-candidate.experimental-v1" },
+    "document_type": { "const": "verifier-promoted-candidate" },
+    "state": { "const": "candidate-ready" },
+    "job_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "source_tree_sha256": { "$ref": "#/$defs/sha256" },
+    "package_digest_sha256": { "$ref": "#/$defs/sha256" },
+    "package_directory": { "const": "package" },
+    "component": { "$ref": "#/$defs/component" },
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "quarantine_receipt_sha256": { "$ref": "#/$defs/sha256" },
+    "presentation": {
+      "description": "Optional verifier-derived host advisory. Omission preserves compatibility with legacy experimental-v1 candidates.",
+      "$ref": "#/$defs/presentation"
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "verifier_version", "verified_at_utc", "checks"],
+      "properties": {
+        "authority": { "const": "independent-verifier" },
+        "verifier_version": { "const": "app-verifier.experimental-v1" },
+        "verified_at_utc": { "$ref": "#/$defs/utc" },
+        "checks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "outcome", "tool", "detail"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "outcome": { "const": "pass" },
+              "tool": { "type": "string", "minLength": 1, "maxLength": 256 },
+              "detail": { "type": "string", "minLength": 1, "maxLength": 1000 }
+            }
+          }
+        }
+      }
+    },
+    "authority": {
+      "const": { "install": "daemon", "publish": "none" }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "utc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": { "const": "component.wasm" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 1, "maximum": 16777216 }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": { "const": "manifest.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size_bytes": { "type": "integer", "minimum": 1, "maximum": 1048576 }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "preferred_width", "preferred_height", "minimum_width", "minimum_height", "resizable"],
+      "properties": {
+        "schema_version": { "const": "vibapp.host-presentation.experimental-v1" },
+        "preferred_width": { "type": "integer", "minimum": 320, "maximum": 1920 },
+        "preferred_height": { "type": "integer", "minimum": 240, "maximum": 1200 },
+        "minimum_width": { "type": "integer", "minimum": 320, "maximum": 1280 },
+        "minimum_height": { "type": "integer", "minimum": 240, "maximum": 960 },
+        "resizable": { "type": "boolean" }
+      }
+    }
+  }
+}

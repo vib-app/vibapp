@@ -1,0 +1,1794 @@
+{
+  "schema_version": "vibapp.alarm-cases.v1",
+  "contract_version": "vibapp.alarm-semantics.v1",
+  "platform": {
+    "os": "macOS",
+    "os_version": "26.5.2",
+    "kernel": "Darwin 25.5.0",
+    "architecture": "arm64",
+    "scheduler_owner": "daemon",
+    "browser_closed_page_excluded": true
+  },
+  "constants": {
+    "clock_resolution_seconds": 1,
+    "awake_dispatch_tolerance_seconds": 2,
+    "recovery_dispatch_tolerance_seconds": 5,
+    "catch_up_grace_seconds_inclusive": 900,
+    "notification_retry_offsets_seconds": [0, 2, 10],
+    "guest_event_attempts": 3,
+    "default_guest_behavior": "ack-first-attempt",
+    "default_permission": "authorized",
+    "default_active_generation": "gen-1",
+    "default_snooze_seconds": 600,
+    "dst_fold_policy": "earlier-utc",
+    "dst_gap_policy": "shift-forward-by-gap"
+  },
+  "wire_contract": {
+    "wit_package": "vibapp:experimental-v0@0.0.1",
+    "json_mapping": "wit-kebab-to-snake;record-object;enum-string;option-null-or-value;variant-tag-value;bounded-integer",
+    "utc_type": "common.utc-instant:YYYY-MM-DDTHH:MM:SSZ",
+    "notification_projection_fields": ["title", "body", "standard_sound"],
+    "local_one_shot_fields": ["when", "gap", "overlap"],
+    "recurrence_fields": ["kind", "time", "start_date", "time_zone", "weekdays", "gap", "overlap"],
+    "recurrence_kinds": ["daily", "weekly"],
+    "alarm_schedule_variants": ["one-shot", "recurring"],
+    "delivery_event_fields": ["schedule", "key", "occurrence", "scheduled_for_utc", "dispatched_at_utc", "classification", "attempt", "payload"],
+    "delivery_classifications": ["on-time", "catch-up", "missed", "permission-denied"],
+    "daemon_request_fields": ["request_id", "idempotency_key", "client", "subject", "command"],
+    "alarm_control_commands": ["alarm-configure", "alarm-enable", "alarm-disable", "alarm-cancel", "alarm-snooze", "alarm-status"],
+    "alarm_configure_request_fields": ["alarm_id", "expected_revision", "schedule", "notification"],
+    "alarm_target_request_fields": ["alarm_id", "expected_revision"],
+    "alarm_snooze_request_fields": ["parent_occurrence_id", "os_action_id", "action_received_at_utc", "duration_seconds"],
+    "alarm_status_request_fields": ["alarm_id", "occurrence_limit", "effect_limit"],
+    "alarm_command_result_fields": ["alarm_id", "outcome", "revision", "enabled", "next_occurrence_id", "snooze_occurrence_id", "deduplicated"],
+    "alarm_command_outcomes": ["created", "updated", "enabled", "disabled", "unchanged", "snoozed"],
+    "occurrence_status_fields": ["occurrence", "due_at_utc", "state", "classification", "notification_id"],
+    "notification_effect_fields": ["notification_id", "occurrence", "outcome", "attempts"],
+    "notification_effect_outcomes": ["pending", "accepted", "failed"],
+    "guest_effect_fields": ["guest_event_id", "occurrence", "outcome", "attempts"],
+    "guest_effect_outcomes": ["pending", "acked", "dead-lettered"],
+    "snooze_action_effect_fields": ["os_action_id", "parent_occurrence_id", "snooze_occurrence_id", "deduplicated"],
+    "alarm_status_fields": ["alarm_id", "schedule", "notification", "enabled", "revision", "next_occurrence_id", "occurrences", "occurrences_truncated", "effects", "effects_truncated", "permission_health"],
+    "alarm_status_snapshot_fields": ["app", "active_generation", "rollback_state", "alarm"],
+    "permission_health_values": ["authorized", "denied", "not-determined"],
+    "rollback_state_values": ["none", "observation-window", "rolling-back"],
+    "occurrence_state_values": ["scheduled", "cancelled", "missed", "permission-denied", "delivery-pending", "notification-accepted", "notification-failed"],
+    "effect_variants": ["notification", "guest-event", "snooze-action"]
+  },
+  "wire_examples": {
+    "notification_projection": {
+      "title": "Wake up",
+      "body": "Morning alarm",
+      "standard_sound": true
+    },
+    "daily_recurrence": {
+      "kind": "daily",
+      "time": { "hour": 9, "minute": 0, "second": 0 },
+      "start_date": { "year": 2026, "month": 8, "day": 13 },
+      "time_zone": "Asia/Shanghai",
+      "weekdays": [],
+      "gap": "next-valid",
+      "overlap": "earlier"
+    },
+    "weekly_recurrence": {
+      "kind": "weekly",
+      "time": { "hour": 9, "minute": 0, "second": 0 },
+      "start_date": { "year": 2026, "month": 8, "day": 10 },
+      "time_zone": "Asia/Shanghai",
+      "weekdays": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "gap": "next-valid",
+      "overlap": "earlier"
+    },
+    "gui_alarm_configure": {
+      "request_id": "wire-gui-configure",
+      "idempotency_key": "surface-neutral-configure",
+      "client": "launcher",
+      "subject": "vibapp.alarm",
+      "command": {
+        "tag": "alarm-configure",
+        "value": {
+          "alarm_id": "alarm-control",
+          "expected_revision": null,
+          "schedule": {
+            "tag": "recurring",
+            "value": {
+              "kind": "daily",
+              "time": { "hour": 9, "minute": 0, "second": 0 },
+              "start_date": { "year": 2026, "month": 8, "day": 13 },
+              "time_zone": "Asia/Shanghai",
+              "weekdays": [],
+              "gap": "next-valid",
+              "overlap": "earlier"
+            }
+          },
+          "notification": { "title": "Wake up", "body": "Morning alarm", "standard_sound": true }
+        }
+      }
+    },
+    "cli_alarm_configure": {
+      "request_id": "wire-cli-configure",
+      "idempotency_key": "surface-neutral-configure",
+      "client": "cli",
+      "subject": "vibapp.alarm",
+      "command": {
+        "tag": "alarm-configure",
+        "value": {
+          "alarm_id": "alarm-control",
+          "expected_revision": null,
+          "schedule": {
+            "tag": "recurring",
+            "value": {
+              "kind": "daily",
+              "time": { "hour": 9, "minute": 0, "second": 0 },
+              "start_date": { "year": 2026, "month": 8, "day": 13 },
+              "time_zone": "Asia/Shanghai",
+              "weekdays": [],
+              "gap": "next-valid",
+              "overlap": "earlier"
+            }
+          },
+          "notification": { "title": "Wake up", "body": "Morning alarm", "standard_sound": true }
+        }
+      }
+    },
+    "alarm_snooze_request": {
+      "parent_occurrence_id": "occ:alarm-control:r1:2026-08-12T01:00:00Z",
+      "os_action_id": "wire-snooze-1",
+      "action_received_at_utc": "2026-08-12T01:00:10Z",
+      "duration_seconds": 600
+    },
+    "alarm_snooze_daemon_request": {
+      "request_id": "wire-cli-snooze-request",
+      "idempotency_key": "wire-cli-snooze",
+      "client": "cli",
+      "subject": "vibapp.alarm",
+      "command": {
+        "tag": "alarm-snooze",
+        "value": {
+          "parent_occurrence_id": "occ:alarm-control:r1:2026-08-12T01:00:00Z",
+          "os_action_id": "wire-snooze-1",
+          "action_received_at_utc": "2026-08-12T01:00:10Z",
+          "duration_seconds": 600
+        }
+      }
+    },
+    "alarm_command_result": {
+      "alarm_id": "alarm-control",
+      "outcome": "created",
+      "revision": 1,
+      "enabled": true,
+      "next_occurrence_id": "occ:alarm-control:r1:2026-08-13T01:00:00Z",
+      "snooze_occurrence_id": null,
+      "deduplicated": false
+    },
+    "alarm_status_request": {
+      "alarm_id": "alarm-control",
+      "occurrence_limit": 32,
+      "effect_limit": 64
+    },
+    "alarm_status_snapshot": {
+      "app": "vibapp.alarm",
+      "active_generation": "gen-1",
+      "rollback_state": "none",
+      "alarm": {
+        "alarm_id": "alarm-control",
+        "schedule": {
+          "tag": "recurring",
+          "value": {
+            "kind": "daily",
+            "time": { "hour": 9, "minute": 0, "second": 0 },
+            "start_date": { "year": 2026, "month": 8, "day": 13 },
+            "time_zone": "Asia/Shanghai",
+            "weekdays": [],
+            "gap": "next-valid",
+            "overlap": "earlier"
+          }
+        },
+        "notification": { "title": "Wake up", "body": "Morning alarm", "standard_sound": true },
+        "enabled": true,
+        "revision": 1,
+        "next_occurrence_id": "occ:alarm-control:r1:2026-08-13T01:00:00Z",
+        "occurrences": [
+          {
+            "occurrence": "occ:alarm-control:r1:2026-08-13T01:00:00Z",
+            "due_at_utc": "2026-08-13T01:00:00Z",
+            "state": "scheduled",
+            "classification": null,
+            "notification_id": null
+          },
+          {
+            "occurrence": "occ:alarm-control:r1:2026-08-12T01:00:00Z",
+            "due_at_utc": "2026-08-12T01:00:00Z",
+            "state": "notification-accepted",
+            "classification": "on-time",
+            "notification_id": "notify:occ:alarm-control:r1:2026-08-12T01:00:00Z"
+          }
+        ],
+        "occurrences_truncated": false,
+        "effects": [
+          {
+            "tag": "notification",
+            "value": {
+              "notification_id": "notify:occ:alarm-control:r1:2026-08-12T01:00:00Z",
+              "occurrence": "occ:alarm-control:r1:2026-08-12T01:00:00Z",
+              "outcome": "accepted",
+              "attempts": 1
+            }
+          },
+          {
+            "tag": "guest-event",
+            "value": {
+              "guest_event_id": "guest:occ:alarm-control:r1:2026-08-12T01:00:00Z",
+              "occurrence": "occ:alarm-control:r1:2026-08-12T01:00:00Z",
+              "outcome": "acked",
+              "attempts": 1
+            }
+          },
+          {
+            "tag": "snooze-action",
+            "value": {
+              "os_action_id": "wire-snooze-1",
+              "parent_occurrence_id": "occ:alarm-control:r1:2026-08-12T01:00:00Z",
+              "snooze_occurrence_id": "snooze:occ:alarm-control:r1:2026-08-12T01:00:00Z:1",
+              "deduplicated": false
+            }
+          }
+        ],
+        "effects_truncated": false,
+        "permission_health": "authorized"
+      }
+    },
+    "delivery_events": [
+      {
+        "schedule": "schedule-on-time",
+        "key": "alarm-on-time",
+        "occurrence": "occ:wire-on-time:r1:2026-08-13T01:00:00Z",
+        "scheduled_for_utc": "2026-08-13T01:00:00Z",
+        "dispatched_at_utc": "2026-08-13T01:00:00Z",
+        "classification": "on-time",
+        "attempt": 1,
+        "payload": []
+      },
+      {
+        "schedule": "schedule-catch-up",
+        "key": "alarm-catch-up",
+        "occurrence": "occ:wire-catch-up:r1:2026-08-13T02:00:00Z",
+        "scheduled_for_utc": "2026-08-13T02:00:00Z",
+        "dispatched_at_utc": "2026-08-13T02:15:00Z",
+        "classification": "catch-up",
+        "attempt": 1,
+        "payload": []
+      },
+      {
+        "schedule": "schedule-missed",
+        "key": "alarm-missed",
+        "occurrence": "occ:wire-missed:r1:2026-08-13T03:00:00Z",
+        "scheduled_for_utc": "2026-08-13T03:00:00Z",
+        "dispatched_at_utc": "2026-08-13T03:15:01Z",
+        "classification": "missed",
+        "attempt": 1,
+        "payload": []
+      },
+      {
+        "schedule": "schedule-permission",
+        "key": "alarm-permission",
+        "occurrence": "occ:wire-permission:r1:2026-08-13T04:00:00Z",
+        "scheduled_for_utc": "2026-08-13T04:00:00Z",
+        "dispatched_at_utc": "2026-08-13T04:00:00Z",
+        "classification": "permission-denied",
+        "attempt": 1,
+        "payload": []
+      }
+    ]
+  },
+  "coverage_requirements": [
+    "time-zone",
+    "dst-fold",
+    "dst-gap",
+    "recurrence",
+    "edit",
+    "cancel",
+    "snooze",
+    "duplicates",
+    "missed",
+    "catch-up",
+    "clock-correction",
+    "gui-exit",
+    "daemon-restart",
+    "sleep-resume",
+    "permission",
+    "notification-failure",
+    "guest-trap",
+    "upgrade",
+    "migration",
+    "rollback",
+    "launcher",
+    "scheduler-ownership",
+    "control-surface-neutral",
+    "enable-disable",
+    "headless",
+    "app-lifecycle",
+    "uninstall",
+    "delivery-classification"
+  ],
+  "cases": [
+    {
+      "id": "one-shot-explicit-zone",
+      "description": "A one-shot civil time is resolved in its stored IANA zone and delivered once on time.",
+      "requirement_tags": ["time-zone", "delivery-classification"],
+      "given": {
+        "alarm_id": "alarm-one",
+        "revision": 1,
+        "civil_time": "2026-08-12T07:00:00",
+        "time_zone": "Asia/Shanghai",
+        "resolved_due_at_utc": "2026-08-11T23:00:00Z",
+        "permission": "authorized",
+        "active_generation": "gen-1"
+      },
+      "events": [
+        { "at_utc": "2026-08-11T23:00:00Z", "type": "wall-clock-reached", "data": {} },
+        { "at_utc": "2026-08-11T23:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } },
+        { "at_utc": "2026-08-11T23:00:01Z", "type": "guest-result", "data": { "result": "acked" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-one/revision", "value": 1 },
+          { "path": "/alarms/alarm-one/next_occurrence", "value": null },
+          { "path": "/occurrences/occ:alarm-one:r1:2026-08-11T23:00:00Z/state", "value": "notification-accepted" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-one:r1:2026-08-11T23:00:00Z",
+            "occurrence_id": "occ:alarm-one:r1:2026-08-11T23:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-11T23:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-one:r1:2026-08-11T23:00:00Z", "occurrence_id": "occ:alarm-one:r1:2026-08-11T23:00:00Z", "scheduled_for_utc": "2026-08-11T23:00:00Z", "dispatched_at_utc": "2026-08-11T23:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-one:r1:2026-08-11T23:00:00Z", "notify:occ:alarm-one:r1:2026-08-11T23:00:00Z", "guest:occ:alarm-one:r1:2026-08-11T23:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "irrelevant"
+      }
+    },
+    {
+      "id": "system-zone-change-does-not-move-alarm",
+      "description": "Changing the macOS system zone does not move a schedule that stored Asia/Shanghai.",
+      "requirement_tags": ["time-zone", "scheduler-ownership"],
+      "given": {
+        "alarm_id": "alarm-zone",
+        "revision": 1,
+        "stored_time_zone": "Asia/Shanghai",
+        "due_at_utc": "2026-08-12T01:00:00Z",
+        "system_time_zone": "Asia/Shanghai",
+        "active_generation": "gen-1"
+      },
+      "events": [
+        { "at_utc": "2026-08-11T20:00:00Z", "type": "system-time-zone-changed", "data": { "to": "America/Los_Angeles" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-zone/time_zone", "value": "Asia/Shanghai" },
+          { "path": "/alarms/alarm-zone/next_occurrence/due_at_utc", "value": "2026-08-12T01:00:00Z" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["occ:alarm-zone:r1:2026-08-12T01:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "irrelevant"
+      }
+    },
+    {
+      "id": "dst-fold-chooses-earlier-utc",
+      "description": "The ambiguous New York 01:30 during fall-back resolves once using the earlier UTC instant.",
+      "requirement_tags": ["time-zone", "dst-fold"],
+      "given": {
+        "alarm_id": "alarm-fold",
+        "revision": 1,
+        "civil_time": "2026-11-01T01:30:00",
+        "time_zone": "America/New_York",
+        "possible_utc": ["2026-11-01T05:30:00Z", "2026-11-01T06:30:00Z"]
+      },
+      "events": [
+        { "at_utc": "2026-10-01T00:00:00Z", "type": "schedule-created", "data": { "idempotency_key": "create-fold" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-fold/next_occurrence/due_at_utc", "value": "2026-11-01T05:30:00Z" },
+          { "path": "/alarms/alarm-fold/materialized_occurrence_count", "value": 1 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:create-fold", "occ:alarm-fold:r1:2026-11-01T05:30:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "irrelevant"
+      }
+    },
+    {
+      "id": "dst-gap-shifts-forward",
+      "description": "The nonexistent New York 02:30 during spring-forward shifts by the exact one-hour gap to 03:30.",
+      "requirement_tags": ["time-zone", "dst-gap"],
+      "given": {
+        "alarm_id": "alarm-gap",
+        "revision": 1,
+        "civil_time": "2026-03-08T02:30:00",
+        "time_zone": "America/New_York"
+      },
+      "events": [
+        { "at_utc": "2026-03-01T00:00:00Z", "type": "schedule-created", "data": { "idempotency_key": "create-gap" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-gap/next_occurrence/resolved_local_time", "value": "2026-03-08T03:30:00" },
+          { "path": "/alarms/alarm-gap/next_occurrence/due_at_utc", "value": "2026-03-08T07:30:00Z" },
+          { "path": "/alarms/alarm-gap/materialized_occurrence_count", "value": 1 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:create-gap", "occ:alarm-gap:r1:2026-03-08T07:30:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "irrelevant"
+      }
+    },
+    {
+      "id": "weekly-recurrence-does-not-drift",
+      "description": "A late Monday workday alarm advances to Tuesday 09:00 civil time, not 24 hours after delivery.",
+      "requirement_tags": ["recurrence", "catch-up"],
+      "given": {
+        "alarm_id": "alarm-workday",
+        "revision": 1,
+        "schedule": { "kind": "weekly", "weekdays": [1, 2, 3, 4, 5], "local_time": "09:00:00", "start_date": "2026-08-10", "time_zone": "Asia/Shanghai" },
+        "due_at_utc": "2026-08-10T01:00:00Z"
+      },
+      "events": [
+        { "at_utc": "2026-08-10T01:05:00Z", "type": "recovery-ready", "data": {} },
+        { "at_utc": "2026-08-10T01:05:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-workday:r1:2026-08-10T01:00:00Z/classification", "value": "catch-up" },
+          { "path": "/alarms/alarm-workday/next_occurrence/due_at_utc", "value": "2026-08-11T01:00:00Z" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-workday:r1:2026-08-10T01:00:00Z",
+            "occurrence_id": "occ:alarm-workday:r1:2026-08-10T01:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-10T01:05:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-workday:r1:2026-08-10T01:00:00Z", "occurrence_id": "occ:alarm-workday:r1:2026-08-10T01:00:00Z", "scheduled_for_utc": "2026-08-10T01:00:00Z", "dispatched_at_utc": "2026-08-10T01:05:00Z", "classification": "catch-up", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-workday:r1:2026-08-10T01:00:00Z", "notify:occ:alarm-workday:r1:2026-08-10T01:00:00Z", "guest:occ:alarm-workday:r1:2026-08-10T01:00:00Z", "occ:alarm-workday:r1:2026-08-11T01:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "edit-before-due-cancels-old-revision",
+      "description": "An edit committed before the due transaction cancels the old occurrence and materializes revision 2.",
+      "requirement_tags": ["edit", "duplicates"],
+      "given": {
+        "alarm_id": "alarm-edit-before",
+        "revision": 1,
+        "old_due_at_utc": "2026-08-12T00:00:00Z",
+        "replacement_due_at_utc": "2026-08-12T00:30:00Z"
+      },
+      "events": [
+        { "at_utc": "2026-08-11T23:59:59Z", "type": "schedule-edited", "data": { "idempotency_key": "edit-before", "replacement_due_at_utc": "2026-08-12T00:30:00Z" } },
+        { "at_utc": "2026-08-12T00:00:00Z", "type": "stale-due-signal", "data": { "revision": 1 } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-edit-before/revision", "value": 2 },
+          { "path": "/occurrences/occ:alarm-edit-before:r1:2026-08-12T00:00:00Z/state", "value": "cancelled" },
+          { "path": "/alarms/alarm-edit-before/next_occurrence/due_at_utc", "value": "2026-08-12T00:30:00Z" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:edit-before", "occ:alarm-edit-before:r1:2026-08-12T00:00:00Z", "occ:alarm-edit-before:r2:2026-08-12T00:30:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "open"
+      }
+    },
+    {
+      "id": "edit-after-due-commit-cannot-recall",
+      "description": "A due transaction that commits first remains deliverable even when an edit follows in the same second.",
+      "requirement_tags": ["edit", "duplicates"],
+      "given": { "alarm_id": "alarm-edit-after", "revision": 1, "due_at_utc": "2026-08-12T00:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T00:00:00Z", "type": "due-transaction-committed", "data": { "occurrence_id": "occ:alarm-edit-after:r1:2026-08-12T00:00:00Z" } },
+        { "at_utc": "2026-08-12T00:00:00Z", "type": "schedule-edited", "data": { "idempotency_key": "edit-after", "replacement_due_at_utc": "2026-08-12T01:00:00Z" } },
+        { "at_utc": "2026-08-12T00:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-edit-after/revision", "value": 2 },
+          { "path": "/occurrences/occ:alarm-edit-after:r1:2026-08-12T00:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/alarms/alarm-edit-after/next_occurrence/due_at_utc", "value": "2026-08-12T01:00:00Z" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-edit-after:r1:2026-08-12T00:00:00Z",
+            "occurrence_id": "occ:alarm-edit-after:r1:2026-08-12T00:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T00:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-edit-after:r1:2026-08-12T00:00:00Z", "occurrence_id": "occ:alarm-edit-after:r1:2026-08-12T00:00:00Z", "scheduled_for_utc": "2026-08-12T00:00:00Z", "dispatched_at_utc": "2026-08-12T00:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-edit-after:r1:2026-08-12T00:00:00Z", "notify:occ:alarm-edit-after:r1:2026-08-12T00:00:00Z", "guest:occ:alarm-edit-after:r1:2026-08-12T00:00:00Z", "cmd:edit-after", "occ:alarm-edit-after:r2:2026-08-12T01:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "open"
+      }
+    },
+    {
+      "id": "cancel-before-due",
+      "description": "Cancel committed before due disables the alarm and cancels regular and snooze occurrences.",
+      "requirement_tags": ["cancel", "snooze"],
+      "given": { "alarm_id": "alarm-cancel", "revision": 1, "due_at_utc": "2026-08-12T02:00:00Z", "pending_snooze": "snooze:occ:alarm-cancel:r1:old:1" },
+      "events": [
+        { "at_utc": "2026-08-12T01:59:59Z", "type": "schedule-cancelled", "data": { "idempotency_key": "cancel-before" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-cancel/enabled", "value": false },
+          { "path": "/alarms/alarm-cancel/revision", "value": 2 },
+          { "path": "/occurrences/occ:alarm-cancel:r1:2026-08-12T02:00:00Z/state", "value": "cancelled" },
+          { "path": "/occurrences/snooze:occ:alarm-cancel:r1:old:1/state", "value": "cancelled" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:cancel-before", "occ:alarm-cancel:r1:2026-08-12T02:00:00Z", "snooze:occ:alarm-cancel:r1:old:1"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "open"
+      }
+    },
+    {
+      "id": "cancel-after-due-commit",
+      "description": "Cancel after due commit stops recurrence but cannot recall the committed notification.",
+      "requirement_tags": ["cancel"],
+      "given": { "alarm_id": "alarm-cancel-after", "revision": 1, "due_at_utc": "2026-08-12T03:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T03:00:00Z", "type": "due-transaction-committed", "data": {} },
+        { "at_utc": "2026-08-12T03:00:00Z", "type": "schedule-cancelled", "data": { "idempotency_key": "cancel-after" } },
+        { "at_utc": "2026-08-12T03:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-cancel-after/enabled", "value": false },
+          { "path": "/alarms/alarm-cancel-after/revision", "value": 2 },
+          { "path": "/occurrences/occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/alarms/alarm-cancel-after/next_occurrence", "value": null }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z",
+            "occurrence_id": "occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T03:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z", "occurrence_id": "occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z", "scheduled_for_utc": "2026-08-12T03:00:00Z", "dispatched_at_utc": "2026-08-12T03:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z", "notify:occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z", "guest:occ:alarm-cancel-after:r1:2026-08-12T03:00:00Z", "cmd:cancel-after"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "open"
+      }
+    },
+    {
+      "id": "snooze-uses-action-time",
+      "description": "A ten-minute snooze is an absolute child occurrence and does not move the regular recurrence.",
+      "requirement_tags": ["snooze", "recurrence"],
+      "given": {
+        "alarm_id": "alarm-snooze",
+        "parent_occurrence": "occ:alarm-snooze:r1:2026-08-12T04:00:00Z",
+        "next_regular_due_at_utc": "2026-08-13T04:00:00Z"
+      },
+      "events": [
+        { "at_utc": "2026-08-12T04:00:30Z", "type": "notification-action-snooze", "data": { "os_action_id": "action-snooze-1", "duration_seconds": 600 } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/snooze:occ:alarm-snooze:r1:2026-08-12T04:00:00Z:1/due_at_utc", "value": "2026-08-12T04:10:30Z" },
+          { "path": "/alarms/alarm-snooze/next_regular_occurrence/due_at_utc", "value": "2026-08-13T04:00:00Z" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["action:action-snooze-1", "snooze:occ:alarm-snooze:r1:2026-08-12T04:00:00Z:1"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "duplicate-snooze-action-is-idempotent",
+      "description": "Replaying the same macOS notification action returns the existing snooze child.",
+      "requirement_tags": ["snooze", "duplicates"],
+      "given": { "parent_occurrence": "occ:alarm-snooze-dup:r1:2026-08-12T05:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T05:00:10Z", "type": "notification-action-snooze", "data": { "os_action_id": "same-action", "duration_seconds": 600 } },
+        { "at_utc": "2026-08-12T05:00:11Z", "type": "notification-action-snooze", "data": { "os_action_id": "same-action", "duration_seconds": 600 } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/snooze:occ:alarm-snooze-dup:r1:2026-08-12T05:00:00Z:1/due_at_utc", "value": "2026-08-12T05:10:10Z" },
+          { "path": "/alarms/alarm-snooze-dup/pending_snooze_count", "value": 1 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["action:same-action", "snooze:occ:alarm-snooze-dup:r1:2026-08-12T05:00:00Z:1"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "snooze-and-regular-occurrence-do-not-coalesce",
+      "description": "A snooze and the next regular occurrence are distinct and both notify when due together.",
+      "requirement_tags": ["snooze", "recurrence", "duplicates"],
+      "given": {
+        "snooze_occurrence": "snooze:occ:alarm-overlap:r1:parent:1",
+        "regular_occurrence": "occ:alarm-overlap:r1:2026-08-12T06:00:00Z",
+        "both_due_at_utc": "2026-08-12T06:00:00Z"
+      },
+      "events": [
+        { "at_utc": "2026-08-12T06:00:00Z", "type": "wall-clock-reached", "data": {} },
+        { "at_utc": "2026-08-12T06:00:01Z", "type": "notification-adapter-result", "data": { "notification_id": "notify:snooze:occ:alarm-overlap:r1:parent:1", "result": "accepted" } },
+        { "at_utc": "2026-08-12T06:00:01Z", "type": "notification-adapter-result", "data": { "notification_id": "notify:occ:alarm-overlap:r1:2026-08-12T06:00:00Z", "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/snooze:occ:alarm-overlap:r1:parent:1/state", "value": "notification-accepted" },
+          { "path": "/occurrences/occ:alarm-overlap:r1:2026-08-12T06:00:00Z/state", "value": "notification-accepted" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:snooze:occ:alarm-overlap:r1:parent:1",
+            "occurrence_id": "snooze:occ:alarm-overlap:r1:parent:1",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T06:00:01Z", "result": "accepted" }]
+          },
+          {
+            "notification_id": "notify:occ:alarm-overlap:r1:2026-08-12T06:00:00Z",
+            "occurrence_id": "occ:alarm-overlap:r1:2026-08-12T06:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T06:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [
+          { "guest_event_id": "guest:snooze:occ:alarm-overlap:r1:parent:1", "occurrence_id": "snooze:occ:alarm-overlap:r1:parent:1", "scheduled_for_utc": "2026-08-12T06:00:00Z", "dispatched_at_utc": "2026-08-12T06:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 },
+          { "guest_event_id": "guest:occ:alarm-overlap:r1:2026-08-12T06:00:00Z", "occurrence_id": "occ:alarm-overlap:r1:2026-08-12T06:00:00Z", "scheduled_for_utc": "2026-08-12T06:00:00Z", "dispatched_at_utc": "2026-08-12T06:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }
+        ],
+        "deduplication_keys": ["snooze:occ:alarm-overlap:r1:parent:1", "notify:snooze:occ:alarm-overlap:r1:parent:1", "guest:snooze:occ:alarm-overlap:r1:parent:1", "occ:alarm-overlap:r1:2026-08-12T06:00:00Z", "notify:occ:alarm-overlap:r1:2026-08-12T06:00:00Z", "guest:occ:alarm-overlap:r1:2026-08-12T06:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "duplicate-due-signal-delivers-once",
+      "description": "Two due signals for the same canonical occurrence create one transaction, outbox row and logical notification.",
+      "requirement_tags": ["duplicates"],
+      "given": { "occurrence_id": "occ:alarm-dup:r1:2026-08-12T07:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T07:00:00Z", "type": "due-signal", "data": {} },
+        { "at_utc": "2026-08-12T07:00:00Z", "type": "due-signal", "data": {} },
+        { "at_utc": "2026-08-12T07:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-dup:r1:2026-08-12T07:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/outbox/notify:occ:alarm-dup:r1:2026-08-12T07:00:00Z/row_count", "value": 1 }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-dup:r1:2026-08-12T07:00:00Z",
+            "occurrence_id": "occ:alarm-dup:r1:2026-08-12T07:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T07:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-dup:r1:2026-08-12T07:00:00Z", "occurrence_id": "occ:alarm-dup:r1:2026-08-12T07:00:00Z", "scheduled_for_utc": "2026-08-12T07:00:00Z", "dispatched_at_utc": "2026-08-12T07:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-dup:r1:2026-08-12T07:00:00Z", "notify:occ:alarm-dup:r1:2026-08-12T07:00:00Z", "guest:occ:alarm-dup:r1:2026-08-12T07:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "catch-up-at-inclusive-boundary",
+      "description": "Exactly 900 seconds late remains eligible and is dispatched within recovery tolerance.",
+      "requirement_tags": ["catch-up", "missed", "daemon-restart", "delivery-classification"],
+      "given": { "occurrence_id": "occ:alarm-grace:r1:2026-08-12T08:00:00Z", "due_at_utc": "2026-08-12T08:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T08:15:00Z", "type": "recovery-ready", "data": {} },
+        { "at_utc": "2026-08-12T08:15:05Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-grace:r1:2026-08-12T08:00:00Z/classification", "value": "catch-up" },
+          { "path": "/occurrences/occ:alarm-grace:r1:2026-08-12T08:00:00Z/state", "value": "notification-accepted" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-grace:r1:2026-08-12T08:00:00Z",
+            "occurrence_id": "occ:alarm-grace:r1:2026-08-12T08:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T08:15:05Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-grace:r1:2026-08-12T08:00:00Z", "occurrence_id": "occ:alarm-grace:r1:2026-08-12T08:00:00Z", "scheduled_for_utc": "2026-08-12T08:00:00Z", "dispatched_at_utc": "2026-08-12T08:15:00Z", "classification": "catch-up", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-grace:r1:2026-08-12T08:00:00Z", "notify:occ:alarm-grace:r1:2026-08-12T08:00:00Z", "guest:occ:alarm-grace:r1:2026-08-12T08:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "missed-beyond-boundary",
+      "description": "At 901 seconds late the occurrence is terminally missed and never enters the notification outbox.",
+      "requirement_tags": ["catch-up", "missed", "sleep-resume", "delivery-classification"],
+      "given": { "occurrence_id": "occ:alarm-missed:r1:2026-08-12T09:00:00Z", "due_at_utc": "2026-08-12T09:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T09:15:01Z", "type": "machine-resumed", "data": {} },
+        { "at_utc": "2026-08-12T09:15:01Z", "type": "recovery-ready", "data": {} }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-missed:r1:2026-08-12T09:00:00Z/state", "value": "missed" },
+          { "path": "/outbox/notify:occ:alarm-missed:r1:2026-08-12T09:00:00Z", "value": null }
+        ],
+        "notifications": [],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-missed:r1:2026-08-12T09:00:00Z", "occurrence_id": "occ:alarm-missed:r1:2026-08-12T09:00:00Z", "scheduled_for_utc": "2026-08-12T09:00:00Z", "dispatched_at_utc": "2026-08-12T09:15:01Z", "classification": "missed", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-missed:r1:2026-08-12T09:00:00Z", "guest:occ:alarm-missed:r1:2026-08-12T09:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "multiple-elapsed-recurrences-advance-in-order",
+      "description": "Long downtime marks old candidates missed, catches up only the current eligible one and preserves civil recurrence order.",
+      "requirement_tags": ["recurrence", "missed", "catch-up", "daemon-restart"],
+      "given": {
+        "alarm_id": "alarm-long-offline",
+        "daily_due_instants": ["2026-08-10T10:00:00Z", "2026-08-11T10:00:00Z", "2026-08-12T10:00:00Z"]
+      },
+      "events": [
+        { "at_utc": "2026-08-12T10:05:00Z", "type": "daemon-recovery-ready", "data": {} },
+        { "at_utc": "2026-08-12T10:05:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-long-offline:r1:2026-08-10T10:00:00Z/state", "value": "missed" },
+          { "path": "/occurrences/occ:alarm-long-offline:r1:2026-08-11T10:00:00Z/state", "value": "missed" },
+          { "path": "/occurrences/occ:alarm-long-offline:r1:2026-08-12T10:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/alarms/alarm-long-offline/next_occurrence/due_at_utc", "value": "2026-08-13T10:00:00Z" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-long-offline:r1:2026-08-12T10:00:00Z",
+            "occurrence_id": "occ:alarm-long-offline:r1:2026-08-12T10:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T10:05:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [
+          { "guest_event_id": "guest:occ:alarm-long-offline:r1:2026-08-10T10:00:00Z", "occurrence_id": "occ:alarm-long-offline:r1:2026-08-10T10:00:00Z", "scheduled_for_utc": "2026-08-10T10:00:00Z", "dispatched_at_utc": "2026-08-12T10:05:00Z", "classification": "missed", "outcome": "acked", "attempts": 1 },
+          { "guest_event_id": "guest:occ:alarm-long-offline:r1:2026-08-11T10:00:00Z", "occurrence_id": "occ:alarm-long-offline:r1:2026-08-11T10:00:00Z", "scheduled_for_utc": "2026-08-11T10:00:00Z", "dispatched_at_utc": "2026-08-12T10:05:00Z", "classification": "missed", "outcome": "acked", "attempts": 1 },
+          { "guest_event_id": "guest:occ:alarm-long-offline:r1:2026-08-12T10:00:00Z", "occurrence_id": "occ:alarm-long-offline:r1:2026-08-12T10:00:00Z", "scheduled_for_utc": "2026-08-12T10:00:00Z", "dispatched_at_utc": "2026-08-12T10:05:00Z", "classification": "catch-up", "outcome": "acked", "attempts": 1 }
+        ],
+        "deduplication_keys": ["occ:alarm-long-offline:r1:2026-08-10T10:00:00Z", "guest:occ:alarm-long-offline:r1:2026-08-10T10:00:00Z", "occ:alarm-long-offline:r1:2026-08-11T10:00:00Z", "guest:occ:alarm-long-offline:r1:2026-08-11T10:00:00Z", "occ:alarm-long-offline:r1:2026-08-12T10:00:00Z", "notify:occ:alarm-long-offline:r1:2026-08-12T10:00:00Z", "guest:occ:alarm-long-offline:r1:2026-08-12T10:00:00Z", "occ:alarm-long-offline:r1:2026-08-13T10:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "backward-clock-correction-before-due",
+      "description": "A backward wall-clock correction before due re-arms the wait and cannot cause an early notification.",
+      "requirement_tags": ["clock-correction"],
+      "given": { "occurrence_id": "occ:alarm-clock-back:r1:2026-08-12T11:00:00Z", "due_at_utc": "2026-08-12T11:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T10:59:50Z", "type": "wall-clock-corrected", "data": { "direction": "backward", "delta_seconds": 120 } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-clock-back:r1:2026-08-12T11:00:00Z/state", "value": "scheduled" },
+          { "path": "/occurrences/occ:alarm-clock-back:r1:2026-08-12T11:00:00Z/due_at_utc", "value": "2026-08-12T11:00:00Z" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["occ:alarm-clock-back:r1:2026-08-12T11:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "backward-clock-correction-after-delivery",
+      "description": "Moving wall time back across an accepted occurrence does not reopen it.",
+      "requirement_tags": ["clock-correction", "duplicates"],
+      "given": { "occurrence_id": "occ:alarm-clock-done:r1:2026-08-12T12:00:00Z", "state": "notification-accepted" },
+      "events": [
+        { "at_utc": "2026-08-12T12:01:00Z", "type": "wall-clock-corrected", "data": { "direction": "backward", "delta_seconds": 180 } },
+        { "at_utc": "2026-08-12T12:00:00Z", "type": "wall-clock-reached-again", "data": {} }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-clock-done:r1:2026-08-12T12:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/outbox/notify:occ:alarm-clock-done:r1:2026-08-12T12:00:00Z/adapter_attempt_count", "value": 1 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["occ:alarm-clock-done:r1:2026-08-12T12:00:00Z", "notify:occ:alarm-clock-done:r1:2026-08-12T12:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "forward-clock-correction-uses-catch-up",
+      "description": "A forward correction crossing due by five minutes causes one immediate catch-up.",
+      "requirement_tags": ["clock-correction", "catch-up"],
+      "given": { "occurrence_id": "occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T13:05:00Z", "type": "wall-clock-corrected", "data": { "direction": "forward", "crossed_due_by_seconds": 300 } },
+        { "at_utc": "2026-08-12T13:05:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z/classification", "value": "catch-up" },
+          { "path": "/occurrences/occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z/state", "value": "notification-accepted" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z",
+            "occurrence_id": "occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T13:05:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z", "occurrence_id": "occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z", "scheduled_for_utc": "2026-08-12T13:00:00Z", "dispatched_at_utc": "2026-08-12T13:05:00Z", "classification": "catch-up", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z", "notify:occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z", "guest:occ:alarm-clock-forward:r1:2026-08-12T13:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "daemon-restart-before-due-restores-wait",
+      "description": "A restart before due reconstructs the timer from host persistence without changing identity.",
+      "requirement_tags": ["daemon-restart", "scheduler-ownership"],
+      "given": { "occurrence_id": "occ:alarm-restart:r1:2026-08-12T14:00:00Z", "due_at_utc": "2026-08-12T14:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T13:50:00Z", "type": "daemon-stopped", "data": {} },
+        { "at_utc": "2026-08-12T13:55:00Z", "type": "daemon-recovery-ready", "data": {} }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-restart:r1:2026-08-12T14:00:00Z/state", "value": "scheduled" },
+          { "path": "/occurrences/occ:alarm-restart:r1:2026-08-12T14:00:00Z/due_at_utc", "value": "2026-08-12T14:00:00Z" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["occ:alarm-restart:r1:2026-08-12T14:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "restart-after-outbox-commit",
+      "description": "A crash after outbox commit resumes the existing logical notification with the same identifier.",
+      "requirement_tags": ["daemon-restart", "duplicates"],
+      "given": { "occurrence_id": "occ:alarm-outbox:r1:2026-08-12T15:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T15:00:00Z", "type": "due-transaction-committed", "data": {} },
+        { "at_utc": "2026-08-12T15:00:00Z", "type": "daemon-crashed", "data": { "point": "after-outbox-before-adapter" } },
+        { "at_utc": "2026-08-12T15:00:04Z", "type": "daemon-recovery-ready", "data": {} },
+        { "at_utc": "2026-08-12T15:00:05Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/outbox/notify:occ:alarm-outbox:r1:2026-08-12T15:00:00Z/row_count", "value": 1 },
+          { "path": "/occurrences/occ:alarm-outbox:r1:2026-08-12T15:00:00Z/state", "value": "notification-accepted" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-outbox:r1:2026-08-12T15:00:00Z",
+            "occurrence_id": "occ:alarm-outbox:r1:2026-08-12T15:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T15:00:05Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-outbox:r1:2026-08-12T15:00:00Z", "occurrence_id": "occ:alarm-outbox:r1:2026-08-12T15:00:00Z", "scheduled_for_utc": "2026-08-12T15:00:00Z", "dispatched_at_utc": "2026-08-12T15:00:04Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-outbox:r1:2026-08-12T15:00:00Z", "notify:occ:alarm-outbox:r1:2026-08-12T15:00:00Z", "guest:occ:alarm-outbox:r1:2026-08-12T15:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "restart-after-unknown-adapter-acceptance",
+      "description": "If the adapter may have accepted before a crash, retry uses put with the same ID and remains one logical notification.",
+      "requirement_tags": ["daemon-restart", "duplicates"],
+      "given": { "occurrence_id": "occ:alarm-unknown:r1:2026-08-12T16:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T16:00:00Z", "type": "notification-adapter-call", "data": { "result": "acceptance-unknown" } },
+        { "at_utc": "2026-08-12T16:00:01Z", "type": "daemon-crashed", "data": {} },
+        { "at_utc": "2026-08-12T16:00:05Z", "type": "daemon-recovery-ready", "data": {} },
+        { "at_utc": "2026-08-12T16:00:06Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/outbox/notify:occ:alarm-unknown:r1:2026-08-12T16:00:00Z/adapter_attempt_count", "value": 2 },
+          { "path": "/occurrences/occ:alarm-unknown:r1:2026-08-12T16:00:00Z/state", "value": "notification-accepted" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-unknown:r1:2026-08-12T16:00:00Z",
+            "occurrence_id": "occ:alarm-unknown:r1:2026-08-12T16:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [
+              { "at_utc": "2026-08-12T16:00:00Z", "result": "acceptance-unknown" },
+              { "at_utc": "2026-08-12T16:00:06Z", "result": "accepted" }
+            ]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-unknown:r1:2026-08-12T16:00:00Z", "occurrence_id": "occ:alarm-unknown:r1:2026-08-12T16:00:00Z", "scheduled_for_utc": "2026-08-12T16:00:00Z", "dispatched_at_utc": "2026-08-12T16:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-unknown:r1:2026-08-12T16:00:00Z", "notify:occ:alarm-unknown:r1:2026-08-12T16:00:00Z", "guest:occ:alarm-unknown:r1:2026-08-12T16:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "restart-after-accepted-marker-does-not-resend",
+      "description": "A terminal accepted marker suppresses all adapter calls after restart.",
+      "requirement_tags": ["daemon-restart", "duplicates"],
+      "given": { "occurrence_id": "occ:alarm-accepted:r1:2026-08-12T17:00:00Z", "state": "notification-accepted", "adapter_attempt_count": 1 },
+      "events": [
+        { "at_utc": "2026-08-12T17:01:00Z", "type": "daemon-restarted", "data": {} }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-accepted:r1:2026-08-12T17:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/outbox/notify:occ:alarm-accepted:r1:2026-08-12T17:00:00Z/adapter_attempt_count", "value": 1 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["occ:alarm-accepted:r1:2026-08-12T17:00:00Z", "notify:occ:alarm-accepted:r1:2026-08-12T17:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "sleep-resume-within-grace",
+      "description": "Resume ten minutes after due creates one catch-up request within five seconds of recovery readiness.",
+      "requirement_tags": ["sleep-resume", "catch-up"],
+      "given": { "occurrence_id": "occ:alarm-sleep:r1:2026-08-12T18:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T17:55:00Z", "type": "machine-slept", "data": {} },
+        { "at_utc": "2026-08-12T18:10:00Z", "type": "machine-resumed", "data": {} },
+        { "at_utc": "2026-08-12T18:10:01Z", "type": "recovery-ready", "data": {} },
+        { "at_utc": "2026-08-12T18:10:05Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-sleep:r1:2026-08-12T18:00:00Z/classification", "value": "catch-up" },
+          { "path": "/occurrences/occ:alarm-sleep:r1:2026-08-12T18:00:00Z/state", "value": "notification-accepted" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-sleep:r1:2026-08-12T18:00:00Z",
+            "occurrence_id": "occ:alarm-sleep:r1:2026-08-12T18:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T18:10:05Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-sleep:r1:2026-08-12T18:00:00Z", "occurrence_id": "occ:alarm-sleep:r1:2026-08-12T18:00:00Z", "scheduled_for_utc": "2026-08-12T18:00:00Z", "dispatched_at_utc": "2026-08-12T18:10:01Z", "classification": "catch-up", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-sleep:r1:2026-08-12T18:00:00Z", "notify:occ:alarm-sleep:r1:2026-08-12T18:00:00Z", "guest:occ:alarm-sleep:r1:2026-08-12T18:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "notification-permission-denied",
+      "description": "Denied permission creates no outbox row, records a terminal denied outcome and does not prompt in background.",
+      "requirement_tags": ["permission", "delivery-classification"],
+      "given": { "occurrence_id": "occ:alarm-denied:r1:2026-08-12T19:00:00Z", "permission": "denied" },
+      "events": [
+        { "at_utc": "2026-08-12T19:00:00Z", "type": "wall-clock-reached", "data": {} }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-denied:r1:2026-08-12T19:00:00Z/state", "value": "permission-denied" },
+          { "path": "/outbox/notify:occ:alarm-denied:r1:2026-08-12T19:00:00Z", "value": null },
+          { "path": "/alarms/alarm-denied/permission_health", "value": "denied" },
+          { "path": "/permission_prompt_count", "value": 0 }
+        ],
+        "notifications": [],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-denied:r1:2026-08-12T19:00:00Z", "occurrence_id": "occ:alarm-denied:r1:2026-08-12T19:00:00Z", "scheduled_for_utc": "2026-08-12T19:00:00Z", "dispatched_at_utc": "2026-08-12T19:00:00Z", "classification": "permission-denied", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-denied:r1:2026-08-12T19:00:00Z", "guest:occ:alarm-denied:r1:2026-08-12T19:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "permission-grant-affects-future-only",
+      "description": "Granting permission later does not resurrect a denied occurrence but allows the next recurrence.",
+      "requirement_tags": ["permission", "recurrence"],
+      "given": {
+        "denied_occurrence": "occ:alarm-permission:r1:2026-08-12T20:00:00Z",
+        "next_occurrence": "occ:alarm-permission:r1:2026-08-13T20:00:00Z"
+      },
+      "events": [
+        { "at_utc": "2026-08-12T20:05:00Z", "type": "notification-permission-changed", "data": { "to": "authorized" } },
+        { "at_utc": "2026-08-13T20:00:00Z", "type": "wall-clock-reached", "data": {} },
+        { "at_utc": "2026-08-13T20:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-permission:r1:2026-08-12T20:00:00Z/state", "value": "permission-denied" },
+          { "path": "/occurrences/occ:alarm-permission:r1:2026-08-13T20:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/alarms/alarm-permission/permission_health", "value": "authorized" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-permission:r1:2026-08-13T20:00:00Z",
+            "occurrence_id": "occ:alarm-permission:r1:2026-08-13T20:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-13T20:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-permission:r1:2026-08-13T20:00:00Z", "occurrence_id": "occ:alarm-permission:r1:2026-08-13T20:00:00Z", "scheduled_for_utc": "2026-08-13T20:00:00Z", "dispatched_at_utc": "2026-08-13T20:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-permission:r1:2026-08-12T20:00:00Z", "occ:alarm-permission:r1:2026-08-13T20:00:00Z", "notify:occ:alarm-permission:r1:2026-08-13T20:00:00Z", "guest:occ:alarm-permission:r1:2026-08-13T20:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "open"
+      }
+    },
+    {
+      "id": "transient-notification-failure-retries",
+      "description": "Transient failures retry at fixed offsets and accept on the third attempt with one logical ID.",
+      "requirement_tags": ["notification-failure", "duplicates"],
+      "given": { "occurrence_id": "occ:alarm-retry:r1:2026-08-12T21:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T21:00:00Z", "type": "notification-adapter-result", "data": { "result": "transient-failure" } },
+        { "at_utc": "2026-08-12T21:00:02Z", "type": "notification-adapter-result", "data": { "result": "transient-failure" } },
+        { "at_utc": "2026-08-12T21:00:10Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-retry:r1:2026-08-12T21:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/outbox/notify:occ:alarm-retry:r1:2026-08-12T21:00:00Z/adapter_attempt_count", "value": 3 }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-retry:r1:2026-08-12T21:00:00Z",
+            "occurrence_id": "occ:alarm-retry:r1:2026-08-12T21:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [
+              { "at_utc": "2026-08-12T21:00:00Z", "result": "transient-failure" },
+              { "at_utc": "2026-08-12T21:00:02Z", "result": "transient-failure" },
+              { "at_utc": "2026-08-12T21:00:10Z", "result": "accepted" }
+            ]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-retry:r1:2026-08-12T21:00:00Z", "occurrence_id": "occ:alarm-retry:r1:2026-08-12T21:00:00Z", "scheduled_for_utc": "2026-08-12T21:00:00Z", "dispatched_at_utc": "2026-08-12T21:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-retry:r1:2026-08-12T21:00:00Z", "notify:occ:alarm-retry:r1:2026-08-12T21:00:00Z", "guest:occ:alarm-retry:r1:2026-08-12T21:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "permanent-notification-failure-is-terminal",
+      "description": "Three failed adapter attempts terminate the occurrence while recurrence remains enabled.",
+      "requirement_tags": ["notification-failure", "recurrence"],
+      "given": { "occurrence_id": "occ:alarm-fail:r1:2026-08-12T22:00:00Z" },
+      "events": [
+        { "at_utc": "2026-08-12T22:00:00Z", "type": "notification-adapter-result", "data": { "result": "transient-failure" } },
+        { "at_utc": "2026-08-12T22:00:02Z", "type": "notification-adapter-result", "data": { "result": "transient-failure" } },
+        { "at_utc": "2026-08-12T22:00:10Z", "type": "notification-adapter-result", "data": { "result": "transient-failure" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-fail:r1:2026-08-12T22:00:00Z/state", "value": "notification-failed" },
+          { "path": "/alarms/alarm-fail/enabled", "value": true },
+          { "path": "/alarms/alarm-fail/next_occurrence/due_at_utc", "value": "2026-08-13T22:00:00Z" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-fail:r1:2026-08-12T22:00:00Z",
+            "occurrence_id": "occ:alarm-fail:r1:2026-08-12T22:00:00Z",
+            "logical_count": 1,
+            "outcome": "failed",
+            "adapter_attempts": [
+              { "at_utc": "2026-08-12T22:00:00Z", "result": "transient-failure" },
+              { "at_utc": "2026-08-12T22:00:02Z", "result": "transient-failure" },
+              { "at_utc": "2026-08-12T22:00:10Z", "result": "transient-failure" }
+            ]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-fail:r1:2026-08-12T22:00:00Z", "occurrence_id": "occ:alarm-fail:r1:2026-08-12T22:00:00Z", "scheduled_for_utc": "2026-08-12T22:00:00Z", "dispatched_at_utc": "2026-08-12T22:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-fail:r1:2026-08-12T22:00:00Z", "notify:occ:alarm-fail:r1:2026-08-12T22:00:00Z", "guest:occ:alarm-fail:r1:2026-08-12T22:00:00Z", "occ:alarm-fail:r1:2026-08-13T22:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "guest-trap-cannot-suppress-host-notification",
+      "description": "The persisted host projection notifies even when all three guest event attempts trap.",
+      "requirement_tags": ["guest-trap", "scheduler-ownership"],
+      "given": { "occurrence_id": "occ:alarm-trap:r1:2026-08-12T23:00:00Z", "active_generation": "gen-bad" },
+      "events": [
+        { "at_utc": "2026-08-12T23:00:00Z", "type": "due-transaction-committed", "data": {} },
+        { "at_utc": "2026-08-12T23:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } },
+        { "at_utc": "2026-08-12T23:00:01Z", "type": "guest-result", "data": { "result": "trap", "attempt": 1 } },
+        { "at_utc": "2026-08-12T23:00:02Z", "type": "guest-result", "data": { "result": "trap", "attempt": 2 } },
+        { "at_utc": "2026-08-12T23:00:05Z", "type": "guest-result", "data": { "result": "trap", "attempt": 3 } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-trap:r1:2026-08-12T23:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/guest_events/guest:occ:alarm-trap:r1:2026-08-12T23:00:00Z/state", "value": "dead-lettered" },
+          { "path": "/alarms/alarm-trap/enabled", "value": true }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-trap:r1:2026-08-12T23:00:00Z",
+            "occurrence_id": "occ:alarm-trap:r1:2026-08-12T23:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-12T23:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-trap:r1:2026-08-12T23:00:00Z", "occurrence_id": "occ:alarm-trap:r1:2026-08-12T23:00:00Z", "scheduled_for_utc": "2026-08-12T23:00:00Z", "dispatched_at_utc": "2026-08-12T23:00:01Z", "classification": "on-time", "outcome": "dead-lettered", "attempts": 3 }],
+        "deduplication_keys": ["occ:alarm-trap:r1:2026-08-12T23:00:00Z", "notify:occ:alarm-trap:r1:2026-08-12T23:00:00Z", "guest:occ:alarm-trap:r1:2026-08-12T23:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-bad",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "upgrade-while-alarm-pending-keeps-occurrence",
+      "description": "Successful activation switches guest routing but does not replace a pending host occurrence.",
+      "requirement_tags": ["upgrade", "scheduler-ownership"],
+      "given": { "occurrence_id": "occ:alarm-upgrade:r1:2026-08-13T00:00:00Z", "active_generation": "gen-1", "shadow_generation": "gen-2" },
+      "events": [
+        { "at_utc": "2026-08-12T23:59:00Z", "type": "upgrade-shadow-health-passed", "data": { "generation": "gen-2" } },
+        { "at_utc": "2026-08-12T23:59:30Z", "type": "generation-activated", "data": { "generation": "gen-2" } },
+        { "at_utc": "2026-08-13T00:00:00Z", "type": "wall-clock-reached", "data": {} },
+        { "at_utc": "2026-08-13T00:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-upgrade:r1:2026-08-13T00:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/guest_events/guest:occ:alarm-upgrade:r1:2026-08-13T00:00:00Z/routed_generation", "value": "gen-2" }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-upgrade:r1:2026-08-13T00:00:00Z",
+            "occurrence_id": "occ:alarm-upgrade:r1:2026-08-13T00:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-13T00:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-upgrade:r1:2026-08-13T00:00:00Z", "occurrence_id": "occ:alarm-upgrade:r1:2026-08-13T00:00:00Z", "scheduled_for_utc": "2026-08-13T00:00:00Z", "dispatched_at_utc": "2026-08-13T00:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-upgrade:r1:2026-08-13T00:00:00Z", "notify:occ:alarm-upgrade:r1:2026-08-13T00:00:00Z", "guest:occ:alarm-upgrade:r1:2026-08-13T00:00:00Z"],
+        "rollback_result": "not-triggered; pending occurrence preserved",
+        "active_generation": "gen-2",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "failed-migration-retains-old-generation",
+      "description": "A migration failure before activation leaves the old route, KV revision and pending alarm unchanged.",
+      "requirement_tags": ["upgrade", "migration", "rollback"],
+      "given": { "occurrence_id": "occ:alarm-migrate:r1:2026-08-13T01:00:00Z", "active_generation": "gen-1", "shadow_generation": "gen-2", "kv_revision": "kv-1" },
+      "events": [
+        { "at_utc": "2026-08-13T00:30:00Z", "type": "migration-result", "data": { "generation": "gen-2", "result": "failed" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/runtime/active_generation", "value": "gen-1" },
+          { "path": "/runtime/active_kv_revision", "value": "kv-1" },
+          { "path": "/occurrences/occ:alarm-migrate:r1:2026-08-13T01:00:00Z/state", "value": "scheduled" },
+          { "path": "/occurrences/occ:alarm-migrate:r1:2026-08-13T01:00:00Z/due_at_utc", "value": "2026-08-13T01:00:00Z" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["occ:alarm-migrate:r1:2026-08-13T01:00:00Z"],
+        "rollback_result": "old-generation-retained; no live state changed",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "rollback-after-due-does-not-resend",
+      "description": "Post-activation rollback restores the old guest/KV route while preserving the terminal effect ledger.",
+      "requirement_tags": ["upgrade", "rollback", "duplicates"],
+      "given": { "occurrence_id": "occ:alarm-rollback:r1:2026-08-13T02:00:00Z", "previous_generation": "gen-1", "active_generation": "gen-2" },
+      "events": [
+        { "at_utc": "2026-08-13T02:00:00Z", "type": "due-transaction-committed", "data": {} },
+        { "at_utc": "2026-08-13T02:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } },
+        { "at_utc": "2026-08-13T02:00:05Z", "type": "generation-health-failed", "data": { "generation": "gen-2" } },
+        { "at_utc": "2026-08-13T02:00:06Z", "type": "rollback-committed", "data": { "to_generation": "gen-1" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/runtime/active_generation", "value": "gen-1" },
+          { "path": "/occurrences/occ:alarm-rollback:r1:2026-08-13T02:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/outbox/notify:occ:alarm-rollback:r1:2026-08-13T02:00:00Z/adapter_attempt_count", "value": 1 }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-rollback:r1:2026-08-13T02:00:00Z",
+            "occurrence_id": "occ:alarm-rollback:r1:2026-08-13T02:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-13T02:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-rollback:r1:2026-08-13T02:00:00Z", "occurrence_id": "occ:alarm-rollback:r1:2026-08-13T02:00:00Z", "scheduled_for_utc": "2026-08-13T02:00:00Z", "dispatched_at_utc": "2026-08-13T02:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-rollback:r1:2026-08-13T02:00:00Z", "notify:occ:alarm-rollback:r1:2026-08-13T02:00:00Z", "guest:occ:alarm-rollback:r1:2026-08-13T02:00:00Z"],
+        "rollback_result": "previous-generation-and-kv-restored; occurrence/outbox ledger preserved",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "upgrade-window-blocks-edit-but-allows-snooze",
+      "description": "During the rollback window schedule edits are frozen, while a host-owned notification snooze remains durable.",
+      "requirement_tags": ["upgrade", "rollback", "edit", "snooze"],
+      "given": {
+        "alarm_id": "alarm-upgrade-window",
+        "revision": 1,
+        "active_generation": "gen-2",
+        "rollback_state": "observation-window",
+        "delivered_parent": "occ:alarm-upgrade-window:r1:2026-08-13T02:30:00Z"
+      },
+      "events": [
+        { "at_utc": "2026-08-13T02:30:10Z", "type": "schedule-edit-request", "data": { "caller_generation": "gen-2", "idempotency_key": "edit-during-upgrade" } },
+        { "at_utc": "2026-08-13T02:30:20Z", "type": "notification-action-snooze", "data": { "os_action_id": "snooze-during-upgrade", "duration_seconds": 600 } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-upgrade-window/revision", "value": 1 },
+          { "path": "/commands/cmd:edit-during-upgrade/result", "value": "upgrade-in-progress" },
+          { "path": "/occurrences/snooze:occ:alarm-upgrade-window:r1:2026-08-13T02:30:00Z:1/due_at_utc", "value": "2026-08-13T02:40:20Z" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:edit-during-upgrade", "action:snooze-during-upgrade", "snooze:occ:alarm-upgrade-window:r1:2026-08-13T02:30:00Z:1"],
+        "rollback_result": "edit-rejected; host-owned snooze survives any generation rollback",
+        "active_generation": "gen-2",
+        "scheduler_owner": "daemon",
+        "launcher_state": "open"
+      }
+    },
+    {
+      "id": "inactive-generation-mutation-rejected",
+      "description": "A shadow/old generation cannot edit or cancel a live host schedule.",
+      "requirement_tags": ["upgrade", "scheduler-ownership"],
+      "given": { "alarm_id": "alarm-token", "revision": 1, "active_generation": "gen-2", "caller_generation": "gen-1" },
+      "events": [
+        { "at_utc": "2026-08-13T03:00:00Z", "type": "schedule-edit-request", "data": { "caller_generation": "gen-1", "idempotency_key": "stale-edit" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-token/revision", "value": 1 },
+          { "path": "/commands/cmd:stale-edit/result", "value": "inactive-generation" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:stale-edit"],
+        "rollback_result": "not-applicable; mutation rejected",
+        "active_generation": "gen-2",
+        "scheduler_owner": "daemon",
+        "launcher_state": "closed"
+      }
+    },
+    {
+      "id": "launcher-opens-alarm-view-without-owner-change",
+      "description": "Launching an installed alarm app restores its host-rendered view and reads daemon state only.",
+      "requirement_tags": ["launcher", "scheduler-ownership"],
+      "given": { "alarm_id": "alarm-launch", "launcher_state": "home", "daemon_state": "ready", "scheduler_owner_count": 1 },
+      "events": [
+        { "at_utc": "2026-08-13T04:00:00Z", "type": "launcher-open-app", "data": { "app_id": "vibapp.alarm", "launch_intent_id": "launch-1" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-launch/state_changed", "value": false },
+          { "path": "/runtime/scheduler_owner_count", "value": 1 },
+          { "path": "/runtime/scheduler_owner", "value": "daemon" },
+          { "path": "/launcher/view_source", "value": "daemon-state" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["launch-intent:launch-1"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "alarm-view-open"
+      }
+    },
+    {
+      "id": "launcher-refocuses-existing-alarm-view",
+      "description": "A second launch intent focuses the existing alarm route instead of creating another view or scheduler.",
+      "requirement_tags": ["launcher", "scheduler-ownership", "duplicates"],
+      "given": { "launcher_state": "alarm-view-open-unfocused", "open_alarm_view_count": 1, "scheduler_owner_count": 1 },
+      "events": [
+        { "at_utc": "2026-08-13T04:01:00Z", "type": "launcher-open-app", "data": { "app_id": "vibapp.alarm", "launch_intent_id": "launch-2" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/launcher/open_alarm_view_count", "value": 1 },
+          { "path": "/launcher/alarm_view_focused", "value": true },
+          { "path": "/runtime/scheduler_owner_count", "value": 1 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["launch-intent:launch-2"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "alarm-view-focused"
+      }
+    },
+    {
+      "id": "closing-alarm-view-keeps-schedule",
+      "description": "Navigating away or closing the app view changes presentation only.",
+      "requirement_tags": ["launcher", "gui-exit", "scheduler-ownership"],
+      "given": { "alarm_id": "alarm-view-close", "revision": 1, "next_due_at_utc": "2026-08-13T05:00:00Z", "launcher_state": "alarm-view-open" },
+      "events": [
+        { "at_utc": "2026-08-13T04:10:00Z", "type": "launcher-close-app-view", "data": { "app_id": "vibapp.alarm" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-view-close/revision", "value": 1 },
+          { "path": "/alarms/alarm-view-close/next_occurrence/due_at_utc", "value": "2026-08-13T05:00:00Z" },
+          { "path": "/runtime/scheduler_owner", "value": "daemon" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["occ:alarm-view-close:r1:2026-08-13T05:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "home"
+      }
+    },
+    {
+      "id": "quitting-launcher-keeps-daemon-alarm",
+      "description": "Explicit GUI quit leaves the daemon-owned schedule live and it notifies with no GUI process.",
+      "requirement_tags": ["launcher", "gui-exit", "scheduler-ownership"],
+      "given": { "occurrence_id": "occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z", "launcher_state": "open", "daemon_state": "ready" },
+      "events": [
+        { "at_utc": "2026-08-13T05:50:00Z", "type": "launcher-process-quit", "data": {} },
+        { "at_utc": "2026-08-13T06:00:00Z", "type": "wall-clock-reached", "data": {} },
+        { "at_utc": "2026-08-13T06:00:01Z", "type": "notification-adapter-result", "data": { "result": "accepted" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/occurrences/occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/runtime/scheduler_owner", "value": "daemon" },
+          { "path": "/runtime/gui_process_count", "value": 0 }
+        ],
+        "notifications": [
+          {
+            "notification_id": "notify:occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z",
+            "occurrence_id": "occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z",
+            "logical_count": 1,
+            "outcome": "accepted",
+            "adapter_attempts": [{ "at_utc": "2026-08-13T06:00:01Z", "result": "accepted" }]
+          }
+        ],
+        "guest_events": [{ "guest_event_id": "guest:occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z", "occurrence_id": "occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z", "scheduled_for_utc": "2026-08-13T06:00:00Z", "dispatched_at_utc": "2026-08-13T06:00:00Z", "classification": "on-time", "outcome": "acked", "attempts": 1 }],
+        "deduplication_keys": ["occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z", "notify:occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z", "guest:occ:alarm-gui-quit:r1:2026-08-13T06:00:00Z"],
+        "rollback_result": "not-applicable",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "process-not-running"
+      }
+    },
+    {
+      "id": "launcher-does-not-fallback-when-daemon-unavailable",
+      "description": "Opening the alarm app while the daemon is down shows unavailable state and creates no in-process timer owner.",
+      "requirement_tags": ["launcher", "scheduler-ownership", "daemon-restart"],
+      "given": { "launcher_state": "home", "daemon_state": "unavailable", "known_cached_alarm_count": 1 },
+      "events": [
+        { "at_utc": "2026-08-13T07:00:00Z", "type": "launcher-open-app", "data": { "app_id": "vibapp.alarm", "launch_intent_id": "launch-offline" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/launcher/view_state", "value": "daemon-unavailable" },
+          { "path": "/launcher/in_process_timer_count", "value": 0 },
+          { "path": "/launcher/claims_alarm_protected", "value": false },
+          { "path": "/runtime/scheduler_owner", "value": "daemon" },
+          { "path": "/runtime/scheduler_owner_state", "value": "unavailable" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["launch-intent:launch-offline"],
+        "rollback_result": "not-applicable",
+        "active_generation": null,
+        "scheduler_owner": "daemon",
+        "launcher_state": "daemon-unavailable"
+      }
+    },
+    {
+      "id": "gui-and-cli-configure-produce-identical-daemon-state",
+      "description": "Two isolated worlds submit the same canonical configure command through GUI and CLI and reach identical semantic daemon state.",
+      "requirement_tags": ["control-surface-neutral", "scheduler-ownership", "headless"],
+      "given": {
+        "worlds": ["gui", "cli"],
+        "initial_state": "alarm-absent",
+        "gui_request_ref": "/wire_examples/gui_alarm_configure",
+        "cli_request_ref": "/wire_examples/cli_alarm_configure",
+        "semantic_command_ref": "/wire_examples/gui_alarm_configure/command/value"
+      },
+      "events": [
+        { "at_utc": "2026-08-13T00:30:00Z", "type": "typed-daemon-request", "data": { "world": "gui", "request_ref": "/wire_examples/gui_alarm_configure" } },
+        { "at_utc": "2026-08-13T00:30:00Z", "type": "typed-daemon-request", "data": { "world": "cli", "request_ref": "/wire_examples/cli_alarm_configure" } }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/worlds/gui/semantic/alarms/alarm-control/enabled", "value": true },
+          { "path": "/worlds/gui/semantic/alarms/alarm-control/revision", "value": 1 },
+          { "path": "/worlds/gui/semantic/alarms/alarm-control/next_occurrence_id", "value": "occ:alarm-control:r1:2026-08-13T01:00:00Z" },
+          { "path": "/worlds/cli/semantic/alarms/alarm-control/enabled", "value": true },
+          { "path": "/worlds/cli/semantic/alarms/alarm-control/revision", "value": 1 },
+          { "path": "/worlds/cli/semantic/alarms/alarm-control/next_occurrence_id", "value": "occ:alarm-control:r1:2026-08-13T01:00:00Z" },
+          { "path": "/comparison/semantic_daemon_state_equal", "value": true },
+          { "path": "/comparison/excluded_envelope_paths", "value": ["/request_id", "/client"] },
+          { "path": "/worlds/cli/runtime/gui_process_count", "value": 0 },
+          { "path": "/worlds/cli/runtime/render_count", "value": 0 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:surface-neutral-configure", "occ:alarm-control:r1:2026-08-13T01:00:00Z"],
+        "rollback_result": "not-applicable; both worlds remain gen-1 and semantically equal",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "gui-open-and-cli-headless"
+      }
+    },
+    {
+      "id": "headless-cli-disable-then-enable-recurring",
+      "description": "A CLI disables and re-enables a recurring alarm without UI; the daemon cancels revision 1 and materializes revision 3 from civil time.",
+      "requirement_tags": ["control-surface-neutral", "enable-disable", "headless", "recurrence", "cancel", "scheduler-ownership"],
+      "given": {
+        "alarm_id": "alarm-cli-cycle",
+        "revision": 1,
+        "enabled": true,
+        "schedule": { "kind": "daily", "local_time": "09:00:00", "start_date": "2026-08-13", "time_zone": "Asia/Shanghai", "weekdays": [] },
+        "next_occurrence_id": "occ:alarm-cli-cycle:r1:2026-08-14T01:00:00Z",
+        "gui_process_count": 0
+      },
+      "events": [
+        {
+          "at_utc": "2026-08-13T00:00:00Z",
+          "type": "typed-daemon-request",
+          "data": {
+            "request_id": "cli-disable-cycle-request",
+            "idempotency_key": "cli-disable-cycle",
+            "client": "cli",
+            "subject": "vibapp.alarm",
+            "command": { "tag": "alarm-disable", "value": { "alarm_id": "alarm-cli-cycle", "expected_revision": 1 } }
+          }
+        },
+        {
+          "at_utc": "2026-08-13T02:00:00Z",
+          "type": "typed-daemon-request",
+          "data": {
+            "request_id": "cli-enable-cycle-request",
+            "idempotency_key": "cli-enable-cycle",
+            "client": "cli",
+            "subject": "vibapp.alarm",
+            "command": { "tag": "alarm-enable", "value": { "alarm_id": "alarm-cli-cycle", "expected_revision": 2 } }
+          }
+        }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-cli-cycle/enabled", "value": true },
+          { "path": "/alarms/alarm-cli-cycle/revision", "value": 3 },
+          { "path": "/occurrences/occ:alarm-cli-cycle:r1:2026-08-14T01:00:00Z/state", "value": "cancelled" },
+          { "path": "/occurrences/occ:alarm-cli-cycle:r3:2026-08-14T01:00:00Z/state", "value": "scheduled" },
+          { "path": "/commands/cmd:cli-disable-cycle/result", "value": "disabled" },
+          { "path": "/commands/cmd:cli-enable-cycle/result", "value": "enabled" },
+          { "path": "/runtime/gui_process_count", "value": 0 },
+          { "path": "/runtime/render_count", "value": 0 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:cli-disable-cycle", "cmd:cli-enable-cycle", "occ:alarm-cli-cycle:r1:2026-08-14T01:00:00Z", "occ:alarm-cli-cycle:r3:2026-08-14T01:00:00Z"],
+        "rollback_result": "not-applicable; no generation or app KV change",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "unsupported-headless"
+      }
+    },
+    {
+      "id": "headless-cli-rejects-expired-one-shot-enable",
+      "description": "Enabling an expired disabled one-shot through CLI is rejected without a revision, occurrence or UI side effect.",
+      "requirement_tags": ["control-surface-neutral", "enable-disable", "headless", "scheduler-ownership"],
+      "given": {
+        "alarm_id": "alarm-expired-enable",
+        "revision": 2,
+        "enabled": false,
+        "schedule": { "kind": "one-shot", "civil_time": "2026-08-13T08:00:00", "time_zone": "Asia/Shanghai" },
+        "resolved_due_at_utc": "2026-08-13T00:00:00Z",
+        "gui_process_count": 0
+      },
+      "events": [
+        {
+          "at_utc": "2026-08-13T00:01:00Z",
+          "type": "typed-daemon-request",
+          "data": {
+            "request_id": "cli-enable-expired-request",
+            "idempotency_key": "cli-enable-expired",
+            "client": "cli",
+            "subject": "vibapp.alarm",
+            "command": { "tag": "alarm-enable", "value": { "alarm_id": "alarm-expired-enable", "expected_revision": 2 } }
+          }
+        }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/alarms/alarm-expired-enable/enabled", "value": false },
+          { "path": "/alarms/alarm-expired-enable/revision", "value": 2 },
+          { "path": "/alarms/alarm-expired-enable/next_occurrence", "value": null },
+          { "path": "/commands/cmd:cli-enable-expired/result", "value": "expired-one-shot" },
+          { "path": "/runtime/gui_process_count", "value": 0 },
+          { "path": "/runtime/render_count", "value": 0 }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:cli-enable-expired"],
+        "rollback_result": "not-applicable; generation and app KV unchanged",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "unsupported-headless"
+      }
+    },
+    {
+      "id": "headless-cli-status-is-read-only",
+      "description": "CLI status returns normalized daemon state without launching a view, activating a generation or mutating alarm state.",
+      "requirement_tags": ["control-surface-neutral", "headless", "scheduler-ownership"],
+      "given": {
+        "alarm_id": "alarm-cli-status",
+        "enabled": true,
+        "revision": 4,
+        "next_occurrence_id": "occ:alarm-cli-status:r4:2026-08-14T01:00:00Z",
+        "schedule_ref": "/wire_examples/daily_recurrence",
+        "notification_ref": "/wire_examples/notification_projection",
+        "permission_health": "authorized",
+        "active_generation": "gen-1",
+        "rollback_state": "none",
+        "semantic_state_digest": "state-before-status",
+        "gui_process_count": 0
+      },
+      "events": [
+        {
+          "at_utc": "2026-08-13T08:00:00Z",
+          "type": "typed-daemon-request",
+          "data": {
+            "request_id": "status-1",
+            "idempotency_key": "status-cli-1",
+            "client": "cli",
+            "subject": "vibapp.alarm",
+            "command": { "tag": "alarm-status", "value": { "alarm_id": "alarm-cli-status", "occurrence_limit": 32, "effect_limit": 64 } }
+          }
+        }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/queries/status-1/outcome/tag", "value": "alarm-status" },
+          { "path": "/queries/status-1/outcome/value/app", "value": "vibapp.alarm" },
+          { "path": "/queries/status-1/outcome/value/active_generation", "value": "gen-1" },
+          { "path": "/queries/status-1/outcome/value/rollback_state", "value": "none" },
+          { "path": "/queries/status-1/outcome/value/alarm/alarm_id", "value": "alarm-cli-status" },
+          { "path": "/queries/status-1/outcome/value/alarm/enabled", "value": true },
+          { "path": "/queries/status-1/outcome/value/alarm/revision", "value": 4 },
+          { "path": "/queries/status-1/outcome/value/alarm/next_occurrence_id", "value": "occ:alarm-cli-status:r4:2026-08-14T01:00:00Z" },
+          {
+            "path": "/queries/status-1/outcome/value/alarm/schedule",
+            "value": {
+              "tag": "recurring",
+              "value": {
+                "kind": "daily",
+                "time": { "hour": 9, "minute": 0, "second": 0 },
+                "start_date": { "year": 2026, "month": 8, "day": 13 },
+                "time_zone": "Asia/Shanghai",
+                "weekdays": [],
+                "gap": "next-valid",
+                "overlap": "earlier"
+              }
+            }
+          },
+          { "path": "/queries/status-1/outcome/value/alarm/notification", "value": { "title": "Wake up", "body": "Morning alarm", "standard_sound": true } },
+          {
+            "path": "/queries/status-1/outcome/value/alarm/occurrences",
+            "value": [
+              {
+                "occurrence": "occ:alarm-cli-status:r4:2026-08-14T01:00:00Z",
+                "due_at_utc": "2026-08-14T01:00:00Z",
+                "state": "scheduled",
+                "classification": null,
+                "notification_id": null
+              }
+            ]
+          },
+          { "path": "/queries/status-1/outcome/value/alarm/effects", "value": [] },
+          { "path": "/queries/status-1/outcome/value/alarm/permission_health", "value": "authorized" },
+          { "path": "/queries/status-1/outcome/value/alarm/occurrences_truncated", "value": false },
+          { "path": "/queries/status-1/outcome/value/alarm/effects_truncated", "value": false },
+          { "path": "/runtime/semantic_state_digest", "value": "state-before-status" },
+          { "path": "/runtime/gui_process_count", "value": 0 },
+          { "path": "/runtime/render_count", "value": 0 },
+          { "path": "/runtime/scheduler_owner", "value": "daemon" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": [],
+        "rollback_result": "not-applicable; read-only query",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "unsupported-headless"
+      }
+    },
+    {
+      "id": "launcher-app-disable-bulk-disables-alarm",
+      "description": "Disabling an installed app is a daemon lifecycle transaction that disables its alarms; it is not equivalent to closing the view.",
+      "requirement_tags": ["launcher", "app-lifecycle", "enable-disable", "cancel", "scheduler-ownership"],
+      "given": {
+        "app_id": "vibapp.alarm",
+        "app_lifecycle_state": "enabled",
+        "alarm_id": "alarm-app-disable",
+        "revision": 1,
+        "enabled": true,
+        "next_occurrence_id": "occ:alarm-app-disable:r1:2026-08-14T02:00:00Z",
+        "launcher_state": "alarm-view-open"
+      },
+      "events": [
+        {
+          "at_utc": "2026-08-13T09:00:00Z",
+          "type": "typed-daemon-request",
+          "data": {
+            "request_id": "disable-alarm-app-request",
+            "idempotency_key": "disable-alarm-app",
+            "client": "launcher",
+            "subject": "vibapp.alarm",
+            "command": { "tag": "disable", "value": null }
+          }
+        }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/apps/vibapp.alarm/lifecycle_state", "value": "disabled" },
+          { "path": "/alarms/alarm-app-disable/enabled", "value": false },
+          { "path": "/alarms/alarm-app-disable/revision", "value": 2 },
+          { "path": "/occurrences/occ:alarm-app-disable:r1:2026-08-14T02:00:00Z/state", "value": "cancelled" },
+          { "path": "/commands/cmd:disable-alarm-app/result", "value": "app-disabled" },
+          { "path": "/runtime/scheduler_owner", "value": "daemon" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:disable-alarm-app", "occ:alarm-app-disable:r1:2026-08-14T02:00:00Z"],
+        "rollback_result": "not-applicable; re-enabling the app does not re-enable this alarm",
+        "active_generation": "gen-1",
+        "scheduler_owner": "daemon",
+        "launcher_state": "home-app-disabled"
+      }
+    },
+    {
+      "id": "launcher-uninstall-deactivates-alarms-before-removal",
+      "description": "Uninstall may proceed only after the daemon has durably disabled future alarms while preserving terminal delivery audit facts.",
+      "requirement_tags": ["launcher", "app-lifecycle", "uninstall", "cancel", "scheduler-ownership"],
+      "given": {
+        "app_id": "vibapp.alarm",
+        "app_lifecycle_state": "enabled",
+        "alarm_id": "alarm-uninstall",
+        "revision": 1,
+        "enabled": true,
+        "next_occurrence_id": "occ:alarm-uninstall:r1:2026-08-14T03:00:00Z",
+        "terminal_occurrence_id": "occ:alarm-uninstall:r1:2026-08-12T03:00:00Z",
+        "terminal_occurrence_state": "notification-accepted"
+      },
+      "events": [
+        {
+          "at_utc": "2026-08-13T09:30:00Z",
+          "type": "typed-daemon-request",
+          "data": {
+            "request_id": "uninstall-alarm-app-request",
+            "idempotency_key": "uninstall-alarm-app",
+            "client": "launcher",
+            "subject": "vibapp.alarm",
+            "command": { "tag": "uninstall", "value": { "disposition": "delete" } }
+          }
+        }
+      ],
+      "expected": {
+        "persisted_state": [
+          { "path": "/apps/vibapp.alarm/lifecycle_state", "value": "uninstall-deactivated" },
+          { "path": "/alarms/alarm-uninstall/enabled", "value": false },
+          { "path": "/alarms/alarm-uninstall/revision", "value": 2 },
+          { "path": "/occurrences/occ:alarm-uninstall:r1:2026-08-14T03:00:00Z/state", "value": "cancelled" },
+          { "path": "/occurrences/occ:alarm-uninstall:r1:2026-08-12T03:00:00Z/state", "value": "notification-accepted" },
+          { "path": "/commands/cmd:uninstall-alarm-app/result", "value": "alarm-deactivation-committed" },
+          { "path": "/uninstall/package_removal_authorized", "value": true },
+          { "path": "/runtime/scheduler_owner", "value": "daemon" }
+        ],
+        "notifications": [],
+        "guest_events": [],
+        "deduplication_keys": ["cmd:uninstall-alarm-app", "occ:alarm-uninstall:r1:2026-08-14T03:00:00Z", "notify:occ:alarm-uninstall:r1:2026-08-12T03:00:00Z"],
+        "rollback_result": "not-applicable; alarm deactivation commits before package removal",
+        "active_generation": null,
+        "scheduler_owner": "daemon",
+        "launcher_state": "app-removal-authorized"
+      }
+    }
+  ]
+}

@@ -1,0 +1,620 @@
+package root:component;
+
+world root {
+  import vibapp:experimental-v0/common@0.0.1;
+  import vibapp:experimental-v0/clock@0.0.1;
+  import vibapp:experimental-v0/kv@0.0.1;
+  import vibapp:experimental-v0/log@0.0.1;
+  import vibapp:experimental-v0/host-info@0.0.1;
+  import vibapp:experimental-v0/ui@0.0.1;
+  import vibapp:experimental-v0/settings@0.0.1;
+  import vibapp:experimental-v0/scheduler@0.0.1;
+
+  export vibapp:experimental-v0/guest@0.0.1;
+}
+package vibapp:experimental-v0@0.0.1 {
+  interface common {
+    type monotonic-milliseconds = u64;
+
+    type state-revision = u64;
+
+    enum error-code {
+      invalid-argument,
+      incompatible-contract,
+      unsupported-version,
+      unknown-interface,
+      missing-interface,
+      permission-denied,
+      consent-required,
+      capability-unavailable,
+      unsupported-surface,
+      resource-limit,
+      deadline-exceeded,
+      cancelled,
+      app-disabled,
+      app-uninstalled,
+      upgrade-in-progress,
+      integrity-failure,
+      not-found,
+      conflict,
+      stale-revision,
+      malformed-output,
+      forged-identifier,
+      internal,
+    }
+
+    record host-error {
+      code: error-code,
+      message: string,
+      retryable: bool,
+    }
+
+    enum execution-profile {
+      desktop,
+      web-preview,
+      web-runtime,
+      headless,
+    }
+
+    type idempotency-key = string;
+
+    record local-date {
+      year: u16,
+      month: u8,
+      day: u8,
+    }
+
+    record local-time {
+      hour: u8,
+      minute: u8,
+      second: u8,
+    }
+
+    record app-error {
+      code: error-code,
+      message: string,
+      retryable: bool,
+    }
+
+    type app-id = string;
+
+    enum app-kind {
+      ui,
+      service,
+      hybrid,
+    }
+
+    type app-version = string;
+
+    type event-id = string;
+
+    type cancellation-id = string;
+
+    type generation-id = string;
+
+    record call-context {
+      event-id: event-id,
+      idempotency-key: idempotency-key,
+      cancellation: cancellation-id,
+      generation: generation-id,
+      profile: execution-profile,
+      deadline-monotonic-ms: monotonic-milliseconds,
+    }
+
+    enum data-disposition {
+      delete,
+      retain,
+      export-then-delete,
+    }
+
+    type entrypoint-id = string;
+
+    enum entrypoint-kind {
+      launcher-ui,
+      service,
+      settings,
+    }
+
+    type restore-token = string;
+
+    type route-id = string;
+
+    type service-instance-id = string;
+
+    type session-id = string;
+
+    type surface-id = string;
+
+    type occurrence-id = string;
+
+    type utc-instant = string;
+  }
+  interface clock {
+    use common.{monotonic-milliseconds};
+
+    monotonic-now: func() -> monotonic-milliseconds;
+  }
+  interface kv {
+    use common.{state-revision, host-error};
+
+    type key = string;
+
+    record entry {
+      key: key,
+      value: list<u8>,
+      revision: state-revision,
+    }
+
+    get: func(key: key) -> result<option<entry>, host-error>;
+  }
+  interface log {
+    use common.{idempotency-key, host-error};
+
+    enum level {
+      debug,
+      info,
+      warn,
+      error,
+    }
+
+    record field {
+      key: string,
+      value: string,
+    }
+
+    write: func(level: level, message: string, fields: list<field>, idempotency-key: idempotency-key) -> result<_, host-error>;
+  }
+  interface host-info {
+    use common.{execution-profile};
+
+    enum background-reliability {
+      daemon,
+      process,
+      foreground-only,
+      not-applicable,
+    }
+
+    enum availability {
+      native,
+      brokered,
+      mock,
+      denied,
+      unavailable,
+    }
+
+    record capability-state {
+      interface-name: string,
+      availability: availability,
+      granted: bool,
+      detail: string,
+    }
+
+    record host-description {
+      profile: execution-profile,
+      background: background-reliability,
+      capabilities: list<capability-state>,
+    }
+
+    describe-host: func() -> host-description;
+  }
+  interface ui {
+    use common.{local-date, local-time, session-id, surface-id, route-id};
+
+    variant field-value {
+      empty,
+      text(string),
+      secret-handle(string),
+      integer(s64),
+      decimal(string),
+      boolean(bool),
+      date(local-date),
+      time(local-time),
+      time-zone(string),
+      choice(string),
+    }
+
+    enum field-kind {
+      text,
+      integer,
+      decimal,
+      boolean,
+      date,
+      time,
+      time-zone,
+      choice,
+    }
+
+    record choice-option {
+      value: string,
+      label: string,
+    }
+
+    type action-id = string;
+
+    type field-id = string;
+
+    record field-change {
+      field: field-id,
+      value: field-value,
+    }
+
+    record action-event {
+      session: session-id,
+      surface: surface-id,
+      route: route-id,
+      action: action-id,
+      fields: list<field-change>,
+    }
+
+    type node-id = string;
+
+    enum text-style {
+      body,
+      caption,
+      title,
+      heading,
+      status,
+    }
+
+    record text-node {
+      text: string,
+      style: text-style,
+    }
+
+    enum button-style {
+      primary,
+      secondary,
+      destructive,
+      quiet,
+    }
+
+    record button-node {
+      label: string,
+      action: action-id,
+      style: button-style,
+      disabled: bool,
+    }
+
+    record field-node {
+      field: field-id,
+      label: string,
+      kind: field-kind,
+      value: field-value,
+      required: bool,
+      sensitive: bool,
+      choices: list<choice-option>,
+      validation-message: option<string>,
+    }
+
+    record list-node {
+      label: option<string>,
+    }
+
+    record progress-node {
+      label: string,
+      current: u32,
+      total: option<u32>,
+    }
+
+    record confirmation-node {
+      title: string,
+      message: string,
+      confirm-action: action-id,
+      cancel-action: action-id,
+      destructive: bool,
+    }
+
+    variant node-kind {
+      text(text-node),
+      button(button-node),
+      field(field-node),
+      list-container(list-node),
+      progress(progress-node),
+      confirmation(confirmation-node),
+    }
+
+    record node {
+      id: node-id,
+      parent: option<node-id>,
+      kind: node-kind,
+    }
+
+    record view {
+      title: string,
+      root: node-id,
+      nodes: list<node>,
+    }
+
+    record surface-update {
+      session: session-id,
+      surface: surface-id,
+      route: route-id,
+      view: view,
+    }
+  }
+  interface settings {
+    use ui.{field-value};
+    use common.{host-error};
+    use ui.{field-kind, choice-option};
+
+    type setting-key = string;
+
+    record setting-value {
+      key: setting-key,
+      value: field-value,
+    }
+
+    record settings-snapshot {
+      schema-revision: u64,
+      config-revision: u64,
+      values: list<setting-value>,
+    }
+
+    record setting-definition {
+      key: setting-key,
+      label: string,
+      description: string,
+      kind: field-kind,
+      required: bool,
+      sensitive: bool,
+      default-value: option<field-value>,
+      choices: list<choice-option>,
+    }
+
+    record settings-schema {
+      schema-revision: u64,
+      settings: list<setting-definition>,
+    }
+
+    record setting-field-error {
+      key: setting-key,
+      message: string,
+    }
+
+    record settings-validation {
+      accepted: bool,
+      field-errors: list<setting-field-error>,
+      service-restart-required: bool,
+    }
+
+    current: func() -> result<settings-snapshot, host-error>;
+  }
+  interface scheduler {
+    use common.{occurrence-id, utc-instant};
+
+    type schedule-id = string;
+
+    type schedule-key = string;
+
+    enum delivery-classification {
+      on-time,
+      catch-up,
+      missed,
+      permission-denied,
+    }
+
+    record delivery-event {
+      schedule: schedule-id,
+      key: schedule-key,
+      occurrence: occurrence-id,
+      scheduled-for-utc: utc-instant,
+      dispatched-at-utc: utc-instant,
+      classification: delivery-classification,
+      attempt: u32,
+      payload: list<u8>,
+    }
+  }
+  interface guest {
+    use common.{app-error, app-id, app-kind, app-version, call-context, data-disposition, entrypoint-id, entrypoint-kind, restore-token, route-id, service-instance-id, session-id, state-revision, surface-id};
+    use scheduler.{delivery-event};
+    use settings.{settings-schema, settings-snapshot, settings-validation};
+    use ui.{action-event, field-change, surface-update};
+
+    record entrypoint-descriptor {
+      id: entrypoint-id,
+      kind: entrypoint-kind,
+      label: string,
+      initial-route: option<route-id>,
+    }
+
+    record app-descriptor {
+      id: app-id,
+      version: app-version,
+      kind: app-kind,
+      display-name: string,
+      entrypoints: list<entrypoint-descriptor>,
+    }
+
+    enum open-reason {
+      user,
+      deep-link,
+      restore,
+    }
+
+    record launch-event {
+      entrypoint: entrypoint-id,
+      session: session-id,
+      surface: surface-id,
+      route: route-id,
+      reason: open-reason,
+    }
+
+    record open-event {
+      entrypoint: entrypoint-id,
+      session: session-id,
+      surface: surface-id,
+      route: route-id,
+      reason: open-reason,
+    }
+
+    record close-event {
+      entrypoint: entrypoint-id,
+      session: session-id,
+      surface: surface-id,
+    }
+
+    record focus-event {
+      entrypoint: entrypoint-id,
+      session: session-id,
+      surface: surface-id,
+      focused: bool,
+    }
+
+    record restore-event {
+      entrypoint: entrypoint-id,
+      session: session-id,
+      surface: surface-id,
+      route: route-id,
+      token: restore-token,
+      safe-fields: list<field-change>,
+    }
+
+    variant launcher-event {
+      launch(launch-event),
+      open(open-event),
+      close(close-event),
+      focus(focus-event),
+      restore(restore-event),
+      action(action-event),
+    }
+
+    enum disable-reason {
+      user,
+      policy,
+      unhealthy,
+      update,
+    }
+
+    record installed-event {
+      previous-version: option<app-version>,
+    }
+
+    record enabled-event {
+      previous-state-revision: state-revision,
+    }
+
+    record disable-event {
+      reason: disable-reason,
+    }
+
+    record configured-event {
+      config-revision: u64,
+      changed-keys: list<string>,
+    }
+
+    record uninstalling-event {
+      disposition: data-disposition,
+    }
+
+    variant management-event {
+      installed(installed-event),
+      enabled(enabled-event),
+      disabling(disable-event),
+      configured(configured-event),
+      uninstalling(uninstalling-event),
+    }
+
+    enum service-start-reason {
+      enabled,
+      host-restart,
+      update,
+      manual,
+    }
+
+    enum service-stop-reason {
+      disabled,
+      update,
+      uninstall,
+      unhealthy,
+      host-shutdown,
+    }
+
+    record service-start-event {
+      entrypoint: entrypoint-id,
+      instance: service-instance-id,
+      reason: service-start-reason,
+    }
+
+    record service-stop-event {
+      entrypoint: entrypoint-id,
+      instance: service-instance-id,
+      reason: service-stop-reason,
+    }
+
+    record service-trigger-event {
+      entrypoint: entrypoint-id,
+      instance: service-instance-id,
+      trigger-id: string,
+      payload: list<u8>,
+    }
+
+    variant service-event {
+      start(service-start-event),
+      stop(service-stop-event),
+      trigger(service-trigger-event),
+    }
+
+    variant app-event {
+      launcher(launcher-event),
+      management(management-event),
+      service(service-event),
+      scheduled(delivery-event),
+    }
+
+    record event-output {
+      surfaces: list<surface-update>,
+      diagnostic: option<string>,
+    }
+
+    enum health-status {
+      healthy,
+      degraded,
+      unhealthy,
+    }
+
+    record health-request {
+      service-entrypoint: option<entrypoint-id>,
+      include-dependencies: bool,
+    }
+
+    record health-check {
+      name: string,
+      status: health-status,
+      message: string,
+    }
+
+    record health-report {
+      status: health-status,
+      checks: list<health-check>,
+    }
+
+    record migration-request {
+      from-schema: u32,
+      to-schema: u32,
+      source-state-revision: state-revision,
+      target-state-revision: state-revision,
+    }
+
+    enum migration-status {
+      unchanged,
+      migrated,
+    }
+
+    record migration-result {
+      status: migration-status,
+      target-state-revision: state-revision,
+    }
+
+    describe: func() -> result<app-descriptor, app-error>;
+
+    get-settings-schema: func() -> result<option<settings-schema>, app-error>;
+
+    validate-settings: func(context: call-context, proposed: settings-snapshot) -> result<settings-validation, app-error>;
+
+    handle-event: func(context: call-context, event: app-event) -> result<event-output, app-error>;
+
+    health: func(context: call-context, request: health-request) -> result<health-report, app-error>;
+
+    migrate: func(context: call-context, request: migration-request) -> result<migration-result, app-error>;
+  }
+}

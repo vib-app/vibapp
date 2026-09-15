@@ -1,0 +1,5 @@
+{
+  "case_id": "manifest-browser-profile-missing",
+  "mutation": { "path": "manifest.profile", "value": "desktop" },
+  "expected_reason": "manifest-profile"
+}

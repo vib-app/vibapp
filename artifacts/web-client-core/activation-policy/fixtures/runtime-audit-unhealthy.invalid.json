@@ -1,0 +1,5 @@
+{
+  "case_id": "runtime-audit-unhealthy",
+  "mutation": { "path": "runtime.invalid_bootstrap_audit.healthy", "value": false },
+  "expected_reason": "runtime-audit"
+}

@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "schema_version": "vibapp.client-state.experimental-v0",
+    "label": "VibApp product platform — local, not a production Launcher",
+    "source": "local-fixture"
+  },
+  "needs": [
+    {
+      "need_id": "need-focus-001",
+      "title": "每天帮我整理今日重点",
+      "description": "从我手动粘贴的内容中提炼三条今天最重要的事项，并保存到本地。",
+      "route": "local-private",
+      "status": "building",
+      "handoff": "fixture",
+      "created_at_utc": "2026-08-24T01:20:00Z"
+    },
+    {
+      "need_id": "need-water-001",
+      "title": "喝水提醒",
+      "description": "工作日白天每两个小时提醒我喝水，不读取位置和通讯录。",
+      "route": "local-private",
+      "status": "candidate-ready",
+      "handoff": "fixture",
+      "created_at_utc": "2026-08-23T08:00:00Z"
+    }
+  ],
+  "jobs": [
+    {
+      "job_id": "job-focus-001",
+      "need_id": "need-focus-001",
+      "title": "今日重点",
+      "route": "local-private",
+      "status": "running",
+      "progress_percent": 62,
+      "current_stage": "build",
+      "updated_at_utc": "2026-08-24T02:14:00Z",
+      "stages": [
+        {"kind": "generate", "status": "succeeded", "label": "生成 Rust 源码"},
+        {"kind": "build", "status": "running", "label": "隔离编译"},
+        {"kind": "test", "status": "pending", "label": "自动测试"},
+        {"kind": "verify", "status": "pending", "label": "独立验收"}
+      ],
+      "verification": {
+        "status": "quarantined",
+        "independent": true,
+        "summary": "候选物仍在隔离区，尚不能提交安装请求。"
+      }
+    },
+    {
+      "job_id": "job-water-001",
+      "need_id": "need-water-001",
+      "title": "喝水提醒",
+      "route": "local-private",
+      "status": "succeeded",
+      "progress_percent": 100,
+      "current_stage": "verify",
+      "updated_at_utc": "2026-08-23T09:32:00Z",
+      "stages": [
+        {"kind": "generate", "status": "succeeded", "label": "生成 Rust 源码"},
+        {"kind": "build", "status": "succeeded", "label": "隔离编译"},
+        {"kind": "test", "status": "succeeded", "label": "自动测试"},
+        {"kind": "verify", "status": "succeeded", "label": "独立验收"}
+      ],
+      "verification": {
+        "status": "verified",
+        "independent": true,
+        "summary": "本地产品验收夹具通过；不代表 Stage 0 或生产验收通过。"
+      }
+    },
+    {
+      "job_id": "job-weather-001",
+      "need_id": "need-weather-001",
+      "title": "后台天气播报",
+      "route": "local-private",
+      "status": "failed",
+      "progress_percent": 88,
+      "current_stage": "verify",
+      "updated_at_utc": "2026-08-22T05:12:00Z",
+      "stages": [
+        {"kind": "generate", "status": "succeeded", "label": "生成 Rust 源码"},
+        {"kind": "build", "status": "succeeded", "label": "隔离编译"},
+        {"kind": "test", "status": "succeeded", "label": "自动测试"},
+        {"kind": "verify", "status": "failed", "label": "独立验收"}
+      ],
+      "verification": {
+        "status": "rejected",
+        "independent": true,
+        "summary": "声明了未获授权的网络能力，已拒绝进入候选区。"
+      }
+    }
+  ],
+  "apps": [
+    {
+      "app_id": "ai.vibapp.water-reminder",
+      "display_name": "喝水提醒",
+      "version": "0.1.0-local",
+      "kind": "hybrid",
+      "summary": "按固定时间提醒喝水；关闭界面不会伪装成后台服务停止。",
+      "publisher": "VibApp Product Platform",
+      "profiles": ["desktop"],
+      "permissions": ["clock", "scheduler", "notification", "kv"],
+      "verification_state": "verified",
+      "publication_state": "private",
+      "install_eligible": true,
+      "package_digest_sha256": "a3f7c912fb6e70b8a7f36f5ed6bc5f354602d107bec3d69fd3dbde49681b52f0",
+      "verification_summary": "独立本地验收记录存在；仍未安装、未发布。"
+    },
+    {
+      "app_id": "ai.vibapp.daily-focus",
+      "display_name": "今日重点",
+      "version": "0.1.0-local",
+      "kind": "ui",
+      "summary": "把粘贴的长文本整理成三个重点，仅使用本地临时数据。",
+      "publisher": "VibApp Product Platform",
+      "profiles": ["desktop", "web-preview"],
+      "permissions": ["clock", "kv", "settings"],
+      "verification_state": "quarantined",
+      "publication_state": "private",
+      "install_eligible": false,
+      "package_digest_sha256": "c52aa7e09733643d99a44a9b6be2f522d3eedc36f242d81393281977fe2cb786",
+      "verification_summary": "构建进行中，候选物仍在隔离区。"
+    },
+    {
+      "app_id": "ai.vibapp.weather-broadcast",
+      "display_name": "后台天气播报",
+      "version": "0.0.3-local",
+      "kind": "service",
+      "summary": "因网络能力声明不符合当前本地策略而被拒绝。",
+      "publisher": "VibApp Product Platform",
+      "profiles": ["headless"],
+      "permissions": ["http", "scheduler", "notification"],
+      "verification_state": "rejected",
+      "publication_state": "private",
+      "install_eligible": false,
+      "package_digest_sha256": "cc33c9c5e555845849de8d4dde9f82a4f868f37f159414ba3d30a9ee5a3d538b",
+      "verification_summary": "独立验收拒绝：能力边界不符合当前策略。"
+    }
+  ],
+  "install_intents": []
+}

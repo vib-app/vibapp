@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/provider-gateway-receipt.experimental-v1.schema.json",
+  "title": "Trusted provider gateway observation receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_type",
+    "job_id",
+    "immutable_task_digest_sha256",
+    "input_bundle_sha256",
+    "executed_executable_sha256",
+    "destination_policy_sha256",
+    "credential_handle_sha256",
+    "external_request_attempted",
+    "external_request_observed",
+    "gateway_request_id",
+    "attestation_type",
+    "attestation_key_id",
+    "receipt_digest_sha256",
+    "attestation_signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "vibapp.provider-gateway-receipt.experimental-v1"},
+    "document_type": {"const": "provider-gateway-receipt"},
+    "job_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "immutable_task_digest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "input_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "executed_executable_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "destination_policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "credential_handle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "external_request_attempted": {"const": true},
+    "external_request_observed": {"const": true},
+    "gateway_request_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "attestation_type": {"const": "detached-gateway-signature-v1"},
+    "attestation_key_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "receipt_digest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "attestation_signature": {"type": "string", "minLength": 43, "maxLength": 1024, "pattern": "^[A-Za-z0-9_-]{43,1024}={0,2}$"}
+  }
+}

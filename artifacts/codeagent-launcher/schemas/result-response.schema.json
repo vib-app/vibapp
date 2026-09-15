@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:vibapp:codeagent-launcher:result-response:experimental-v0",
+  "title": "Experimental CodeAgent Launcher successful result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_id",
+    "attempt_id",
+    "state",
+    "backend_execution_id",
+    "output",
+    "receipt"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "codeagent-launcher.experimental-v0"
+    },
+    "job_id": {
+      "$ref": "#/$defs/id"
+    },
+    "attempt_id": {
+      "$ref": "#/$defs/id"
+    },
+    "state": {
+      "const": "succeeded"
+    },
+    "backend_execution_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[!-~]+$"
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["encoding", "media_type", "size_bytes", "sha256", "data"],
+      "properties": {
+        "encoding": {
+          "const": "base64"
+        },
+        "media_type": {
+          "$ref": "#/$defs/media-type"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 5592408,
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$"
+        }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "job_id",
+        "attempt_id",
+        "idempotency_key",
+        "request_digest_sha256",
+        "backend_execution_id",
+        "executor_kind",
+        "provider_profile_id",
+        "provider_profile_digest_sha256",
+        "provider_id",
+        "model",
+        "image_digest_sha256",
+        "resource_policy_id",
+        "resource_policy_digest_sha256",
+        "network_policy_id",
+        "network_policy_digest_sha256",
+        "task_digest_sha256",
+        "input_digest_sha256",
+        "prompt_digest_sha256",
+        "output_digest_sha256",
+        "output_media_type",
+        "output_size_bytes",
+        "cleanup_confirmed",
+        "whole_job_quiescent"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "codeagent-launcher-receipt.experimental-v0"
+        },
+        "job_id": {
+          "$ref": "#/$defs/id"
+        },
+        "attempt_id": {
+          "$ref": "#/$defs/id"
+        },
+        "idempotency_key": {
+          "$ref": "#/$defs/id"
+        },
+        "request_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "backend_execution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[!-~]+$"
+        },
+        "executor_kind": {
+          "enum": ["docker", "kubernetes"]
+        },
+        "provider_profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "provider_profile_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "provider_id": {
+          "$ref": "#/$defs/id"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^(?!-)(?!.*[\\u0000-\\u001F\\u007F])\\S(?:.*\\S)?$"
+        },
+        "image_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "resource_policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "resource_policy_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "network_policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "network_policy_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "task_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "input_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "prompt_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "output_digest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "output_media_type": {
+          "$ref": "#/$defs/media-type"
+        },
+        "output_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "cleanup_confirmed": {
+          "const": true
+        },
+        "whole_job_quiescent": {
+          "const": true
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "media-type": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}$"
+    }
+  }
+}

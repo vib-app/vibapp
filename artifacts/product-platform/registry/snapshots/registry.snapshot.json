@@ -1,0 +1,1648 @@
+{
+  "browser_artifact_bindings": [
+    {
+      "app_id": "ai.vibapp.fixture.weather-preview",
+      "artifact": {
+        "format": "core-wasm",
+        "media_type": "application/wasm",
+        "path": "/launcher/weather-preview.core.wasm",
+        "sha256": "a5cd7802b1e10dde41d64bd0c1921ab6f775032c76dcad590d33b1b39ace1012",
+        "size_bytes": 44
+      },
+      "attestation": {
+        "binding_payload_sha256": "0ff7601afc2977c88d3f22720b3c42b0a19c4f603ba3dd5cadb966b7dbc7364e",
+        "canonical_component_transformation_proven": false,
+        "kind": "registry-generated-synthetic-binding",
+        "trusted_builder_policy": "synthetic-fixture-only",
+        "verification_state": "verified-synthetic-fixture"
+      },
+      "canonical_component_reference_sha256": "ad9f8feba53f3b505ad4907fbbfa145791472f317e8da6ad69450b0ddeffc04c",
+      "canonical_package_digest_sha256": "27c851c080e30dba7fb4e6c1b0069dcaf26b8df42a8a7b2382934de3e3ba848f",
+      "derived_from_sha256": "ad9f8feba53f3b505ad4907fbbfa145791472f317e8da6ad69450b0ddeffc04c",
+      "profile": "web-preview",
+      "registry_record_id": "registry.fixture.weather-preview.1",
+      "registry_record_revision": 1,
+      "schema_version": "vibapp.browser-artifact-binding.synthetic-v1"
+    }
+  ],
+  "consumer_notes": {
+    "explanation_field": "sample_search.matched[].explanation",
+    "install_authority": false,
+    "match_contract": "candidate candidate-match.product-v0",
+    "matched_field": "sample_search.matched[].matched",
+    "publication_authority": false,
+    "record_contract": "candidate registry-record.product-v0",
+    "unmet_field": "sample_search.matched[].unmet"
+  },
+  "corpus_version": "fixture-corpus.2026-08-24.1",
+  "generated_at_utc": "2026-08-24T02:00:00Z",
+  "platform_status": "product-platform-local-hold",
+  "records": [
+    {
+      "app": {
+        "display_name": "Focus Board (Fixture)",
+        "id": "ai.vibapp.fixture.focus-board",
+        "kind": "ui",
+        "publisher": {
+          "display_name": "VibApp Synthetic Fixtures",
+          "publisher_id": "fixture.vibapp",
+          "verification_state": "verified"
+        },
+        "summary": "Plan focused work sessions with a local task list and progress view.",
+        "version": "0.1.0"
+      },
+      "compatibility": {
+        "platforms": [
+          {
+            "arch": "aarch64",
+            "os": "macos",
+            "profile": "desktop"
+          },
+          {
+            "arch": "x86-64",
+            "os": "windows",
+            "profile": "desktop"
+          }
+        ],
+        "profiles": [
+          "desktop"
+        ]
+      },
+      "contract": {
+        "component_contract": "vibapp:experimental-v0@0.0.1",
+        "package_format": "vibapp.package.experimental-v0",
+        "wasi": "0.2",
+        "wit_world": "ui-only-reference"
+      },
+      "created_at_utc": "2026-08-24T02:00:00Z",
+      "document_type": "registry-record",
+      "package": {
+        "app_id": "ai.vibapp.fixture.focus-board",
+        "manifest_digest_sha256": "3e7abb069e6846b059e3a42a553af19f4048d86c29211f2c95592a18f813feff",
+        "package_digest_sha256": "72fd4f5571c98fdd9af5b7dc07efc35704149c6e3913fa19c149e1256388dca5",
+        "version": "0.1.0"
+      },
+      "permissions": [
+        {
+          "interface": "vibapp:experimental-v0/clock@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "5f6bb974928676f4170611e0ef7a634afe33a624850bb89d78e978e1474a0b6a",
+          "summary": "Synthetic fixture declaration for clock."
+        },
+        {
+          "interface": "vibapp:experimental-v0/kv@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "802e309cfbf674a5954c65e2e67006909422ec6367de822976cba55315fe4902",
+          "summary": "Synthetic fixture declaration for kv."
+        },
+        {
+          "interface": "vibapp:experimental-v0/log@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "55f18cae2f17046eb5447a1b4eed56e8afda115fee526c830f220ff9971eb448",
+          "summary": "Synthetic fixture declaration for log."
+        },
+        {
+          "interface": "vibapp:experimental-v0/host-info@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "4bd90ae6b7c0603ff6eadc24e798f1832497b76f28ebfd5565c0eb1d9e61c429",
+          "summary": "Synthetic fixture declaration for host-info."
+        },
+        {
+          "interface": "vibapp:experimental-v0/settings@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "8ca8b6573ad2ad9eaed5521afe645fee03c3487be5a005354f130f4f5822f831",
+          "summary": "Synthetic fixture declaration for settings."
+        }
+      ],
+      "publication": {
+        "public_metadata_digest_sha256": "aaffa95441998a297a6da75c810a5a4c91a198d96b3571bc47b30f70d01a706b",
+        "published_at_utc": "2026-08-24T02:00:00Z",
+        "revoked_at_utc": null,
+        "state": "published"
+      },
+      "record_id": "registry.fixture.focus-board.1",
+      "record_revision": 1,
+      "schema_version": "vibapp.registry-record.product-v0.0.1",
+      "search_metadata": {
+        "capability_labels": [
+          "foreground-ui",
+          "local-state",
+          "no-network"
+        ],
+        "search_text_digest_sha256": "b0760634e81c3769b13a33d2bf0a423f9e312da448cce0dd7e27784088398359",
+        "tags": [
+          "focus",
+          "productivity",
+          "task-list",
+          "专注",
+          "任务"
+        ]
+      },
+      "source": {
+        "license_spdx": "Apache-2.0",
+        "source_digest_sha256": "03027b6b04cbd1b14d67e20da0a0f11696cd91a1fcd9119aa3c366e8d19e08cf",
+        "visibility": "public"
+      },
+      "verification": {
+        "evidence": [
+          {
+            "evidence_id": "fixture.verify.1",
+            "kind": "verifier-report",
+            "sha256": "9d96f03b46c30cc57c02f3de7b738d23e47728360616054a04731e76d81cc62f"
+          }
+        ],
+        "provenance": {
+          "media_type": "application/json",
+          "sha256": "5171efb39f3d212dfeb8533161ec4c2c10fa3df5d9f47da86f3d18da484d26db",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "revocation": "not-revoked",
+        "sbom": {
+          "media_type": "application/json",
+          "sha256": "4cc8441132faf0699e6e16e31afebf5b892e6bfbaecd070bbf78d2e69194b83f",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "scan": {
+          "media_type": "application/json",
+          "sha256": "f600583e42461025e3f78cbbc9dcf115914193a92f9f6549c021ac54de460398",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "app": {
+        "display_name": "Local Notes (Fixture)",
+        "id": "ai.vibapp.fixture.local-notes",
+        "kind": "ui",
+        "publisher": {
+          "display_name": "VibApp Synthetic Fixtures",
+          "publisher_id": "fixture.vibapp",
+          "verification_state": "verified"
+        },
+        "summary": "Keep private notes and checklists in app-scoped local storage.",
+        "version": "0.1.0"
+      },
+      "compatibility": {
+        "platforms": [
+          {
+            "arch": "aarch64",
+            "os": "macos",
+            "profile": "desktop"
+          },
+          {
+            "arch": "aarch64",
+            "os": "linux",
+            "profile": "desktop"
+          }
+        ],
+        "profiles": [
+          "desktop"
+        ]
+      },
+      "contract": {
+        "component_contract": "vibapp:experimental-v0@0.0.1",
+        "package_format": "vibapp.package.experimental-v0",
+        "wasi": "0.2",
+        "wit_world": "ui-only-reference"
+      },
+      "created_at_utc": "2026-08-24T02:00:00Z",
+      "document_type": "registry-record",
+      "package": {
+        "app_id": "ai.vibapp.fixture.local-notes",
+        "manifest_digest_sha256": "fe3a731e03da6e7bf65732898e3444a1102be2311be4964c3f9a2dde22650763",
+        "package_digest_sha256": "ebff2b15432ac38456ad08e9da01cf1b86fb071284d313743685ef68fdbe2cde",
+        "version": "0.1.0"
+      },
+      "permissions": [
+        {
+          "interface": "vibapp:experimental-v0/clock@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "6a078a41beeb365173181f4b0a38a17891ca664ff3462a4a7260ee8c6cf4cab7",
+          "summary": "Synthetic fixture declaration for clock."
+        },
+        {
+          "interface": "vibapp:experimental-v0/kv@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "974e40b4c8656cfb2ae54c8e0933283ec1f7203ecd2d826adb3b78f163fd15e4",
+          "summary": "Synthetic fixture declaration for kv."
+        },
+        {
+          "interface": "vibapp:experimental-v0/log@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "0128c95ba8ddd75d8221b33d5fc6e5844059109fcb7f664e496e1ee9a7e024d4",
+          "summary": "Synthetic fixture declaration for log."
+        },
+        {
+          "interface": "vibapp:experimental-v0/host-info@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "a28e398e4f18cd0a64db6b46a8b6281eb03344131935f9da66d448cc63e3458c",
+          "summary": "Synthetic fixture declaration for host-info."
+        },
+        {
+          "interface": "vibapp:experimental-v0/settings@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "ed0749f9342263c56503dedd55651bd6a418af1d583c0862d1531d98056093e1",
+          "summary": "Synthetic fixture declaration for settings."
+        }
+      ],
+      "publication": {
+        "public_metadata_digest_sha256": "5fc1a2dba47fed7a681605bba5bd5b1a43a4d1bf1ca86e2dc3463c57b2c4cdec",
+        "published_at_utc": "2026-08-24T02:00:00Z",
+        "revoked_at_utc": null,
+        "state": "published"
+      },
+      "record_id": "registry.fixture.local-notes.1",
+      "record_revision": 1,
+      "schema_version": "vibapp.registry-record.product-v0.0.1",
+      "search_metadata": {
+        "capability_labels": [
+          "foreground-ui",
+          "local-state",
+          "no-network"
+        ],
+        "search_text_digest_sha256": "a3e493f0a13e7cad82b870a698897da35b0689893bce153347dbf2d6774f41a1",
+        "tags": [
+          "notes",
+          "checklist",
+          "private",
+          "笔记",
+          "清单"
+        ]
+      },
+      "source": {
+        "license_spdx": "Apache-2.0",
+        "source_digest_sha256": "5fead069f2b1d88989b1c0edddef65b5e751dab04265f0931a4c9e8249008905",
+        "visibility": "public"
+      },
+      "verification": {
+        "evidence": [
+          {
+            "evidence_id": "fixture.verify.2",
+            "kind": "verifier-report",
+            "sha256": "48f6a5599a4e6a55c0a54317d19b1852a09921d8267e5b46b82a204d0416578c"
+          }
+        ],
+        "provenance": {
+          "media_type": "application/json",
+          "sha256": "38f6602ba2fdcd195dddc49168deef08cf5888d4999859f21d188f8a6e9ef5f8",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "revocation": "not-revoked",
+        "sbom": {
+          "media_type": "application/json",
+          "sha256": "a0aef6deecccb87e8126c4609ea8336cfa91570436001352101935f7964584cc",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "scan": {
+          "media_type": "application/json",
+          "sha256": "2cdea5c610a8b6feed91c9f5064fd168e3d67ea48d6927a2ad13557376bb6272",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "app": {
+        "display_name": "Alarm Steward (Fixture)",
+        "id": "ai.vibapp.fixture.alarm-steward",
+        "kind": "hybrid",
+        "publisher": {
+          "display_name": "VibApp Synthetic Fixtures",
+          "publisher_id": "fixture.vibapp",
+          "verification_state": "verified"
+        },
+        "summary": "Configure alarms in a launcher view while the host owns durable schedules and notifications.",
+        "version": "0.1.0"
+      },
+      "compatibility": {
+        "platforms": [
+          {
+            "arch": "aarch64",
+            "os": "macos",
+            "profile": "desktop"
+          }
+        ],
+        "profiles": [
+          "desktop"
+        ]
+      },
+      "contract": {
+        "component_contract": "vibapp:experimental-v0@0.0.1",
+        "package_format": "vibapp.package.experimental-v0",
+        "wasi": "0.2",
+        "wit_world": "hybrid-reference"
+      },
+      "created_at_utc": "2026-08-24T02:00:00Z",
+      "document_type": "registry-record",
+      "package": {
+        "app_id": "ai.vibapp.fixture.alarm-steward",
+        "manifest_digest_sha256": "c6332fb747bee0d13a86cc2181142249cda394cf7cf0daf21a06a678b383e8e0",
+        "package_digest_sha256": "1c0ba1db21b345a34661c2a843c3a7af08ec7501b736af7a8615979673faba60",
+        "version": "0.1.0"
+      },
+      "permissions": [
+        {
+          "interface": "vibapp:experimental-v0/clock@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "a6e800b488f9e22dba03c44718b73767ddea7b18c2c2649dd7ff1390ea73d7d5",
+          "summary": "Synthetic fixture declaration for clock."
+        },
+        {
+          "interface": "vibapp:experimental-v0/scheduler@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "f6d70370c60b8d6023522c9685c452dc8ded9261448fba781843c3c8847b873a",
+          "summary": "Synthetic fixture declaration for scheduler."
+        },
+        {
+          "interface": "vibapp:experimental-v0/notification@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "93045eece2e435cda00b5e3339632ddef25a3b0ac322cced5232169439c6b38a",
+          "summary": "Synthetic fixture declaration for notification."
+        },
+        {
+          "interface": "vibapp:experimental-v0/kv@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "d9e459ed5ab973fe567f5e631fabd3b9546d8e7f1b8d86c1d95486d0451e59e2",
+          "summary": "Synthetic fixture declaration for kv."
+        },
+        {
+          "interface": "vibapp:experimental-v0/log@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "3b61fd4b09b8834b34ea236a5740b4b79c15e0c6c72654f4619586e56b6b8295",
+          "summary": "Synthetic fixture declaration for log."
+        },
+        {
+          "interface": "vibapp:experimental-v0/host-info@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "69d8d68753b6a43aca0bd3ba5a09805653d43b702dcdeb11dd52ff17a86e988d",
+          "summary": "Synthetic fixture declaration for host-info."
+        },
+        {
+          "interface": "vibapp:experimental-v0/settings@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "0bc441950fb003a8d0fb8e3b73edc1120e79b64f7409114cfd1f1ed87a10b543",
+          "summary": "Synthetic fixture declaration for settings."
+        }
+      ],
+      "publication": {
+        "public_metadata_digest_sha256": "f79f1bad60c9cbc37bd56025bc0a2ed875779b903792c044da243e061b82b306",
+        "published_at_utc": "2026-08-24T02:00:00Z",
+        "revoked_at_utc": null,
+        "state": "published"
+      },
+      "record_id": "registry.fixture.alarm-steward.1",
+      "record_revision": 1,
+      "schema_version": "vibapp.registry-record.product-v0.0.1",
+      "search_metadata": {
+        "capability_labels": [
+          "host-scheduler",
+          "notification",
+          "local-state"
+        ],
+        "search_text_digest_sha256": "db8cfea866734eb9c548eb4de78f7c73349bd58f866e19f0e10d9355a9d723d9",
+        "tags": [
+          "alarm",
+          "schedule",
+          "reminder",
+          "闹钟",
+          "提醒"
+        ]
+      },
+      "source": {
+        "license_spdx": "Apache-2.0",
+        "source_digest_sha256": "b21f7d6832ec19ccdf1a41d7741c76bcf03544e54f8303eb6dc617b0afa820b1",
+        "visibility": "public"
+      },
+      "verification": {
+        "evidence": [
+          {
+            "evidence_id": "fixture.verify.3",
+            "kind": "verifier-report",
+            "sha256": "425b45546b2bb1b0196022157d290cd10ba9a2de7dae1d40888d9900cc9ed507"
+          }
+        ],
+        "provenance": {
+          "media_type": "application/json",
+          "sha256": "777c274e373ecdb89b682856b64992e120dd1a668362c1504811e01ffe97f647",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "revocation": "not-revoked",
+        "sbom": {
+          "media_type": "application/json",
+          "sha256": "78ab8e0bbde7794a5fcc5414b79876fae37fa7894e702c0fd94ae72393096dac",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "scan": {
+          "media_type": "application/json",
+          "sha256": "0a9fe22afa6419bbad88c3568852aa5b48b63577438cedbbb8fa3396d72b8a76",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "app": {
+        "display_name": "Device Pulse (Fixture)",
+        "id": "ai.vibapp.fixture.device-pulse",
+        "kind": "service",
+        "publisher": {
+          "display_name": "VibApp Synthetic Fixtures",
+          "publisher_id": "fixture.vibapp",
+          "verification_state": "verified"
+        },
+        "summary": "Report simulated device metrics through a bounded service fixture.",
+        "version": "0.1.0"
+      },
+      "compatibility": {
+        "platforms": [
+          {
+            "arch": "aarch64",
+            "os": "linux",
+            "profile": "headless"
+          }
+        ],
+        "profiles": [
+          "headless"
+        ]
+      },
+      "contract": {
+        "component_contract": "vibapp:experimental-v0@0.0.1",
+        "package_format": "vibapp.package.experimental-v0",
+        "wasi": "0.2",
+        "wit_world": "service-only-reference"
+      },
+      "created_at_utc": "2026-08-24T02:00:00Z",
+      "document_type": "registry-record",
+      "package": {
+        "app_id": "ai.vibapp.fixture.device-pulse",
+        "manifest_digest_sha256": "738719443087557dce8efca8a374789582a53db6bc6202dbe3bc7105ca654cf1",
+        "package_digest_sha256": "50d4a1aedeee773ea987c7390b0b5010fe68d0e763124328eceb619db4504053",
+        "version": "0.1.0"
+      },
+      "permissions": [
+        {
+          "interface": "vibapp:experimental-v0/clock@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "b88c5e38a11ea882dc2371c6b4e7170f6d9c0bd2452027bb303c60acb69ed96d",
+          "summary": "Synthetic fixture declaration for clock."
+        },
+        {
+          "interface": "vibapp:experimental-v0/scheduler@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "714aa63605d10b1b4ec67d66c4b0113d7400ff8ae178394a1daea0b3444c9a19",
+          "summary": "Synthetic fixture declaration for scheduler."
+        },
+        {
+          "interface": "vibapp:experimental-v0/kv@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "9e7f26ce81e0a35e802b1305a7e4e10a6db5d4dcd726c8e56e445ca831be21b1",
+          "summary": "Synthetic fixture declaration for kv."
+        },
+        {
+          "interface": "vibapp:experimental-v0/log@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "d9d2ced3980fc37716fadc04e54d321c76d748067ddbce335bbdd20ee2adfe9d",
+          "summary": "Synthetic fixture declaration for log."
+        },
+        {
+          "interface": "vibapp:experimental-v0/host-info@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "598916a1c81ffc2c4301e8e65d07a9c457da72abf3e2252ab1713769f9aee47b",
+          "summary": "Synthetic fixture declaration for host-info."
+        },
+        {
+          "interface": "vibapp:experimental-v0/settings@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "c0f57c4a3ed54c3007116bcde37ba00581d1b8addfde952abfc014d3d63cc9ce",
+          "summary": "Synthetic fixture declaration for settings."
+        },
+        {
+          "interface": "vibapp:experimental-v0/system-metrics@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "8c65596917413b8633d556257d0bac37dfa55345f1e28f333d5648dab8b04638",
+          "summary": "Synthetic fixture declaration for system-metrics."
+        },
+        {
+          "interface": "vibapp:experimental-v0/http@0.0.1",
+          "necessity": "degradable",
+          "scope_digest_sha256": "e21df07b5e7fb56ba4afef43a0eabbad63db474992759980058ab0652b171c28",
+          "summary": "Synthetic fixture declaration for http."
+        }
+      ],
+      "publication": {
+        "public_metadata_digest_sha256": "d710598b626ef1a3ee78918ad7b4ce5edb45dbf3662f807fc8d9822523cd6a55",
+        "published_at_utc": "2026-08-24T02:00:00Z",
+        "revoked_at_utc": null,
+        "state": "published"
+      },
+      "record_id": "registry.fixture.device-pulse.1",
+      "record_revision": 1,
+      "schema_version": "vibapp.registry-record.product-v0.0.1",
+      "search_metadata": {
+        "capability_labels": [
+          "background-service",
+          "system-metrics",
+          "scoped-http"
+        ],
+        "search_text_digest_sha256": "45c7833fd206977c78c2cf0a32f539cc32c35004f4081108b40dd3b49b201310",
+        "tags": [
+          "metrics",
+          "temperature",
+          "headless",
+          "温度",
+          "监控"
+        ]
+      },
+      "source": {
+        "license_spdx": "Apache-2.0",
+        "source_digest_sha256": "5ddc556493a03d951414416cce70c280f0621c029fcfe5e7176d63eafa074fba",
+        "visibility": "public"
+      },
+      "verification": {
+        "evidence": [
+          {
+            "evidence_id": "fixture.verify.4",
+            "kind": "verifier-report",
+            "sha256": "f491a425c04e44f41425ed81ac9b1f3b19b532d4b6a9dcf1b95a6f3dc204e446"
+          }
+        ],
+        "provenance": {
+          "media_type": "application/json",
+          "sha256": "d41decd768c1f4d13261870068a637d9e91716d4234e521636f0ae1a9cb74195",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "revocation": "not-revoked",
+        "sbom": {
+          "media_type": "application/json",
+          "sha256": "fa9d41decab5c1c01d438bc45d7cf319c28fd78a643982109923456e37ab2f0d",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "scan": {
+          "media_type": "application/json",
+          "sha256": "45483c9e7845732247337a171ce28eb061b6801cd85c2a098148966328ac36df",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "app": {
+        "display_name": "Weather Preview (Fixture)",
+        "id": "ai.vibapp.fixture.weather-preview",
+        "kind": "ui",
+        "publisher": {
+          "display_name": "VibApp Synthetic Fixtures",
+          "publisher_id": "fixture.vibapp",
+          "verification_state": "verified"
+        },
+        "summary": "Show a foreground-only simulated weather preview with no install authority.",
+        "version": "0.1.0"
+      },
+      "compatibility": {
+        "platforms": [
+          {
+            "arch": "wasm32",
+            "os": "browser",
+            "profile": "web-preview"
+          }
+        ],
+        "profiles": [
+          "web-preview"
+        ]
+      },
+      "contract": {
+        "component_contract": "vibapp:experimental-v0@0.0.1",
+        "package_format": "vibapp.package.experimental-v0",
+        "wasi": "0.2",
+        "wit_world": "web-preview-reference"
+      },
+      "created_at_utc": "2026-08-24T02:00:00Z",
+      "document_type": "registry-record",
+      "package": {
+        "app_id": "ai.vibapp.fixture.weather-preview",
+        "manifest_digest_sha256": "dae02508ca51000342b6cd83173ff70488667d14ea70f08b8104f2c3efca4ebc",
+        "package_digest_sha256": "27c851c080e30dba7fb4e6c1b0069dcaf26b8df42a8a7b2382934de3e3ba848f",
+        "version": "0.1.0"
+      },
+      "permissions": [
+        {
+          "interface": "vibapp:experimental-v0/clock@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "be41a55712eb2f82ad39261e6f4449ec243a0976019e0704ef7eadf91fa5c7d7",
+          "summary": "Synthetic fixture declaration for clock."
+        },
+        {
+          "interface": "vibapp:experimental-v0/scheduler@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "9dd04354d923cfd786a4c6d0c769507a54b66b550f68af5be48f227723530fd2",
+          "summary": "Synthetic fixture declaration for scheduler."
+        },
+        {
+          "interface": "vibapp:experimental-v0/kv@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "02c66d93d17470db0e85e091f143046c41578cc7e2edc2c1813e2bdac8b6deff",
+          "summary": "Synthetic fixture declaration for kv."
+        },
+        {
+          "interface": "vibapp:experimental-v0/log@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "e85c4ea7fc1555879ef6d6dd6cd4ed585eb2b689f993486273e920f8f0597011",
+          "summary": "Synthetic fixture declaration for log."
+        },
+        {
+          "interface": "vibapp:experimental-v0/host-info@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "770c0936cf08ed201dc3bb5f08d43e92376c91321a1531f2f486ef16f835d955",
+          "summary": "Synthetic fixture declaration for host-info."
+        },
+        {
+          "interface": "vibapp:experimental-v0/settings@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "f78c22b35c5cc4f12e49b9564744edc621e55961c5bd69aec7e0e52286cb6478",
+          "summary": "Synthetic fixture declaration for settings."
+        },
+        {
+          "interface": "vibapp:experimental-v0/system-metrics@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "eb3ef0d7263ba69c1677fe472ff889ba40d1e508530729686cdc84d815be5b67",
+          "summary": "Synthetic fixture declaration for system-metrics."
+        },
+        {
+          "interface": "vibapp:experimental-v0/http@0.0.1",
+          "necessity": "degradable",
+          "scope_digest_sha256": "55bd07d74bba76bf5c40cb33cb8ea01a02c720c37b2c7abfa5368d7fd488ada5",
+          "summary": "Synthetic fixture declaration for http."
+        }
+      ],
+      "publication": {
+        "public_metadata_digest_sha256": "77b8ddfa102739b0117c9d23ad4b4108a066569576955c9e9874634833d86182",
+        "published_at_utc": "2026-08-24T02:00:00Z",
+        "revoked_at_utc": null,
+        "state": "published"
+      },
+      "record_id": "registry.fixture.weather-preview.1",
+      "record_revision": 1,
+      "schema_version": "vibapp.registry-record.product-v0.0.1",
+      "search_metadata": {
+        "capability_labels": [
+          "foreground-only",
+          "simulated-metrics",
+          "mock-http"
+        ],
+        "search_text_digest_sha256": "6e1220802db4a88f813a3f94e230a423cacf9668adbe371d2629d14fffe46a58",
+        "tags": [
+          "weather",
+          "forecast",
+          "preview",
+          "天气",
+          "预报"
+        ]
+      },
+      "source": {
+        "license_spdx": "Apache-2.0",
+        "source_digest_sha256": "5ed6169f142fdffc40657ca84b547e51e25bd33c9f13d49e79e898afa2a10834",
+        "visibility": "public"
+      },
+      "verification": {
+        "evidence": [
+          {
+            "evidence_id": "fixture.verify.5",
+            "kind": "verifier-report",
+            "sha256": "6b49ba234570056ef27b977abe0c9b48cebeb7c3b9e5201f244623d1923fa052"
+          }
+        ],
+        "provenance": {
+          "media_type": "application/json",
+          "sha256": "71f252f08b3038cd78b536fd55dc264e2daa6399f8c1755b309b03ef7233bacb",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "revocation": "not-revoked",
+        "sbom": {
+          "media_type": "application/json",
+          "sha256": "f76063681854353701b41da4f836652e429877d05a460b39da76a01f9fe498f4",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "scan": {
+          "media_type": "application/json",
+          "sha256": "4cd45e64489cc47aa10678017ad550c70c858f50e09d7826ea2e07a0539e3229",
+          "size_bytes": 128,
+          "visibility": "public"
+        },
+        "status": "verified"
+      }
+    }
+  ],
+  "sample_search": {
+    "empty_reason": null,
+    "limits": {
+      "maximum_corpus_bytes": 524288,
+      "maximum_need_bytes": 65536,
+      "maximum_output_bytes": 524288,
+      "maximum_returned_matches": 20,
+      "maximum_scanned_records": 50
+    },
+    "matched": [
+      {
+        "explanation": [
+          {
+            "evidence_fields": [
+              "/need/requirements/0",
+              "/app/display_name",
+              "/app/summary",
+              "/search_metadata/tags/0"
+            ],
+            "message": "requirement.focus-plan matched candidate metadata (covered)."
+          },
+          {
+            "evidence_fields": [
+              "/need/requirements/1",
+              "/app/summary"
+            ],
+            "message": "requirement.private-notes matched candidate metadata (partial)."
+          },
+          {
+            "evidence_fields": [
+              "/contract",
+              "/compatibility/platforms",
+              "/compatibility/profiles",
+              "/verification/status",
+              "/verification/revocation",
+              "/publication/state"
+            ],
+            "message": "Compatibility and trust passed before ranking."
+          }
+        ],
+        "match": {
+          "candidate": {
+            "app_id": "ai.vibapp.fixture.focus-board",
+            "manifest_digest_sha256": "3e7abb069e6846b059e3a42a553af19f4048d86c29211f2c95592a18f813feff",
+            "package_digest_sha256": "72fd4f5571c98fdd9af5b7dc07efc35704149c6e3913fa19c149e1256388dca5",
+            "version": "0.1.0"
+          },
+          "compatibility_facts": [
+            "/contract",
+            "/compatibility/platforms",
+            "/compatibility/profiles"
+          ],
+          "coverage": [
+            {
+              "evidence_fields": [
+                "/app/display_name",
+                "/app/summary",
+                "/search_metadata/tags/0"
+              ],
+              "requirement_id": "requirement.focus-plan",
+              "state": "covered"
+            },
+            {
+              "evidence_fields": [
+                "/app/summary"
+              ],
+              "requirement_id": "requirement.private-notes",
+              "state": "partial"
+            }
+          ],
+          "decision": "compatible",
+          "document_type": "candidate-match",
+          "explanation_evidence_fields": [
+            "/app/display_name",
+            "/app/summary",
+            "/need/requirements/0",
+            "/need/requirements/1",
+            "/search_metadata/tags/0"
+          ],
+          "gaps": [
+            "Unmet requirement: requirement.private-notes"
+          ],
+          "hard_filter": {
+            "checked_facts": [
+              "/contract/package_format=vibapp.package.experimental-v0",
+              "/contract/component_contract=vibapp:experimental-v0@0.0.1",
+              "/contract/wasi=0.2",
+              "/contract/wit_world=ui-only-reference",
+              "/compatibility/platforms",
+              "/compatibility/profiles",
+              "/permissions",
+              "/permission_ceiling/allowed_interfaces",
+              "/permission_ceiling/forbidden_interfaces",
+              "/app/publisher/verification_state=verified",
+              "/verification/status=verified",
+              "/verification/revocation=not-revoked",
+              "/publication/state=published",
+              "/source/visibility=public",
+              "/need/privacy_requirement=local-private"
+            ],
+            "eligible": true,
+            "rejected_reasons": []
+          },
+          "need_id": "need.focus.local.1",
+          "required_permissions": [
+            {
+              "interface": "vibapp:experimental-v0/clock@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "5f6bb974928676f4170611e0ef7a634afe33a624850bb89d78e978e1474a0b6a",
+              "summary": "Synthetic fixture declaration for clock."
+            },
+            {
+              "interface": "vibapp:experimental-v0/kv@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "802e309cfbf674a5954c65e2e67006909422ec6367de822976cba55315fe4902",
+              "summary": "Synthetic fixture declaration for kv."
+            },
+            {
+              "interface": "vibapp:experimental-v0/log@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "55f18cae2f17046eb5447a1b4eed56e8afda115fee526c830f220ff9971eb448",
+              "summary": "Synthetic fixture declaration for log."
+            },
+            {
+              "interface": "vibapp:experimental-v0/host-info@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "4bd90ae6b7c0603ff6eadc24e798f1832497b76f28ebfd5565c0eb1d9e61c429",
+              "summary": "Synthetic fixture declaration for host-info."
+            },
+            {
+              "interface": "vibapp:experimental-v0/settings@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "8ca8b6573ad2ad9eaed5521afe645fee03c3487be5a005354f130f4f5822f831",
+              "summary": "Synthetic fixture declaration for settings."
+            }
+          ],
+          "schema_version": "vibapp.candidate-match.product-v0.0.1",
+          "scores": {
+            "lexical": 0.416667,
+            "vector": 0.621762
+          },
+          "source_facts": [
+            "/source/visibility",
+            "/app/publisher/verification_state",
+            "/verification/status"
+          ],
+          "stable_order": 0
+        },
+        "matched": [
+          "requirement.focus-plan"
+        ],
+        "record": {
+          "app": {
+            "display_name": "Focus Board (Fixture)",
+            "id": "ai.vibapp.fixture.focus-board",
+            "kind": "ui",
+            "publisher": {
+              "display_name": "VibApp Synthetic Fixtures",
+              "publisher_id": "fixture.vibapp",
+              "verification_state": "verified"
+            },
+            "summary": "Plan focused work sessions with a local task list and progress view.",
+            "version": "0.1.0"
+          },
+          "compatibility": {
+            "platforms": [
+              {
+                "arch": "aarch64",
+                "os": "macos",
+                "profile": "desktop"
+              },
+              {
+                "arch": "x86-64",
+                "os": "windows",
+                "profile": "desktop"
+              }
+            ],
+            "profiles": [
+              "desktop"
+            ]
+          },
+          "contract": {
+            "component_contract": "vibapp:experimental-v0@0.0.1",
+            "package_format": "vibapp.package.experimental-v0",
+            "wasi": "0.2",
+            "wit_world": "ui-only-reference"
+          },
+          "created_at_utc": "2026-08-24T02:00:00Z",
+          "document_type": "registry-record",
+          "package": {
+            "app_id": "ai.vibapp.fixture.focus-board",
+            "manifest_digest_sha256": "3e7abb069e6846b059e3a42a553af19f4048d86c29211f2c95592a18f813feff",
+            "package_digest_sha256": "72fd4f5571c98fdd9af5b7dc07efc35704149c6e3913fa19c149e1256388dca5",
+            "version": "0.1.0"
+          },
+          "permissions": [
+            {
+              "interface": "vibapp:experimental-v0/clock@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "5f6bb974928676f4170611e0ef7a634afe33a624850bb89d78e978e1474a0b6a",
+              "summary": "Synthetic fixture declaration for clock."
+            },
+            {
+              "interface": "vibapp:experimental-v0/kv@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "802e309cfbf674a5954c65e2e67006909422ec6367de822976cba55315fe4902",
+              "summary": "Synthetic fixture declaration for kv."
+            },
+            {
+              "interface": "vibapp:experimental-v0/log@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "55f18cae2f17046eb5447a1b4eed56e8afda115fee526c830f220ff9971eb448",
+              "summary": "Synthetic fixture declaration for log."
+            },
+            {
+              "interface": "vibapp:experimental-v0/host-info@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "4bd90ae6b7c0603ff6eadc24e798f1832497b76f28ebfd5565c0eb1d9e61c429",
+              "summary": "Synthetic fixture declaration for host-info."
+            },
+            {
+              "interface": "vibapp:experimental-v0/settings@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "8ca8b6573ad2ad9eaed5521afe645fee03c3487be5a005354f130f4f5822f831",
+              "summary": "Synthetic fixture declaration for settings."
+            }
+          ],
+          "publication": {
+            "public_metadata_digest_sha256": "aaffa95441998a297a6da75c810a5a4c91a198d96b3571bc47b30f70d01a706b",
+            "published_at_utc": "2026-08-24T02:00:00Z",
+            "revoked_at_utc": null,
+            "state": "published"
+          },
+          "record_id": "registry.fixture.focus-board.1",
+          "record_revision": 1,
+          "schema_version": "vibapp.registry-record.product-v0.0.1",
+          "search_metadata": {
+            "capability_labels": [
+              "foreground-ui",
+              "local-state",
+              "no-network"
+            ],
+            "search_text_digest_sha256": "b0760634e81c3769b13a33d2bf0a423f9e312da448cce0dd7e27784088398359",
+            "tags": [
+              "focus",
+              "productivity",
+              "task-list",
+              "专注",
+              "任务"
+            ]
+          },
+          "source": {
+            "license_spdx": "Apache-2.0",
+            "source_digest_sha256": "03027b6b04cbd1b14d67e20da0a0f11696cd91a1fcd9119aa3c366e8d19e08cf",
+            "visibility": "public"
+          },
+          "verification": {
+            "evidence": [
+              {
+                "evidence_id": "fixture.verify.1",
+                "kind": "verifier-report",
+                "sha256": "9d96f03b46c30cc57c02f3de7b738d23e47728360616054a04731e76d81cc62f"
+              }
+            ],
+            "provenance": {
+              "media_type": "application/json",
+              "sha256": "5171efb39f3d212dfeb8533161ec4c2c10fa3df5d9f47da86f3d18da484d26db",
+              "size_bytes": 128,
+              "visibility": "public"
+            },
+            "revocation": "not-revoked",
+            "sbom": {
+              "media_type": "application/json",
+              "sha256": "4cc8441132faf0699e6e16e31afebf5b892e6bfbaecd070bbf78d2e69194b83f",
+              "size_bytes": 128,
+              "visibility": "public"
+            },
+            "scan": {
+              "media_type": "application/json",
+              "sha256": "f600583e42461025e3f78cbbc9dcf115914193a92f9f6549c021ac54de460398",
+              "size_bytes": 128,
+              "visibility": "public"
+            },
+            "status": "verified"
+          }
+        },
+        "unmet": [
+          "requirement.private-notes"
+        ]
+      },
+      {
+        "explanation": [
+          {
+            "evidence_fields": [
+              "/need/requirements/0",
+              "/search_metadata"
+            ],
+            "message": "requirement.focus-plan has no supporting candidate metadata."
+          },
+          {
+            "evidence_fields": [
+              "/need/requirements/1",
+              "/app/display_name",
+              "/app/summary",
+              "/search_metadata/tags/0"
+            ],
+            "message": "requirement.private-notes matched candidate metadata (covered)."
+          },
+          {
+            "evidence_fields": [
+              "/contract",
+              "/compatibility/platforms",
+              "/compatibility/profiles",
+              "/verification/status",
+              "/verification/revocation",
+              "/publication/state"
+            ],
+            "message": "Compatibility and trust passed before ranking."
+          }
+        ],
+        "match": {
+          "candidate": {
+            "app_id": "ai.vibapp.fixture.local-notes",
+            "manifest_digest_sha256": "fe3a731e03da6e7bf65732898e3444a1102be2311be4964c3f9a2dde22650763",
+            "package_digest_sha256": "ebff2b15432ac38456ad08e9da01cf1b86fb071284d313743685ef68fdbe2cde",
+            "version": "0.1.0"
+          },
+          "compatibility_facts": [
+            "/contract",
+            "/compatibility/platforms",
+            "/compatibility/profiles"
+          ],
+          "coverage": [
+            {
+              "evidence_fields": [],
+              "requirement_id": "requirement.focus-plan",
+              "state": "uncovered"
+            },
+            {
+              "evidence_fields": [
+                "/app/display_name",
+                "/app/summary",
+                "/search_metadata/tags/0"
+              ],
+              "requirement_id": "requirement.private-notes",
+              "state": "covered"
+            }
+          ],
+          "decision": "partial",
+          "document_type": "candidate-match",
+          "explanation_evidence_fields": [
+            "/app/display_name",
+            "/app/summary",
+            "/need/requirements/0",
+            "/need/requirements/1",
+            "/search_metadata",
+            "/search_metadata/tags/0"
+          ],
+          "gaps": [
+            "Unmet requirement: requirement.focus-plan"
+          ],
+          "hard_filter": {
+            "checked_facts": [
+              "/contract/package_format=vibapp.package.experimental-v0",
+              "/contract/component_contract=vibapp:experimental-v0@0.0.1",
+              "/contract/wasi=0.2",
+              "/contract/wit_world=ui-only-reference",
+              "/compatibility/platforms",
+              "/compatibility/profiles",
+              "/permissions",
+              "/permission_ceiling/allowed_interfaces",
+              "/permission_ceiling/forbidden_interfaces",
+              "/app/publisher/verification_state=verified",
+              "/verification/status=verified",
+              "/verification/revocation=not-revoked",
+              "/publication/state=published",
+              "/source/visibility=public",
+              "/need/privacy_requirement=local-private"
+            ],
+            "eligible": true,
+            "rejected_reasons": []
+          },
+          "need_id": "need.focus.local.1",
+          "required_permissions": [
+            {
+              "interface": "vibapp:experimental-v0/clock@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "6a078a41beeb365173181f4b0a38a17891ca664ff3462a4a7260ee8c6cf4cab7",
+              "summary": "Synthetic fixture declaration for clock."
+            },
+            {
+              "interface": "vibapp:experimental-v0/kv@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "974e40b4c8656cfb2ae54c8e0933283ec1f7203ecd2d826adb3b78f163fd15e4",
+              "summary": "Synthetic fixture declaration for kv."
+            },
+            {
+              "interface": "vibapp:experimental-v0/log@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "0128c95ba8ddd75d8221b33d5fc6e5844059109fcb7f664e496e1ee9a7e024d4",
+              "summary": "Synthetic fixture declaration for log."
+            },
+            {
+              "interface": "vibapp:experimental-v0/host-info@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "a28e398e4f18cd0a64db6b46a8b6281eb03344131935f9da66d448cc63e3458c",
+              "summary": "Synthetic fixture declaration for host-info."
+            },
+            {
+              "interface": "vibapp:experimental-v0/settings@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "ed0749f9342263c56503dedd55651bd6a418af1d583c0862d1531d98056093e1",
+              "summary": "Synthetic fixture declaration for settings."
+            }
+          ],
+          "schema_version": "vibapp.candidate-match.product-v0.0.1",
+          "scores": {
+            "lexical": 0.125,
+            "vector": 0.480874
+          },
+          "source_facts": [
+            "/source/visibility",
+            "/app/publisher/verification_state",
+            "/verification/status"
+          ],
+          "stable_order": 1
+        },
+        "matched": [
+          "requirement.private-notes"
+        ],
+        "record": {
+          "app": {
+            "display_name": "Local Notes (Fixture)",
+            "id": "ai.vibapp.fixture.local-notes",
+            "kind": "ui",
+            "publisher": {
+              "display_name": "VibApp Synthetic Fixtures",
+              "publisher_id": "fixture.vibapp",
+              "verification_state": "verified"
+            },
+            "summary": "Keep private notes and checklists in app-scoped local storage.",
+            "version": "0.1.0"
+          },
+          "compatibility": {
+            "platforms": [
+              {
+                "arch": "aarch64",
+                "os": "macos",
+                "profile": "desktop"
+              },
+              {
+                "arch": "aarch64",
+                "os": "linux",
+                "profile": "desktop"
+              }
+            ],
+            "profiles": [
+              "desktop"
+            ]
+          },
+          "contract": {
+            "component_contract": "vibapp:experimental-v0@0.0.1",
+            "package_format": "vibapp.package.experimental-v0",
+            "wasi": "0.2",
+            "wit_world": "ui-only-reference"
+          },
+          "created_at_utc": "2026-08-24T02:00:00Z",
+          "document_type": "registry-record",
+          "package": {
+            "app_id": "ai.vibapp.fixture.local-notes",
+            "manifest_digest_sha256": "fe3a731e03da6e7bf65732898e3444a1102be2311be4964c3f9a2dde22650763",
+            "package_digest_sha256": "ebff2b15432ac38456ad08e9da01cf1b86fb071284d313743685ef68fdbe2cde",
+            "version": "0.1.0"
+          },
+          "permissions": [
+            {
+              "interface": "vibapp:experimental-v0/clock@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "6a078a41beeb365173181f4b0a38a17891ca664ff3462a4a7260ee8c6cf4cab7",
+              "summary": "Synthetic fixture declaration for clock."
+            },
+            {
+              "interface": "vibapp:experimental-v0/kv@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "974e40b4c8656cfb2ae54c8e0933283ec1f7203ecd2d826adb3b78f163fd15e4",
+              "summary": "Synthetic fixture declaration for kv."
+            },
+            {
+              "interface": "vibapp:experimental-v0/log@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "0128c95ba8ddd75d8221b33d5fc6e5844059109fcb7f664e496e1ee9a7e024d4",
+              "summary": "Synthetic fixture declaration for log."
+            },
+            {
+              "interface": "vibapp:experimental-v0/host-info@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "a28e398e4f18cd0a64db6b46a8b6281eb03344131935f9da66d448cc63e3458c",
+              "summary": "Synthetic fixture declaration for host-info."
+            },
+            {
+              "interface": "vibapp:experimental-v0/settings@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "ed0749f9342263c56503dedd55651bd6a418af1d583c0862d1531d98056093e1",
+              "summary": "Synthetic fixture declaration for settings."
+            }
+          ],
+          "publication": {
+            "public_metadata_digest_sha256": "5fc1a2dba47fed7a681605bba5bd5b1a43a4d1bf1ca86e2dc3463c57b2c4cdec",
+            "published_at_utc": "2026-08-24T02:00:00Z",
+            "revoked_at_utc": null,
+            "state": "published"
+          },
+          "record_id": "registry.fixture.local-notes.1",
+          "record_revision": 1,
+          "schema_version": "vibapp.registry-record.product-v0.0.1",
+          "search_metadata": {
+            "capability_labels": [
+              "foreground-ui",
+              "local-state",
+              "no-network"
+            ],
+            "search_text_digest_sha256": "a3e493f0a13e7cad82b870a698897da35b0689893bce153347dbf2d6774f41a1",
+            "tags": [
+              "notes",
+              "checklist",
+              "private",
+              "笔记",
+              "清单"
+            ]
+          },
+          "source": {
+            "license_spdx": "Apache-2.0",
+            "source_digest_sha256": "5fead069f2b1d88989b1c0edddef65b5e751dab04265f0931a4c9e8249008905",
+            "visibility": "public"
+          },
+          "verification": {
+            "evidence": [
+              {
+                "evidence_id": "fixture.verify.2",
+                "kind": "verifier-report",
+                "sha256": "48f6a5599a4e6a55c0a54317d19b1852a09921d8267e5b46b82a204d0416578c"
+              }
+            ],
+            "provenance": {
+              "media_type": "application/json",
+              "sha256": "38f6602ba2fdcd195dddc49168deef08cf5888d4999859f21d188f8a6e9ef5f8",
+              "size_bytes": 128,
+              "visibility": "public"
+            },
+            "revocation": "not-revoked",
+            "sbom": {
+              "media_type": "application/json",
+              "sha256": "a0aef6deecccb87e8126c4609ea8336cfa91570436001352101935f7964584cc",
+              "size_bytes": 128,
+              "visibility": "public"
+            },
+            "scan": {
+              "media_type": "application/json",
+              "sha256": "2cdea5c610a8b6feed91c9f5064fd168e3d67ea48d6927a2ad13557376bb6272",
+              "size_bytes": 128,
+              "visibility": "public"
+            },
+            "status": "verified"
+          }
+        },
+        "unmet": [
+          "requirement.focus-plan"
+        ]
+      }
+    ],
+    "platform_status": "product-platform-local-hold",
+    "rejected": [
+      {
+        "candidate": {
+          "app_id": "ai.vibapp.fixture.alarm-steward",
+          "manifest_digest_sha256": "c6332fb747bee0d13a86cc2181142249cda394cf7cf0daf21a06a678b383e8e0",
+          "package_digest_sha256": "1c0ba1db21b345a34661c2a843c3a7af08ec7501b736af7a8615979673faba60",
+          "version": "0.1.0"
+        },
+        "checked_facts": [
+          "/contract/package_format=vibapp.package.experimental-v0",
+          "/contract/component_contract=vibapp:experimental-v0@0.0.1",
+          "/contract/wasi=0.2",
+          "/contract/wit_world=hybrid-reference",
+          "/compatibility/platforms",
+          "/compatibility/profiles",
+          "/permissions",
+          "/permission_ceiling/allowed_interfaces",
+          "/permission_ceiling/forbidden_interfaces",
+          "/app/publisher/verification_state=verified",
+          "/verification/status=verified",
+          "/verification/revocation=not-revoked",
+          "/publication/state=published",
+          "/source/visibility=public",
+          "/need/privacy_requirement=local-private"
+        ],
+        "display_name": "Alarm Steward (Fixture)",
+        "rejected_reasons": [
+          "permission-ceiling"
+        ]
+      },
+      {
+        "candidate": {
+          "app_id": "ai.vibapp.fixture.device-pulse",
+          "manifest_digest_sha256": "738719443087557dce8efca8a374789582a53db6bc6202dbe3bc7105ca654cf1",
+          "package_digest_sha256": "50d4a1aedeee773ea987c7390b0b5010fe68d0e763124328eceb619db4504053",
+          "version": "0.1.0"
+        },
+        "checked_facts": [
+          "/contract/package_format=vibapp.package.experimental-v0",
+          "/contract/component_contract=vibapp:experimental-v0@0.0.1",
+          "/contract/wasi=0.2",
+          "/contract/wit_world=service-only-reference",
+          "/compatibility/platforms",
+          "/compatibility/profiles",
+          "/permissions",
+          "/permission_ceiling/allowed_interfaces",
+          "/permission_ceiling/forbidden_interfaces",
+          "/app/publisher/verification_state=verified",
+          "/verification/status=verified",
+          "/verification/revocation=not-revoked",
+          "/publication/state=published",
+          "/source/visibility=public",
+          "/need/privacy_requirement=local-private",
+          "/need/negative_constraints/constraint.no-http"
+        ],
+        "display_name": "Device Pulse (Fixture)",
+        "rejected_reasons": [
+          "platform",
+          "profile",
+          "permission-ceiling",
+          "negative-constraint",
+          "privacy"
+        ]
+      },
+      {
+        "candidate": {
+          "app_id": "ai.vibapp.fixture.weather-preview",
+          "manifest_digest_sha256": "dae02508ca51000342b6cd83173ff70488667d14ea70f08b8104f2c3efca4ebc",
+          "package_digest_sha256": "27c851c080e30dba7fb4e6c1b0069dcaf26b8df42a8a7b2382934de3e3ba848f",
+          "version": "0.1.0"
+        },
+        "checked_facts": [
+          "/contract/package_format=vibapp.package.experimental-v0",
+          "/contract/component_contract=vibapp:experimental-v0@0.0.1",
+          "/contract/wasi=0.2",
+          "/contract/wit_world=web-preview-reference",
+          "/compatibility/platforms",
+          "/compatibility/profiles",
+          "/permissions",
+          "/permission_ceiling/allowed_interfaces",
+          "/permission_ceiling/forbidden_interfaces",
+          "/app/publisher/verification_state=verified",
+          "/verification/status=verified",
+          "/verification/revocation=not-revoked",
+          "/publication/state=published",
+          "/source/visibility=public",
+          "/need/privacy_requirement=local-private",
+          "/need/negative_constraints/constraint.no-http"
+        ],
+        "display_name": "Weather Preview (Fixture)",
+        "rejected_reasons": [
+          "platform",
+          "profile",
+          "permission-ceiling",
+          "negative-constraint",
+          "privacy"
+        ]
+      }
+    ],
+    "schema_basis": "authored-unaccepted-product-v0-candidate",
+    "search_response": {
+      "document_type": "search-response",
+      "empty_reason": null,
+      "matches": [
+        {
+          "candidate": {
+            "app_id": "ai.vibapp.fixture.focus-board",
+            "manifest_digest_sha256": "3e7abb069e6846b059e3a42a553af19f4048d86c29211f2c95592a18f813feff",
+            "package_digest_sha256": "72fd4f5571c98fdd9af5b7dc07efc35704149c6e3913fa19c149e1256388dca5",
+            "version": "0.1.0"
+          },
+          "compatibility_facts": [
+            "/contract",
+            "/compatibility/platforms",
+            "/compatibility/profiles"
+          ],
+          "coverage": [
+            {
+              "evidence_fields": [
+                "/app/display_name",
+                "/app/summary",
+                "/search_metadata/tags/0"
+              ],
+              "requirement_id": "requirement.focus-plan",
+              "state": "covered"
+            },
+            {
+              "evidence_fields": [
+                "/app/summary"
+              ],
+              "requirement_id": "requirement.private-notes",
+              "state": "partial"
+            }
+          ],
+          "decision": "compatible",
+          "document_type": "candidate-match",
+          "explanation_evidence_fields": [
+            "/app/display_name",
+            "/app/summary",
+            "/need/requirements/0",
+            "/need/requirements/1",
+            "/search_metadata/tags/0"
+          ],
+          "gaps": [
+            "Unmet requirement: requirement.private-notes"
+          ],
+          "hard_filter": {
+            "checked_facts": [
+              "/contract/package_format=vibapp.package.experimental-v0",
+              "/contract/component_contract=vibapp:experimental-v0@0.0.1",
+              "/contract/wasi=0.2",
+              "/contract/wit_world=ui-only-reference",
+              "/compatibility/platforms",
+              "/compatibility/profiles",
+              "/permissions",
+              "/permission_ceiling/allowed_interfaces",
+              "/permission_ceiling/forbidden_interfaces",
+              "/app/publisher/verification_state=verified",
+              "/verification/status=verified",
+              "/verification/revocation=not-revoked",
+              "/publication/state=published",
+              "/source/visibility=public",
+              "/need/privacy_requirement=local-private"
+            ],
+            "eligible": true,
+            "rejected_reasons": []
+          },
+          "need_id": "need.focus.local.1",
+          "required_permissions": [
+            {
+              "interface": "vibapp:experimental-v0/clock@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "5f6bb974928676f4170611e0ef7a634afe33a624850bb89d78e978e1474a0b6a",
+              "summary": "Synthetic fixture declaration for clock."
+            },
+            {
+              "interface": "vibapp:experimental-v0/kv@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "802e309cfbf674a5954c65e2e67006909422ec6367de822976cba55315fe4902",
+              "summary": "Synthetic fixture declaration for kv."
+            },
+            {
+              "interface": "vibapp:experimental-v0/log@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "55f18cae2f17046eb5447a1b4eed56e8afda115fee526c830f220ff9971eb448",
+              "summary": "Synthetic fixture declaration for log."
+            },
+            {
+              "interface": "vibapp:experimental-v0/host-info@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "4bd90ae6b7c0603ff6eadc24e798f1832497b76f28ebfd5565c0eb1d9e61c429",
+              "summary": "Synthetic fixture declaration for host-info."
+            },
+            {
+              "interface": "vibapp:experimental-v0/settings@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "8ca8b6573ad2ad9eaed5521afe645fee03c3487be5a005354f130f4f5822f831",
+              "summary": "Synthetic fixture declaration for settings."
+            }
+          ],
+          "schema_version": "vibapp.candidate-match.product-v0.0.1",
+          "scores": {
+            "lexical": 0.416667,
+            "vector": 0.621762
+          },
+          "source_facts": [
+            "/source/visibility",
+            "/app/publisher/verification_state",
+            "/verification/status"
+          ],
+          "stable_order": 0
+        },
+        {
+          "candidate": {
+            "app_id": "ai.vibapp.fixture.local-notes",
+            "manifest_digest_sha256": "fe3a731e03da6e7bf65732898e3444a1102be2311be4964c3f9a2dde22650763",
+            "package_digest_sha256": "ebff2b15432ac38456ad08e9da01cf1b86fb071284d313743685ef68fdbe2cde",
+            "version": "0.1.0"
+          },
+          "compatibility_facts": [
+            "/contract",
+            "/compatibility/platforms",
+            "/compatibility/profiles"
+          ],
+          "coverage": [
+            {
+              "evidence_fields": [],
+              "requirement_id": "requirement.focus-plan",
+              "state": "uncovered"
+            },
+            {
+              "evidence_fields": [
+                "/app/display_name",
+                "/app/summary",
+                "/search_metadata/tags/0"
+              ],
+              "requirement_id": "requirement.private-notes",
+              "state": "covered"
+            }
+          ],
+          "decision": "partial",
+          "document_type": "candidate-match",
+          "explanation_evidence_fields": [
+            "/app/display_name",
+            "/app/summary",
+            "/need/requirements/0",
+            "/need/requirements/1",
+            "/search_metadata",
+            "/search_metadata/tags/0"
+          ],
+          "gaps": [
+            "Unmet requirement: requirement.focus-plan"
+          ],
+          "hard_filter": {
+            "checked_facts": [
+              "/contract/package_format=vibapp.package.experimental-v0",
+              "/contract/component_contract=vibapp:experimental-v0@0.0.1",
+              "/contract/wasi=0.2",
+              "/contract/wit_world=ui-only-reference",
+              "/compatibility/platforms",
+              "/compatibility/profiles",
+              "/permissions",
+              "/permission_ceiling/allowed_interfaces",
+              "/permission_ceiling/forbidden_interfaces",
+              "/app/publisher/verification_state=verified",
+              "/verification/status=verified",
+              "/verification/revocation=not-revoked",
+              "/publication/state=published",
+              "/source/visibility=public",
+              "/need/privacy_requirement=local-private"
+            ],
+            "eligible": true,
+            "rejected_reasons": []
+          },
+          "need_id": "need.focus.local.1",
+          "required_permissions": [
+            {
+              "interface": "vibapp:experimental-v0/clock@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "6a078a41beeb365173181f4b0a38a17891ca664ff3462a4a7260ee8c6cf4cab7",
+              "summary": "Synthetic fixture declaration for clock."
+            },
+            {
+              "interface": "vibapp:experimental-v0/kv@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "974e40b4c8656cfb2ae54c8e0933283ec1f7203ecd2d826adb3b78f163fd15e4",
+              "summary": "Synthetic fixture declaration for kv."
+            },
+            {
+              "interface": "vibapp:experimental-v0/log@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "0128c95ba8ddd75d8221b33d5fc6e5844059109fcb7f664e496e1ee9a7e024d4",
+              "summary": "Synthetic fixture declaration for log."
+            },
+            {
+              "interface": "vibapp:experimental-v0/host-info@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "a28e398e4f18cd0a64db6b46a8b6281eb03344131935f9da66d448cc63e3458c",
+              "summary": "Synthetic fixture declaration for host-info."
+            },
+            {
+              "interface": "vibapp:experimental-v0/settings@0.0.1",
+              "necessity": "required",
+              "scope_digest_sha256": "ed0749f9342263c56503dedd55651bd6a418af1d583c0862d1531d98056093e1",
+              "summary": "Synthetic fixture declaration for settings."
+            }
+          ],
+          "schema_version": "vibapp.candidate-match.product-v0.0.1",
+          "scores": {
+            "lexical": 0.125,
+            "vector": 0.480874
+          },
+          "source_facts": [
+            "/source/visibility",
+            "/app/publisher/verification_state",
+            "/verification/status"
+          ],
+          "stable_order": 1
+        }
+      ],
+      "next_cursor": null,
+      "query_digest_sha256": "122a79d94070e7d265b8e20058ca4a12de928a3ddff3ffe0a521ba8b3c29fbf0",
+      "request_id": "search.122a79d94070e7d265b8e200",
+      "schema_version": "vibapp.search-response.product-v0.0.1"
+    }
+  },
+  "snapshot_version": "vibapp.fast-registry-snapshot.2026-08-24.1"
+}

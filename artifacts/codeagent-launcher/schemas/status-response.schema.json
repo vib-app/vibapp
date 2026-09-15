@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:vibapp:codeagent-launcher:status-response:experimental-v0",
+  "title": "Experimental CodeAgent Launcher status response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "job_id",
+    "attempt_id",
+    "request_digest_sha256",
+    "provider_profile_id",
+    "executor_kind",
+    "backend_execution_id",
+    "state",
+    "failure_code"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "codeagent-launcher.experimental-v0"
+    },
+    "job_id": {
+      "$ref": "#/$defs/id"
+    },
+    "attempt_id": {
+      "$ref": "#/$defs/id"
+    },
+    "request_digest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "provider_profile_id": {
+      "$ref": "#/$defs/id"
+    },
+    "executor_kind": {
+      "enum": ["docker", "kubernetes"]
+    },
+    "backend_execution_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[!-~]+$"
+    },
+    "state": {
+      "enum": [
+        "queued",
+        "starting",
+        "running",
+        "cancel-requested",
+        "cleanup-pending",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "held"
+      ]
+    },
+    "failure_code": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "executor-unavailable",
+        "launch-outcome-unknown",
+        "cleanup-not-confirmed",
+        "missing-backend-execution-id",
+        "invalid-backend-observation",
+        "backend-execution-id-mismatch",
+        "invalid-state-regression",
+        "invalid-terminal-receipt",
+        "backend-failed",
+        "event-budget-exhausted"
+      ]
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "VibApp Development"
+  short_description: "Build and validate contract-safe VibApp packages"
+  default_prompt: "Use $vibapp to design or validate a VibApp against the accepted project contracts."

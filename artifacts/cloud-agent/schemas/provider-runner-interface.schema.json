@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibapp.ai/schemas/experimental/provider-runner-interface.experimental-v2.schema.json",
+  "title": "External isolated provider-runner request and receipt (Stage 0-external product integration)",
+  "description": "V2 carries the complete non-secret provider execution identity, binds its digest and the exact execution attempt, and requires attested receipt V3 to return those bindings.",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/receipt" }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?=\\S)(?=.*\\S$)[^-\\u0000-\\u001F\\u007F][^\\u0000-\\u001F\\u007F]{0,255}$"
+    },
+    "execution_attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "ordinal"],
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "pattern": "^attempt-[0-9]{4}-[0-9a-f]{16}$"
+        },
+        "ordinal": { "type": "integer", "minimum": 1, "maximum": 9999 }
+      }
+    },
+    "bounded_identity_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "provider_endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "canonical_endpoint", "endpoint_sha256"],
+      "properties": {
+        "kind": { "enum": ["https", "provider-managed"] },
+        "canonical_endpoint": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "endpoint_sha256": { "$ref": "#/$defs/sha256" }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "https" },
+            "canonical_endpoint": {
+              "type": "string",
+              "pattern": "^https://[^/?#]+(?:/[^?#]*)?$"
+            }
+          },
+          "required": ["kind", "canonical_endpoint"]
+        },
+        {
+          "properties": {
+            "kind": { "const": "provider-managed" },
+            "canonical_endpoint": { "const": "provider-managed" }
+          },
+          "required": ["kind", "canonical_endpoint"]
+        }
+      ]
+    },
+    "provider_runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_id",
+        "adapter_version",
+        "adapter_sha256",
+        "package_id",
+        "package_version",
+        "executable_sha256"
+      ],
+      "properties": {
+        "adapter_id": { "$ref": "#/$defs/bounded_identity_text" },
+        "adapter_version": { "$ref": "#/$defs/bounded_identity_text" },
+        "adapter_sha256": { "$ref": "#/$defs/sha256" },
+        "package_id": { "$ref": "#/$defs/bounded_identity_text" },
+        "package_version": { "$ref": "#/$defs/bounded_identity_text" },
+        "executable_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "provider_execution_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "endpoint",
+        "runtime",
+        "non_secret_config_sha256",
+        "identity_sha256"
+      ],
+      "properties": {
+        "schema_version": { "const": "vibapp.provider-execution-identity.experimental-v1" },
+        "endpoint": { "$ref": "#/$defs/provider_endpoint" },
+        "runtime": { "$ref": "#/$defs/provider_runtime" },
+        "non_secret_config_sha256": { "$ref": "#/$defs/sha256" },
+        "identity_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "isolation_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "one_job_per_isolate",
+        "non_root",
+        "read_only_base",
+        "environment_inheritance",
+        "credential_delivery",
+        "network_policy",
+        "host_home_mounted",
+        "host_repository_mounted",
+        "host_ssh_mounted",
+        "host_cloud_credentials_mounted",
+        "host_container_socket_mounted",
+        "whole_job_kill",
+        "cpu_seconds",
+        "rss_bytes",
+        "pids",
+        "disk_bytes"
+      ],
+      "properties": {
+        "schema_version": { "const": "vibapp.provider-runner-isolation.experimental-v1" },
+        "one_job_per_isolate": { "const": true },
+        "non_root": { "const": true },
+        "read_only_base": { "const": true },
+        "environment_inheritance": { "const": "none" },
+        "credential_delivery": { "const": "broker-only" },
+        "network_policy": { "const": "provider-gateway-only" },
+        "host_home_mounted": { "const": false },
+        "host_repository_mounted": { "const": false },
+        "host_ssh_mounted": { "const": false },
+        "host_cloud_credentials_mounted": { "const": false },
+        "host_container_socket_mounted": { "const": false },
+        "whole_job_kill": { "const": true },
+        "cpu_seconds": { "type": "integer", "minimum": 1, "maximum": 900 },
+        "rss_bytes": { "type": "integer", "minimum": 268435456, "maximum": 4294967296 },
+        "pids": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "disk_bytes": { "type": "integer", "minimum": 1024, "maximum": 67108864 }
+      }
+    },
+    "executable_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configured_path", "resolved_path", "symlink_chain", "version", "sha256", "owner_uid", "mode"
+      ],
+      "properties": {
+        "configured_path": { "type": "string", "minLength": 1 },
+        "resolved_path": { "type": "string", "minLength": 1 },
+        "symlink_chain": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "owner_uid": { "type": "integer", "minimum": 0 },
+        "mode": { "type": "integer", "minimum": 0, "maximum": 4095 }
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "job_id",
+        "execution_attempt",
+        "immutable_task_digest_sha256",
+        "provider_execution_identity",
+        "provider_execution_identity_sha256",
+        "provider",
+        "model",
+        "executable_identity",
+        "isolation_policy",
+        "isolation_policy_sha256",
+        "input_bundle_sha256"
+      ],
+      "properties": {
+        "schema_version": { "const": "vibapp.provider-runner-request.experimental-v2" },
+        "document_type": { "const": "provider-runner-request" },
+        "job_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+        "execution_attempt": { "$ref": "#/$defs/execution_attempt" },
+        "immutable_task_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "provider_execution_identity": { "$ref": "#/$defs/provider_execution_identity" },
+        "provider_execution_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "provider": { "const": "openai-codex" },
+        "model": { "$ref": "#/$defs/model" },
+        "executable_identity": { "$ref": "#/$defs/executable_identity" },
+        "isolation_policy": { "$ref": "#/$defs/isolation_policy" },
+        "isolation_policy_sha256": { "$ref": "#/$defs/sha256" },
+        "input_bundle_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "document_type",
+        "job_id",
+        "execution_attempt",
+        "immutable_task_digest_sha256",
+        "provider_execution_identity_sha256",
+        "input_bundle_sha256",
+        "output_bundle_sha256",
+        "runner_id",
+        "runner_identity_sha256",
+        "isolation_policy_sha256",
+        "external_request_attempted",
+        "external_request_observed",
+        "gateway_request_id",
+        "whole_job_quiescent",
+        "exit_code",
+        "stdout_bytes",
+        "stderr_bytes",
+        "executed_executable_sha256",
+        "attestation_type",
+        "attestation_key_id",
+        "receipt_digest_sha256",
+        "attestation_signature"
+      ],
+      "properties": {
+        "schema_version": { "const": "vibapp.provider-runner-receipt.experimental-v3" },
+        "document_type": { "const": "provider-runner-receipt" },
+        "job_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+        "execution_attempt": { "$ref": "#/$defs/execution_attempt" },
+        "immutable_task_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "provider_execution_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "input_bundle_sha256": { "$ref": "#/$defs/sha256" },
+        "output_bundle_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "runner_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+        "runner_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "isolation_policy_sha256": { "$ref": "#/$defs/sha256" },
+        "external_request_attempted": { "type": "boolean" },
+        "external_request_observed": { "type": "boolean" },
+        "gateway_request_id": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+        "whole_job_quiescent": { "const": true },
+        "exit_code": { "type": "integer", "minimum": 0, "maximum": 255 },
+        "stdout_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+        "stderr_bytes": { "type": "integer", "minimum": 0, "maximum": 1048576 },
+        "executed_executable_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "attestation_type": { "const": "detached-signature-placeholder-v1" },
+        "attestation_key_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+        "receipt_digest_sha256": { "$ref": "#/$defs/sha256" },
+        "attestation_signature": {
+          "type": "string",
+          "minLength": 43,
+          "maxLength": 1024,
+          "pattern": "^[A-Za-z0-9_-]{43,1024}={0,2}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "external_request_observed": { "const": true } }, "required": ["external_request_observed"] },
+          "then": {
+            "properties": {
+              "external_request_attempted": { "const": true },
+              "gateway_request_id": { "type": "string", "minLength": 1 },
+              "executed_executable_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "output_bundle_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "external_request_observed": { "const": false } }, "required": ["external_request_observed"] },
+          "then": { "properties": { "gateway_request_id": { "const": null } } }
+        },
+        {
+          "if": { "properties": { "external_request_attempted": { "const": false } }, "required": ["external_request_attempted"] },
+          "then": {
+            "properties": {
+              "external_request_observed": { "const": false },
+              "gateway_request_id": { "const": null },
+              "executed_executable_sha256": { "const": null },
+              "output_bundle_sha256": { "const": null }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
