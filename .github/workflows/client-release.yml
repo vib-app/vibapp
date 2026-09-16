@@ -96,14 +96,14 @@ jobs:
         run: |
           for sums in SHA256SUMS-*; do sha256sum --check "$sums"; done
           node ../artifacts/desktop/ci/verify-release-set.mjs .
-      - name: Publish preview only after all checks pass
+      - name: Stage draft preview after desktop checks (mobile signing is separate)
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           node --input-type=module -e 'import {releaseTag} from "./artifacts/desktop/ci/release-policy.mjs";releaseTag(process.env.RELEASE_TAG)'
           if [ "$GITHUB_REF_TYPE" = tag ]; then
-            gh release create "$RELEASE_TAG" release/* --verify-tag --prerelease --title "VibApp $RELEASE_TAG" --notes-file docs/product/client-release-notes.md
+            gh release create "$RELEASE_TAG" release/* --verify-tag --draft --prerelease --title "VibApp $RELEASE_TAG" --notes-file docs/product/client-release-notes.md
           else
             set +e
             git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG"
@@ -113,5 +113,5 @@ jobs:
               echo "Tag lookup must confirm a new tag; refusing an existing tag or lookup failure" >&2
               exit 1
             fi
-            gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --prerelease --title "VibApp $RELEASE_TAG" --notes-file docs/product/client-release-notes.md
+            gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --draft --prerelease --title "VibApp $RELEASE_TAG" --notes-file docs/product/client-release-notes.md
           fi
