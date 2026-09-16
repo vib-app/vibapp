@@ -44,8 +44,33 @@ export async function sha256Hex(value) {
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+export async function manifestPackageDigest(manifest) {
+  const encoder = new TextEncoder();
+  const parts = [encoder.encode('VIBAPP-PACKAGE\0experimental-v0\0')];
+  const integer = (value, width) => {
+    requireValue(Number.isSafeInteger(value) && value >= 0, 'package-integer');
+    const bytes = new Uint8Array(width), view = new DataView(bytes.buffer);
+    if (width === 8) view.setBigUint64(0, BigInt(value)); else view.setUint16(0, value);
+    return bytes;
+  };
+  const encodedManifest = encoder.encode(canonicalJson(manifest));
+  parts.push(integer(encodedManifest.length, 8), encodedManifest);
+  const artifacts = manifest.artifacts;
+  const descriptors = [artifacts.canonical_component, ...artifacts.assets, artifacts.provenance, artifacts.sbom,
+    ...artifacts.browser_derivations.flatMap(item => [...item.files, item.derivation_attestation])].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  for (const descriptor of descriptors) {
+    const path = encoder.encode(descriptor.path);
+    requireValue(path.length < 65536 && SHA256.test(descriptor.sha256), 'package-descriptor');
+    parts.push(integer(path.length, 2), path, Uint8Array.from(descriptor.sha256.match(/../g), value => parseInt(value, 16)), integer(descriptor.size_bytes, 8));
+  }
+  const bytes = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let offset = 0; for (const part of parts) { bytes.set(part, offset); offset += part.length; }
+  return sha256Hex(bytes);
+}
+
 export function bindingPayload(binding) {
   return {
+    ...(binding.profile === 'web-runtime' ? { launch_entrypoint: binding.launch_entrypoint, initial_route: binding.initial_route } : {}),
     schema_version: binding.schema_version,
     source_kind: binding.source_kind,
     app_id: binding.app_id,
@@ -65,6 +90,7 @@ export function bindingPayload(binding) {
       verification_state: binding.attestation?.verification_state,
       canonical_component_transformation_proven: binding.attestation?.canonical_component_transformation_proven,
       stage0_activation_eligible: binding.attestation?.stage0_activation_eligible,
+      ...(binding.profile === 'web-runtime' ? { product_activation_eligible: binding.attestation?.product_activation_eligible } : {}),
     },
   };
 }
@@ -86,7 +112,12 @@ export async function verifyBrowserDerivationBinding(binding) {
   requireValue(binding?.schema_version === 'vibapp.browser-derivation-binding.experimental-v1', 'binding-schema');
   requireValue(binding.source_kind === 'verifier-promoted-candidate', 'binding-source-kind');
   requireValue(APP_ID.test(binding.app_id || ''), 'binding-app');
-  requireValue(binding.profile === 'web-preview', 'binding-profile');
+  const product = binding.profile === 'web-runtime';
+  requireValue(product || binding.profile === 'web-preview', 'binding-profile');
+  if (product) {
+    boundedString(binding.launch_entrypoint, 128, 'binding-entrypoint');
+    boundedString(binding.initial_route, 128, 'binding-route');
+  }
   requireValue(typeof binding.preview_record_id === 'string' && binding.preview_record_id.length > 0, 'binding-record');
   requireValue(Number.isInteger(binding.preview_record_revision) && binding.preview_record_revision > 0, 'binding-revision');
   requireValue(SHA256.test(binding.canonical_package_digest_sha256), 'binding-package-digest');
@@ -121,9 +152,10 @@ export async function verifyBrowserDerivationBinding(binding) {
   const selectedAdapter = binding.files.find(item => item.path === binding.host_adapter?.path);
   requireValue(canonicalJson(selectedAdapter) === canonicalJson(binding.host_adapter), 'derivation-host-adapter-selector');
   requireValue(binding.host_adapter.sha256 === binding.host_adapter_sha256, 'binding-host-adapter-file-digest');
-  requireValue(binding.attestation?.kind === 'local-deterministic-jco-derivation', 'attestation-kind');
-  requireValue(binding.attestation?.trusted_builder_policy === 'product-platform-exact-jco-1.15.4', 'attestation-policy');
-  requireValue(binding.attestation?.verification_state === 'locally-derived-awaiting-independent-verifier', 'attestation-state');
+  requireValue(binding.attestation?.kind === (product ? 'product-verified-jco-derivation' : 'local-deterministic-jco-derivation'), 'attestation-kind');
+  requireValue(binding.attestation?.trusted_builder_policy === (product ? 'vibapp.product-browser.stateless-v1' : 'product-platform-exact-jco-1.15.4'), 'attestation-policy');
+  requireValue(binding.attestation?.verification_state === (product ? 'verified' : 'locally-derived-awaiting-independent-verifier'), 'attestation-state');
+  if (product) requireValue(binding.attestation.product_activation_eligible === true, 'product-activation');
   requireValue(binding.attestation?.canonical_component_transformation_proven === true, 'attestation-transformation');
   requireValue(binding.attestation?.stage0_activation_eligible === false, 'attestation-stage0-boundary');
   requireValue(SHA256.test(binding.attestation?.binding_payload_sha256), 'attestation-binding-digest');
@@ -140,6 +172,15 @@ export async function verifyBrowserDerivationBinding(binding) {
 
 export async function verifyBrowserPreviewBinding(record, binding) {
   await verifyBrowserDerivationBinding(binding);
+  if (binding.profile === 'web-runtime') {
+    requireValue(record?.schema_version === 'vibapp.registry-record.product-v0.0.1' && record?.document_type === 'registry-record', 'record-schema');
+    requireValue(record?.app?.id === binding.app_id && record?.record_id === binding.preview_record_id
+      && record?.record_revision === binding.preview_record_revision, 'record-identity');
+    requireValue(record?.package?.package_digest_sha256 === binding.canonical_package_digest_sha256, 'record-package-digest');
+    requireValue(record?.compatibility?.profiles?.includes('web-runtime') && record?.publication?.state === 'published'
+      && record?.verification?.status === 'verified' && record?.verification?.revocation === 'not-revoked', 'record-product-authority');
+    return binding;
+  }
   requireValue(record?.schema_version === 'vibapp.browser-preview-record.experimental-v1', 'record-schema');
   requireValue(record?.document_type === 'browser-preview-record-projection', 'record-document-type');
   requireValue(record?.app?.id === binding.app_id, 'record-app');
@@ -171,6 +212,26 @@ export async function verifyDerivationAttestation(binding, value) {
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('integrity-failure:')) throw error;
     fail('attestation-json');
+  }
+  if (binding.profile === 'web-runtime') {
+    requireValue(document.schema_version === 'vibapp.product-browser-binding-attestation.v1', 'product-attestation-schema');
+    requireValue(document.binding_payload_sha256 === binding.attestation.binding_payload_sha256, 'product-binding-payload');
+    requireValue(document.policy === 'vibapp.product-browser.stateless-v1' && document.independent_rederivation === true, 'product-verifier');
+    requireValue(document.canonical_package_digest_sha256 === binding.canonical_package_digest_sha256, 'product-package-digest');
+    const manifest = document.manifest;
+    requireValue(await manifestPackageDigest(manifest) === binding.canonical_package_digest_sha256, 'product-manifest-package-digest');
+    requireValue(manifest?.app?.id === binding.app_id && manifest.artifacts?.canonical_component?.sha256 === binding.derived_from_sha256, 'product-manifest-component');
+    requireValue(manifest.runtime?.profiles?.some(row => row.profile === 'web-runtime' && row.background === 'foreground-only' && row.artifact_role === 'browser-derived'), 'product-manifest-profile');
+    requireValue(manifest.entrypoints?.some(row => row.id === binding.launch_entrypoint && row.routes?.initial === binding.initial_route && row.profiles?.includes('web-runtime')), 'product-manifest-entrypoint');
+    const derived = manifest.artifacts.browser_derivations?.find(item => item.profile === 'web-runtime');
+    requireValue(derived?.derived_from_sha256 === binding.derived_from_sha256 && derived?.files?.length === binding.files.length, 'product-manifest-derivation');
+    requireValue(derived.files.every(file => binding.files.some(item => item.path.endsWith('/' + file.path.split('/').at(-1)) && item.sha256 === file.sha256 && item.size_bytes === file.size_bytes)), 'product-manifest-files');
+    requireValue(derived.entry.sha256 === binding.entry.sha256 && document.derivation?.policy === document.policy
+      && document.derivation?.canonical_component_sha256 === binding.derived_from_sha256
+      && document.derivation?.tool?.version === '1.15.4' && document.derivation?.guest_memory === 'fresh-instance-per-call', 'product-derivation-policy');
+    requireValue(await sha256Hex(canonicalJson(document.derivation) + '\n') === derived.derivation_attestation.sha256, 'product-derivation-attestation-digest');
+    requireValue(document.stage0_activation_eligible === false, 'product-stage0-boundary');
+    return document;
   }
   requireValue(document.schema_version === 'vibapp.browser-derivation-attestation.experimental-v1', 'attestation-document-schema');
   requireValue(document.document_type === 'local-browser-derivation-attestation', 'attestation-document-type');
@@ -277,7 +338,7 @@ export function verifyGuestLaunchOutput(request, descriptor, output) {
   boundedString(descriptor.version, 64, 'guest-descriptor-version');
   boundedString(descriptor.displayName, 128, 'guest-descriptor-name');
   requireValue(descriptor.kind === 'ui', 'guest-descriptor-kind');
-  requireValue(Array.isArray(descriptor.entrypoints) && descriptor.entrypoints.some(item => item.id === 'main' && item.kind === 'launcher-ui'), 'guest-entrypoint');
+  requireValue(Array.isArray(descriptor.entrypoints) && descriptor.entrypoints.some(item => item.id === (request.binding?.launch_entrypoint || 'main') && item.kind === 'launcher-ui'), 'guest-entrypoint');
   requireValue(output && Array.isArray(output.surfaces) && output.surfaces.length === 1, 'guest-surface-count');
   const surface = output.surfaces[0];
   requireValue(surface.session === request.session, 'guest-surface-session');
@@ -310,11 +371,11 @@ export function verifyRuntimeResult(request, result) {
   requireValue(result?.browser_artifact_sha256 === request.binding.entry.sha256, 'result-artifact-digest');
   requireValue(result?.derivation_binding?.derived_from_sha256 === request.binding.derived_from_sha256, 'result-derived-from');
   requireValue(result?.derivation_binding?.binding_payload_sha256 === request.binding.attestation.binding_payload_sha256, 'result-attestation');
-  requireValue(result?.derivation_binding?.verification_state === 'locally-derived-awaiting-independent-verifier', 'result-verification-state');
+  requireValue(result?.derivation_binding?.verification_state === request.binding.attestation.verification_state, 'result-verification-state');
   requireValue(result?.derivation_binding?.canonical_component_transformation_proven === true, 'result-transformation');
   requireValue(result?.derivation_binding?.stage0_activation_eligible === false, 'result-stage0-boundary');
   const expectedBinding = {
-    entrypoint: 'main', package_digest_sha256: request.binding.canonical_package_digest_sha256,
+    entrypoint: request.binding.launch_entrypoint || 'main', package_digest_sha256: request.binding.canonical_package_digest_sha256,
     component_sha256: request.binding.canonical_component.sha256,
     generation: 'web-generation-' + request.binding.canonical_component.sha256.slice(0, 24),
     session: request.session, surface: result.surface.surface, route: result.surface.route,

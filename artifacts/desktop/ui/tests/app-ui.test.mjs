@@ -164,11 +164,20 @@ test("download recommendation detects OS but never guesses a Mac chip from its U
   ui.setTestLocale("en-US");
   ui.model.downloadDevice = { os: "macos", arch: "arm64" };
   const available = ui.renderClientDownload();
-  assert.match(available, /href="https:\/\/github.com\/vib-app\/vibapp\/releases\/download\/client-v0.1.0-preview.1\/VibApp-macOS-Apple-Silicon.dmg"/);
+  assert.match(available, /href="https:\/\/github.com\/vib-app\/vibapp\/releases\/download\/client-v0.1.0-preview.2\/VibApp-macOS-Apple-Silicon.dmg"/);
   assert.match(available, /Download for Mac/);
   assert.match(available, /not yet notarized/);
-  for (const device of [{ os: "macos", arch: "x64" }, { os: "macos", arch: "unknown" },
-    ...["windows", "linux", "android", "ios", "unknown"].map(os => ({ os, arch: "arm64" }))]) {
+  for (const [os, arch, file] of [["macos", "x64", "VibApp-macOS-Intel.dmg"],
+    ["windows", "x64", "VibApp-Windows-x64-Setup.exe"], ["linux", "x64", "VibApp-Linux-x64.deb"],
+    ["android", "arm64", "VibApp-Android-ARM64.apk"]]) {
+    ui.model.downloadDevice = { os, arch };
+    const html = ui.renderClientDownload();
+    assert.ok(html.includes(`download="${file}"`));
+    assert.ok(html.includes(`/${file}" target="_blank"`));
+    assert.doesNotMatch(html, /class="download-primary" disabled/);
+  }
+  for (const device of [{ os: "macos", arch: "unknown" }, { os: "android", arch: "x64" },
+    ...["windows", "linux", "ios", "unknown"].map(os => ({ os, arch: "arm64" }))]) {
     ui.model.downloadDevice = device;
     const html = ui.renderClientDownload();
     assert.doesNotMatch(html, /href="[^"]+\.dmg"/);
@@ -177,7 +186,8 @@ test("download recommendation detects OS but never guesses a Mac chip from its U
   }
   ui.setTestLocale("zh-CN");
   ui.model.downloadDevice = { os: "windows", arch: "x64" };
-  assert.match(ui.renderClientDownload(), /Windows 客户端暂未提供/);
+  assert.match(ui.renderClientDownload(), /下载 Windows 版/);
+  assert.match(ui.renderClientDownload(), /WebView2/);
 });
 
 test("late architecture hints cannot overwrite a manual download choice", async () => {

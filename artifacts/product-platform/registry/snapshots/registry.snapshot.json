@@ -23,6 +23,69 @@
       "registry_record_id": "registry.fixture.weather-preview.1",
       "registry_record_revision": 1,
       "schema_version": "vibapp.browser-artifact-binding.synthetic-v1"
+    },
+    {
+      "app_id": "ai.vibapp.custom.1a04442610c",
+      "attestation": {
+        "artifact": {
+          "media_type": "application/json",
+          "path": "/launcher/components/d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982/attestation-6fff3ccbaf95a95d560ded784f8a1d7f2116638dafa6206a805b17fa31256841.json",
+          "sha256": "6fff3ccbaf95a95d560ded784f8a1d7f2116638dafa6206a805b17fa31256841",
+          "size_bytes": 9211
+        },
+        "binding_payload_sha256": "b2c319fa023959d59b2e9e3ca8c3be5c0b077adbc71254497ba3f43547aaa307",
+        "canonical_component_transformation_proven": true,
+        "kind": "product-verified-jco-derivation",
+        "product_activation_eligible": true,
+        "stage0_activation_eligible": false,
+        "trusted_builder_policy": "vibapp.product-browser.stateless-v1",
+        "verification_state": "verified"
+      },
+      "canonical_component": {
+        "media_type": "application/wasm",
+        "sha256": "d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982",
+        "size_bytes": 65595
+      },
+      "canonical_package_digest_sha256": "f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce",
+      "derived_from_sha256": "d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982",
+      "entry": {
+        "format": "jco-esm",
+        "media_type": "text/javascript",
+        "path": "/launcher/components/d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982/app-21aab8215b5805ce7dcde13087f4967ddbfd14e8e69066c7a36ad2e05c0a6034.jco.mjs",
+        "sha256": "21aab8215b5805ce7dcde13087f4967ddbfd14e8e69066c7a36ad2e05c0a6034",
+        "size_bytes": 207339
+      },
+      "files": [
+        {
+          "format": "jco-esm",
+          "media_type": "text/javascript",
+          "path": "/launcher/components/d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982/app-21aab8215b5805ce7dcde13087f4967ddbfd14e8e69066c7a36ad2e05c0a6034.jco.mjs",
+          "sha256": "21aab8215b5805ce7dcde13087f4967ddbfd14e8e69066c7a36ad2e05c0a6034",
+          "size_bytes": 207339
+        },
+        {
+          "format": "host-adapter-esm",
+          "media_type": "text/javascript",
+          "path": "/launcher/components/d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982/host-adapter-5f1edc6f4ff369d10974f7000c3e0204060708f1d3db90790ad049738c00a388.mjs",
+          "sha256": "5f1edc6f4ff369d10974f7000c3e0204060708f1d3db90790ad049738c00a388",
+          "size_bytes": 1859
+        }
+      ],
+      "host_adapter": {
+        "format": "host-adapter-esm",
+        "media_type": "text/javascript",
+        "path": "/launcher/components/d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982/host-adapter-5f1edc6f4ff369d10974f7000c3e0204060708f1d3db90790ad049738c00a388.mjs",
+        "sha256": "5f1edc6f4ff369d10974f7000c3e0204060708f1d3db90790ad049738c00a388",
+        "size_bytes": 1859
+      },
+      "host_adapter_sha256": "5f1edc6f4ff369d10974f7000c3e0204060708f1d3db90790ad049738c00a388",
+      "initial_route": "home",
+      "launch_entrypoint": "launcher.main",
+      "preview_record_id": "registry.public.ai.vibapp.custom.1a04442610c",
+      "preview_record_revision": 1,
+      "profile": "web-runtime",
+      "schema_version": "vibapp.browser-derivation-binding.experimental-v1",
+      "source_kind": "verifier-promoted-candidate"
     }
   ],
   "consumer_notes": {
@@ -35,7 +98,7 @@
     "unmet_field": "sample_search.matched[].unmet"
   },
   "corpus_version": "fixture-corpus.2026-08-24.1",
-  "generated_at_utc": "2026-08-24T02:00:00Z",
+  "generated_at_utc": "2026-09-16T02:34:04Z",
   "platform_status": "product-platform-local-hold",
   "records": [
     {
@@ -741,6 +804,149 @@
           "media_type": "application/json",
           "sha256": "4cd45e64489cc47aa10678017ad550c70c858f50e09d7826ea2e07a0539e3229",
           "size_bytes": 128,
+          "visibility": "public"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "app": {
+        "display_name": "LED 数字时钟",
+        "id": "ai.vibapp.custom.1a04442610c",
+        "kind": "ui",
+        "publisher": {
+          "display_name": "VibApp Local Builder",
+          "publisher_id": "ai.vibapp.local",
+          "verification_state": "verified"
+        },
+        "summary": "我要一个离线运行的 LED 数字时钟。主界面实时显示小时、分钟、秒，使用醒目的七段数码管风格；窗口尺寸变化时自动适配。",
+        "version": "0.1.1"
+      },
+      "compatibility": {
+        "platforms": [
+          {
+            "arch": "aarch64",
+            "os": "macos",
+            "profile": "desktop"
+          },
+          {
+            "arch": "wasm32",
+            "os": "browser",
+            "profile": "web-runtime"
+          }
+        ],
+        "profiles": [
+          "desktop",
+          "web-runtime"
+        ]
+      },
+      "contract": {
+        "component_contract": "vibapp:experimental-v0@0.0.1",
+        "package_format": "vibapp.package.experimental-v0",
+        "wasi": "0.2",
+        "wit_world": "ui-only-reference"
+      },
+      "created_at_utc": "2026-09-16T02:34:04Z",
+      "document_type": "registry-record",
+      "package": {
+        "app_id": "ai.vibapp.custom.1a04442610c",
+        "manifest_digest_sha256": "8e213e1651969c920138d9ea158565f7a1dac228580c21c4c407dcba23946962",
+        "package_digest_sha256": "f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce",
+        "version": "0.1.1"
+      },
+      "permissions": [
+        {
+          "interface": "vibapp:experimental-v0/clock@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "summary": "Required clock capability; necessity comes from the consent-bound app requirement while the import comes from the selected WIT world."
+        },
+        {
+          "interface": "vibapp:experimental-v0/kv@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "3dcd823fbbb03386c2b1bf77e78bf8026785010c29ed03dde5d69cea0e4e3876",
+          "summary": "Required kv capability; necessity comes from the consent-bound app requirement while the import comes from the selected WIT world."
+        },
+        {
+          "interface": "vibapp:experimental-v0/log@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "summary": "Required log capability; necessity comes from the consent-bound app requirement while the import comes from the selected WIT world."
+        },
+        {
+          "interface": "vibapp:experimental-v0/host-info@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "summary": "Required host-info capability; necessity comes from the consent-bound app requirement while the import comes from the selected WIT world."
+        },
+        {
+          "interface": "vibapp:experimental-v0/settings@0.0.1",
+          "necessity": "required",
+          "scope_digest_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "summary": "Required settings capability; necessity comes from the consent-bound app requirement while the import comes from the selected WIT world."
+        }
+      ],
+      "publication": {
+        "public_metadata_digest_sha256": "3e1e78b64a2a50c2e95559efd659785d956d7f4a229c0138db71bf5c57b6f960",
+        "published_at_utc": "2026-09-16T02:34:04Z",
+        "revoked_at_utc": null,
+        "state": "published"
+      },
+      "record_id": "registry.public.ai.vibapp.custom.1a04442610c",
+      "record_revision": 1,
+      "schema_version": "vibapp.registry-record.product-v0.0.1",
+      "search_metadata": {
+        "capability_labels": [
+          "vibapp:experimental-v0/clock@0.0.1",
+          "vibapp:experimental-v0/kv@0.0.1",
+          "vibapp:experimental-v0/log@0.0.1",
+          "vibapp:experimental-v0/host-info@0.0.1",
+          "vibapp:experimental-v0/settings@0.0.1"
+        ],
+        "search_text_digest_sha256": "d84d7bba4f99c3b87272860e64d820bb20ceef4e1ed89b11c2f6aea9e23f37e7",
+        "tags": [
+          "web-runtime",
+          "offline"
+        ]
+      },
+      "source": {
+        "github_archive": {
+          "commit_sha": "2d60bd8708a36d8f902b03165fdda7766e3385f2",
+          "organization": "vib-app",
+          "package_digest_sha256": "f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce",
+          "repository": "sources",
+          "repository_id": 1371257005,
+          "source_digest_sha256": "5c55ee5156ed3c03456ba063db53a54d7989b477b6506c60462b0d7c1caef8e3"
+        },
+        "license_spdx": "Apache-2.0",
+        "source_digest_sha256": "5c55ee5156ed3c03456ba063db53a54d7989b477b6506c60462b0d7c1caef8e3",
+        "visibility": "public"
+      },
+      "verification": {
+        "evidence": [
+          {
+            "evidence_id": "browser.rederivation.f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce",
+            "kind": "independent-browser-verifier",
+            "sha256": "ded40c4aeb03e204b9c70bfbd0c48f4c71f1dfa0fbfaf4ae24eb33255e0a9348"
+          }
+        ],
+        "provenance": {
+          "media_type": "application/json",
+          "sha256": "7de4b1c9d768ce6979fb3d111451cbf111f8c519d9e625550cca37f76d98ed99",
+          "size_bytes": 1606,
+          "visibility": "public"
+        },
+        "revocation": "not-revoked",
+        "sbom": {
+          "media_type": "application/vnd.cyclonedx+json",
+          "sha256": "d62469857ab6265e98194878a1ac5ce219769c832e68fc2c797fac20b761cd25",
+          "size_bytes": 362,
+          "visibility": "public"
+        },
+        "scan": {
+          "media_type": "application/json",
+          "sha256": "493838e465bac455d385ed7b79277ba117f312195ec2ff5ee1d343ad0b1ef25a",
+          "size_bytes": 2917,
           "visibility": "public"
         },
         "status": "verified"

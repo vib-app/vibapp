@@ -167,6 +167,21 @@ export function buildRegistryProjection(source, localDerivation = null) {
 export async function syncProductionPublicRegistryData() {
   const registrySourceDocument = JSON.parse(await readFile(registrySource, 'utf8'));
   const productionRegistry = buildRegistryProjection(registrySourceDocument);
+  // Published app bytes are retained outside the regenerated launcher tree.
+  // Copy only the current registry's exact content-addressed allowlist.
+  for (const binding of productionRegistry.browser_artifact_bindings || []) {
+    for (const descriptor of [...binding.files, binding.attestation.artifact]) {
+      const relativePath = descriptor.path.slice('/launcher/components/'.length);
+      const source = join(coreRoot, 'published-components', relativePath);
+      const metadata = await lstat(source);
+      if (!metadata.isFile() || metadata.isSymbolicLink()) throw new Error('Published browser source is not a regular file');
+      const bytes = await readFile(source);
+      if (bytes.length !== descriptor.size_bytes || sha256(bytes) !== descriptor.sha256) throw new Error('Published browser source digest mismatch');
+      const target = join(websiteRoot, 'public', descriptor.path.slice(1));
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, bytes);
+    }
+  }
   await verifyPublicProjectionArtifacts(productionRegistry, join(websiteRoot, 'public'));
   const productionRegistryBytes = Buffer.from(JSON.stringify(productionRegistry, null, 2) + '\n');
   await syncPublicRegistryDataRoot({

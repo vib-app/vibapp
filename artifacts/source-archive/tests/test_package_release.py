@@ -183,6 +183,74 @@ class PackageReleaseTests(unittest.TestCase):
     def save_record(self):
         self.path.write_bytes(canonical_json(self.record))
 
+    def add_browser_derivation(self):
+        self.manifest["privacy"] = {"network_access": "none", "stores_personal_data": False}
+        root = self.candidate_dir / "package/web-runtime"
+        root.mkdir()
+        descriptors = []
+        for stem, suffix, media, data in (("app", ".jco.mjs", "text/javascript", b"export const guest = {};"),
+                ("host-adapter", ".mjs", "text/javascript", b"export function wallNow() {}"),
+                ("derivation", ".json", "application/json", b'{"synthetic":true}')):
+            sha = publish.sha256(data)
+            path = f"web-runtime/{stem}-{sha}{suffix}"
+            (self.candidate_dir / "package" / path).write_bytes(data)
+            descriptors.append({"path": path, "media_type": media, "sha256": sha, "size_bytes": len(data)})
+        self.manifest["artifacts"]["browser_derivations"] = [{"profile": "web-runtime", "format": "jco-esm",
+            "derived_from_sha256": self.record["component"]["sha256"], "entry": descriptors[0], "files": descriptors[:2], "derivation_attestation": descriptors[2]}]
+        self.manifest["runtime"]["profiles"].append({"profile": "web-runtime", "mode": "degraded", "background": "foreground-only", "artifact_role": "browser-derived",
+            "degradation": "Foreground stateless UI only; read-only empty settings/state, no saved data or background service."})
+        self.manifest["runtime"]["platforms"].append({"os": "browser", "arch": "wasm32", "profiles": ["web-runtime"]})
+        for entry in self.manifest["entrypoints"]:
+            entry["profiles"].append("web-runtime")
+        for capability in self.manifest["capabilities"]:
+            capability["profiles"].append({"profile": "web-runtime", "availability": "brokered", "behavior": "Bounded stateless foreground host; no persistence, network or background authority."})
+        self.record["verification"]["checks"].append({"id": "browser-independent-rederivation", "outcome": "pass", "tool": "synthetic-test", "detail": "synthetic-test"})
+        data = canonical_json(self.manifest)
+        (self.candidate_dir / "package/manifest.json").write_bytes(data)
+        self.record["manifest"].update(sha256=publish.sha256(data), size_bytes=len(data))
+        self.record["package_digest_sha256"] = self.source["package_digest_sha256"] = package_digest(self.manifest)
+        self.save_record()
+        return descriptors
+
+    def test_browser_payload_is_complete_in_zip_torrent_and_raw(self):
+        descriptors = self.add_browser_derivation()
+        result = self.call()
+        files = publish.snapshot(self.path)
+        self.assertEqual(len(files), 8)
+        with zipfile.ZipFile(io.BytesIO(self.api.public[result["asset_url"]])) as archive:
+            for descriptor in descriptors:
+                self.assertEqual(publish.sha256(archive.read("package/" + descriptor["path"])), descriptor["sha256"])
+
+    def test_browser_extra_file_symlink_and_tamper_are_rejected(self):
+        descriptors = self.add_browser_derivation()
+        extra = self.candidate_dir / "package/web-runtime/unlisted.js"
+        extra.write_text("not allowed")
+        with self.assertRaises(publish.SetupError): publish.snapshot(self.path)
+        extra.unlink()
+        entry = self.candidate_dir / "package" / descriptors[0]["path"]
+        original = entry.read_bytes()
+        entry.write_bytes(original + b"tamper")
+        with self.assertRaises(publish.SetupError): self.call()
+        entry.unlink()
+        entry.symlink_to(self.candidate_dir / "package/component.wasm")
+        with self.assertRaises(publish.SetupError): publish.snapshot(self.path)
+
+    def test_browser_manifest_profile_capability_and_identity_fail_closed(self):
+        self.add_browser_derivation()
+        from verifier import _validate_manifest_schema
+        from common import PipelineError
+        _validate_manifest_schema(self.manifest)
+        for mutate in (
+            lambda item: item["runtime"]["profiles"][-1].update(background="daemon"),
+            lambda item: item["artifacts"]["browser_derivations"][0].update(derived_from_sha256="f" * 64),
+            lambda item: item["capabilities"][0]["profiles"][-1].update(availability="mock"),
+            lambda item: item["privacy"].update(stores_personal_data=True),
+            lambda item: item["entrypoints"][0]["profiles"].remove("web-runtime"),
+        ):
+            value = copy.deepcopy(self.manifest)
+            mutate(value)
+            with self.assertRaises(PipelineError): _validate_manifest_schema(value)
+
     def test_publish_zip_and_multifile_torrent_exact_bytes(self):
         result = self.call()
         self.assertEqual(result["state"], "public-downloads-verified")

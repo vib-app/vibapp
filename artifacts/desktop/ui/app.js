@@ -1613,9 +1613,15 @@ function webAppOpenMode(app) {
 // Explicit, published client assets. A platform is downloadable only after its
 // release asset has been checked; an OS support plan is not a download artifact.
 const CLIENT_RELEASE = Object.freeze({
-  version: "0.1.0-preview.1",
-  url: "https://github.com/vib-app/vibapp/releases/download/client-v0.1.0-preview.1/VibApp-macOS-Apple-Silicon.dmg",
-  size: "170 MB",
+  version: "0.1.0-preview.2",
+  baseUrl: "https://github.com/vib-app/vibapp/releases/download/client-v0.1.0-preview.2/",
+  assets: Object.freeze({
+    "macos-arm64": { file: "VibApp-macOS-Apple-Silicon.dmg", format: "DMG", chip: "Apple Silicon" },
+    "macos-x64": { file: "VibApp-macOS-Intel.dmg", format: "DMG", chip: "Intel" },
+    "windows-x64": { file: "VibApp-Windows-x64-Setup.exe", format: "EXE", chip: "Intel / AMD 64-bit" },
+    "linux-x64": { file: "VibApp-Linux-x64.deb", format: "DEB", chip: "Intel / AMD 64-bit" },
+    "android-arm64": { file: "VibApp-Android-ARM64.apk", format: "APK", chip: "ARM64" },
+  }),
 });
 
 function clientDevice(browser = navigator, hints = {}) {
@@ -1635,9 +1641,19 @@ function clientDevice(browser = navigator, hints = {}) {
 function renderClientDownload() {
   const device = model.downloadDevice || clientDevice();
   const platforms = { macos: "macOS", windows: "Windows", linux: "Linux", android: "Android", ios: "iOS / iPadOS" };
-  const available = device.os === "macos" && device.arch === "arm64";
+  const selectedArch = device.arch === "unknown" && device.os !== "macos"
+    ? (device.os === "android" ? "arm64" : "x64") : device.arch;
+  const asset = CLIENT_RELEASE.assets[`${device.os}-${selectedArch}`];
+  const available = Boolean(asset);
   const chooseChip = device.os === "macos" && device.arch === "unknown";
   const name = platforms[device.os];
+  const installHelp = device.os === "macos"
+    ? lx("macOS 13 或更新版本。此预览版尚未经过 Apple 公证。打开 DMG 后将 VibApp 拖入 Applications；如 macOS 拦截，请在「系统设置 → 隐私与安全性」中确认允许打开。", "macOS 13 or later. This preview is not yet notarized by Apple. Open the DMG and drag VibApp into Applications. If macOS blocks it, review the app in System Settings → Privacy & Security.")
+    : device.os === "windows"
+    ? lx("Windows 10/11，Intel 或 AMD 64 位。运行安装程序，会自动添加应用入口和 vibapp:// 链接支持。需要 Microsoft WebView2 Runtime；本预览版尚未做代码签名，SmartScreen 可能提示。", "Windows 10/11, Intel or AMD 64-bit. Run the installer to add VibApp and its app links. Microsoft WebView2 Runtime is required. This preview is unsigned; SmartScreen may show a warning.")
+    : device.os === "linux"
+    ? lx("Ubuntu 22.04/24.04 或兼容系统，Intel 或 AMD 64 位。使用系统的软件安装器打开 DEB；需要联网安装系统依赖。", "Ubuntu 22.04/24.04 or compatible, Intel or AMD 64-bit. Open the DEB with your system's software installer; an internet connection is needed for system dependencies.")
+    : lx("Android 9 或更新版本，ARM64。允许浏览器安装此 APK。此预览版支持前台 Web/Wasm 应用（含离线 LED 时钟）；尚不支持后台服务和本地编程智能体。", "Android 9 or later, ARM64. Allow your browser to install this APK. This preview runs foreground Web/Wasm apps, including the offline LED clock; background services and local code agents are not supported yet.");
   return `<div class="download-heading"><span class="brand-glyph" aria-hidden="true">V</span><button class="download-close" data-close-download aria-label="${lx("关闭下载窗口", "Close downloads")}">${icon("close")}</button></div>
     <h2 id="download-title">${name ? lx(`下载 ${name} 版`, `VibApp for ${name}`) : lx("下载 VibApp", "Get VibApp")}</h2>
     <p class="download-lead">${lx("你的应用，随手打开。", "Your apps. Right at home.")}</p>
@@ -1647,7 +1663,7 @@ function renderClientDownload() {
       ${device.os === "macos" ? `<label><span>${lx("芯片", "Chip")}</span><select data-download-arch><option value="unknown" ${chooseChip ? "selected" : ""}>${lx("选择芯片", "Choose your chip")}</option><option value="arm64" ${device.arch === "arm64" ? "selected" : ""}>${lx("Apple Silicon（M 系列）", "Apple Silicon (M-series)")}</option><option value="x64" ${device.arch === "x64" ? "selected" : ""}>Intel</option></select></label>` : ""}
     </div>
     <div class="download-result" aria-live="polite">${available
-      ? `<p class="download-version">${esc(CLIENT_RELEASE.version)} · DMG · ${CLIENT_RELEASE.size}</p><a class="download-primary" href="${CLIENT_RELEASE.url}" target="_blank" rel="noopener noreferrer" download="VibApp-macOS-Apple-Silicon.dmg">${icon("download")}${lx("下载 Mac 版", "Download for Mac")}</a><p class="download-caption">${lx("Apple Silicon · 预览版", "Apple Silicon · Preview release")}</p><details class="download-help"><summary>${lx("首次安装须知", "Before your first install")}</summary><p>${lx("此预览版尚未经过 Apple 公证。打开 DMG 后将 VibApp 拖入 Applications；如 macOS 拦截，请在「系统设置 → 隐私与安全性」中确认允许打开。", "This preview is not yet notarized by Apple. Open the DMG and drag VibApp into Applications. If macOS blocks it, review the app in System Settings → Privacy & Security.")}</p></details>`
+      ? `<p class="download-version">${esc(CLIENT_RELEASE.version)} · ${asset.format}</p><a class="download-primary" href="${CLIENT_RELEASE.baseUrl}${asset.file}" target="_blank" rel="noopener noreferrer" download="${asset.file}">${icon("download")}${lx(`下载 ${device.os === "macos" ? "Mac" : name} 版`, `Download for ${device.os === "macos" ? "Mac" : name}`)}</a><p class="download-caption">${asset.chip} · ${lx("预览版", "Preview release")}</p><details class="download-help"><summary>${lx("首次安装须知", "Before your first install")}</summary><p>${installHelp}</p></details>`
       : `<p class="download-unavailable">${chooseChip ? lx("在「关于本机」中查看芯片，再选择对应版本。", "Check About This Mac to choose the right chip.") : device.os === "unknown" ? lx("选择你的系统，查看可用的客户端。", "Choose your system to see available downloads.") : lx(`${name}${device.os === "macos" ? " Intel" : ""} 客户端暂未提供。`, `The ${name}${device.os === "macos" ? " Intel" : ""} client is not available yet.`)}</p><button class="download-primary" disabled>${chooseChip ? lx("请先选择芯片", "Choose your chip first") : lx("暂未提供下载", "Download unavailable")}</button><button class="download-browser" data-close-download>${lx("继续使用网页版", "Continue in your browser")}</button>`}</div>
     <a class="download-releases" href="https://github.com/vib-app/vibapp/releases" target="_blank" rel="noopener noreferrer">${lx("所有版本与更新说明", "All releases & release notes")} <span aria-hidden="true">↗</span></a>`;
 }

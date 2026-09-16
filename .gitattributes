@@ -1,0 +1,9 @@
+# Consistent source bytes across macOS, Linux and Windows release checkouts.
+* text=auto eol=lf
+# These files are digest-bound published artifacts, not editable source text.
+artifacts/web-client-core/published-components/** -text
+*.wasm -text
+*.jar -text
+*.png -text
+*.ico -text
+*.icns -text

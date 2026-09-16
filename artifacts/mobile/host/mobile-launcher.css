@@ -1,0 +1,4 @@
+/* Host-only mobile shell refinements; the app GUI remains shared byte-for-byte. */
+[data-client-download] { display: none !important; }
+.app-header { padding-top: max(12px, env(safe-area-inset-top)); }
+body { padding-bottom: env(safe-area-inset-bottom); }

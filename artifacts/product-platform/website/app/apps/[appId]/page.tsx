@@ -30,6 +30,9 @@ type BrowserBinding = {
   entry?: { path?: string; sha256?: string; size_bytes?: number; format?: string };
   files?: Array<{ path?: string; sha256?: string; size_bytes?: number; format?: string }>;
   attestation?: {
+    kind?: string;
+    trusted_builder_policy?: string;
+    product_activation_eligible?: boolean;
     verification_state?: string;
     canonical_component_transformation_proven?: boolean;
     stage0_activation_eligible?: boolean;
@@ -64,7 +67,8 @@ function isPublicRecord(record: ShareRecord) {
     && record.verification?.revocation === 'not-revoked'
     && ['private', 'public'].includes(record.source?.visibility || '')
     && record.source?.github_archive?.organization === 'vib-app'
-    && /^app-[0-9a-f]{64}$/.test(record.source.github_archive.repository || '')
+    && ((record.source.github_archive.repository === 'sources' && record.source.visibility === 'public')
+      || /^app-[0-9a-f]{64}$/.test(record.source.github_archive.repository || ''))
     && Number.isSafeInteger(record.source.github_archive.repository_id)
     && Number(record.source.github_archive.repository_id) > 0
     && /^[0-9a-f]{40}$/.test(record.source.github_archive.commit_sha || '')
@@ -93,7 +97,12 @@ function isRealPublicBrowserBinding(record: ShareRecord, binding: BrowserBinding
     && binding.files.some(file => file.path === binding.entry?.path && file.sha256 === binding.entry?.sha256)
     && binding.attestation?.verification_state === 'verified'
     && binding.attestation?.canonical_component_transformation_proven === true
-    && binding.attestation?.stage0_activation_eligible === true
+    && (binding.attestation?.stage0_activation_eligible === true
+      || (binding.profile === 'web-runtime'
+        && binding.attestation?.kind === 'product-verified-jco-derivation'
+        && binding.attestation?.trusted_builder_policy === 'vibapp.product-browser.stateless-v1'
+        && binding.attestation?.product_activation_eligible === true
+        && binding.attestation?.stage0_activation_eligible === false))
     && SHA256.test(binding.attestation?.binding_payload_sha256 || '')
     && descriptorIsBound(binding.attestation.artifact, prefix);
 }

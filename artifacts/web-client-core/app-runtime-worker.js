@@ -84,17 +84,17 @@ async function runLaunch(port, boundControl, message) {
       idempotencyKey: 'web-idempotency-' + request.session,
       cancellation: 'web-cancellation-' + request.session,
       generation: 'web-generation-' + request.binding.canonical_component.sha256.slice(0, 24),
-      profile: 'web-preview',
+      profile: request.profile,
       deadlineMonotonicMs: BigInt(Math.floor(performance.now() + 2_000)),
     }, {
       tag: 'launcher',
       val: {
         tag: 'launch',
         val: {
-          entrypoint: 'main',
+          entrypoint: request.binding.launch_entrypoint || 'main',
           session: request.session,
           surface: 'surface-main',
-          route: 'home',
+          route: request.binding.initial_route || 'home',
           reason: 'deep-link',
         },
       },
@@ -105,7 +105,7 @@ async function runLaunch(port, boundControl, message) {
     bindForegroundWorker(port, runtimeBinding, message => {
       let launcherEvent;
       if (message.operation === 'refresh') {
-        launcherEvent = { tag: 'open', val: { entrypoint: 'main', session: request.session, surface: runtimeBinding.surface, route: runtimeBinding.route, reason: 'restore' } };
+        launcherEvent = { tag: 'open', val: { entrypoint: runtimeBinding.entrypoint, session: request.session, surface: runtimeBinding.surface, route: runtimeBinding.route, reason: 'restore' } };
       } else {
         const actions = currentSurface.view.nodes.flatMap(node => node.kind.tag === 'button' && !node.kind.val.disabled ? [node.kind.val.action]
           : node.kind.tag === 'confirmation' ? [node.kind.val.confirmAction, node.kind.val.cancelAction] : []);
@@ -116,7 +116,7 @@ async function runLaunch(port, boundControl, message) {
       }
       const update = component.guest.handleEvent({
         eventId: message.event_id, idempotencyKey: message.event_id, cancellation: message.event_id,
-        generation: runtimeBinding.generation, profile: 'web-preview', deadlineMonotonicMs: BigInt(Math.floor(performance.now() + 2000)),
+        generation: runtimeBinding.generation, profile: request.profile, deadlineMonotonicMs: BigInt(Math.floor(performance.now() + 2000)),
       }, { tag: 'launcher', val: launcherEvent });
       if (Array.isArray(update?.surfaces) && update.surfaces.length === 0 && message.operation === 'refresh') {
         return { surface: normalizeSurface(currentSurface), runtime_binding: runtimeBinding };
@@ -159,15 +159,14 @@ async function runLaunch(port, boundControl, message) {
         capabilities: [
           { interface: 'clock', availability: 'brokered', simulated: false },
           { interface: 'host-info', availability: 'brokered', simulated: false },
-          { interface: 'kv', availability: 'mock', simulated: true },
-          { interface: 'log', availability: 'mock', simulated: true },
-          { interface: 'settings', availability: 'mock', simulated: true },
+          ...['kv', 'log', 'settings'].map(name => ({ interface: name,
+            availability: request.profile === 'web-runtime' ? 'brokered' : 'mock', simulated: request.profile !== 'web-runtime' })),
         ],
         surface: normalizeSurface(verified.surface),
         runtime_binding: runtimeBinding,
         launcher_context: {
           ecosystem: 'vibapp-client',
-          mode: 'isolated-preview',
+          mode: request.profile === 'web-runtime' ? 'web-runtime' : 'isolated-preview',
           installed: false,
           foreground_interactive: true,
           host_chrome_owned: true,

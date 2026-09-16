@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "VibApp",
+  "version": "0.1.0",
+  "identifier": "ai.vibapp.client.preview",
+  "build": { "frontendDist": "../dist" },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [{ "label": "main", "title": "VibApp", "useHttpsScheme": true }],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'",
+      "capabilities": []
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "Productivity",
+    "shortDescription": "Find it. Vibe it. Foreground Web/Wasm apps on Android.",
+    "android": { "minSdkVersion": 28, "versionCode": 1002 }
+  }
+}

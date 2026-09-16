@@ -62,7 +62,7 @@ def parse_json(data):
 
 
 def snapshot(candidate_path):
-    """Read exactly five no-follow regular files into an immutable byte snapshot."""
+    """Read the closed native tree plus exactly declared browser derivation files."""
     candidate_path = Path(candidate_path).absolute()
     require(candidate_path.name == "candidate.json", "package_candidate_path")
     require(candidate_path.resolve(strict=True) == candidate_path, "package_symlink")
@@ -72,15 +72,38 @@ def snapshot(candidate_path):
     try:
         require(set(os.listdir(root_fd)) == {"candidate.json", "package"}, "package_tree_boundary")
         package_fd = os.open("package", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
+        browser_fd = None
         try:
-            require(set(os.listdir(package_fd)) == PACKAGE_FILES, "package_tree_boundary")
-            for relative in sorted(PAYLOAD_PATHS):
+            manifest_fd = os.open("manifest.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=package_fd)
+            with os.fdopen(manifest_fd, "rb") as stream:
+                metadata = os.fstat(manifest_fd)
+                require(stat.S_ISREG(metadata.st_mode) and metadata.st_nlink == 1 and 0 < metadata.st_size <= MAX_JSON, "package_unsafe_file")
+                manifest = parse_json(stream.read(MAX_JSON + 1))
+            browser_files = set()
+            for derivation in manifest.get("artifacts", {}).get("browser_derivations", []):
+                for item in [*derivation.get("files", []), derivation.get("derivation_attestation", {})]:
+                    name = item.get("path", "")
+                    require(isinstance(name, str) and re.fullmatch(r"web-runtime/[A-Za-z0-9.-]{1,160}", name)
+                            and name not in browser_files, "package_tree_boundary")
+                    browser_files.add(name)
+            require(len(browser_files) in {0, 3}, "package_tree_boundary")
+            expected_top = PACKAGE_FILES | ({"web-runtime"} if browser_files else set())
+            require(set(os.listdir(package_fd)) == expected_top, "package_tree_boundary")
+            if browser_files:
+                browser_fd = os.open("web-runtime", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=package_fd)
+                require(set(os.listdir(browser_fd)) == {name.split("/")[1] for name in browser_files}, "package_tree_boundary")
+            for relative in sorted(PAYLOAD_PATHS | {"package/" + name for name in browser_files}):
                 parent_fd = package_fd if relative.startswith("package/") else root_fd
-                fd = os.open(relative.split("/")[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
-                             dir_fd=parent_fd)
+                if relative.startswith("package/web-runtime/"):
+                    parent_fd = browser_fd
+                try:
+                    fd = os.open(relative.split("/")[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                                 dir_fd=parent_fd)
+                except OSError:
+                    raise SetupError("package_unsafe_file") from None
                 with os.fdopen(fd, "rb") as stream:
                     metadata = os.fstat(fd)
-                    maximum = MAX_FILE if relative.endswith(".wasm") else MAX_JSON
+                    maximum = MAX_FILE if relative.endswith(".wasm") else 4 * MAX_JSON if relative.endswith(".mjs") else MAX_JSON
                     require(stat.S_ISREG(metadata.st_mode) and metadata.st_nlink == 1 and
                             0 < metadata.st_size <= maximum, "package_unsafe_file")
                     data = stream.read(maximum + 1)
@@ -88,6 +111,8 @@ def snapshot(candidate_path):
                 require(not SECRET.search(data), "package_secret_detected")
                 files[relative] = data
         finally:
+            if browser_fd is not None:
+                os.close(browser_fd)
             os.close(package_fd)
     finally:
         os.close(root_fd)
@@ -149,6 +174,11 @@ def validate_bindings(files, source_receipt, run_binding):
         data = files["package/" + descriptor["path"]]
         require(descriptor["sha256"] == sha256(data) and descriptor["size_bytes"] == len(data),
                 "package_artifact_digest")
+    for derivation in manifest["artifacts"]["browser_derivations"]:
+        for descriptor in [*derivation["files"], derivation["derivation_attestation"]]:
+            data = files["package/" + descriptor["path"]]
+            require(descriptor["sha256"] == sha256(data) and descriptor["size_bytes"] == len(data), "package_browser_artifact_digest")
+        require("browser-independent-rederivation" in {check["id"] for check in candidate["verification"]["checks"]}, "package_browser_verifier_missing")
     require(package_digest(manifest) == candidate["package_digest_sha256"], "package_digest_mismatch")
     if "presentation" in candidate:
         require(candidate["presentation"] == derive_host_presentation(manifest["app"]["kind"],
@@ -218,12 +248,40 @@ def _verify_snapshot(path):
     component = Path(path).parent / "package/component.wasm"
     _run_wasm_checks(component, manifest, DEFAULT_WASM_TOOLS)
     run_guest_descriptor_reconciliation(component, manifest, DEFAULT_COMPONENT_INSPECTOR)
+    if manifest["artifacts"]["browser_derivations"]:
+        import shutil
+        node = shutil.which("node", path=os.environ.get("PATH", "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"))
+        if not node:
+            node = next((str(path) for path in (Path("/opt/homebrew/bin/node"), Path("/usr/local/bin/node")) if path.is_file()), None)
+        require(node is not None, "package_browser_node_missing")
+        result = subprocess.run([node, str(BASE.parent / "web-client-core/verify-product-browser.mjs"), str(component.parent)],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=180,
+            env={"PATH": str(Path(node).parent) + ":/usr/bin:/bin", "TZ": "UTC",
+                 "VIBAPP_JCO_BIN": os.environ.get("VIBAPP_JCO_BIN", "")})
+        require(result.returncode == 0, "package_browser_verification_failed")
 
 
 def _run_independent_checks(path):
     # Fixed trusted program, separate process, no inherited credentials/config.
+    environment = {"PATH": "/usr/bin:/bin", "TZ": "UTC", "LANG": "C", "LC_ALL": "C"}
+    manifest = parse_json(snapshot(path)["package/manifest.json"])
+    if manifest["artifacts"]["browser_derivations"]:
+        # Resolve the trusted, pinned offline tool before entering the clean
+        # verifier. The guest process receives neither npm nor the user's home.
+        import shutil
+        node, npm = shutil.which("node"), shutil.which("npm")
+        require(node is not None and npm is not None, "package_browser_tools_missing")
+        jco = os.environ.get("VIBAPP_JCO_BIN")
+        if not jco:
+            located = subprocess.run([npm, "exec", "--offline", "--yes=false", "--package=@bytecodealliance/jco@1.15.4", "--", "which", "jco"],
+                check=False, capture_output=True, timeout=30)
+            require(located.returncode == 0 and len(located.stdout) < 4096, "package_browser_jco_missing")
+            jco = located.stdout.decode().strip()
+        require(Path(jco).is_absolute(), "package_browser_jco_path")
+        environment["VIBAPP_JCO_BIN"] = str(Path(jco).resolve(strict=True))
+        environment["PATH"] = str(Path(node).parent) + ":/usr/bin:/bin"
     result = subprocess.run([sys.executable, str(Path(__file__).resolve()), "_verify-snapshot", str(path)],
-                            cwd=BASE, env={"PATH": "/usr/bin:/bin", "TZ": "UTC", "LANG": "C", "LC_ALL": "C"},
+                            cwd=BASE, env=environment,
                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                             timeout=180, check=False)
     require(result.returncode == 0, "package_independent_verification_failed")
@@ -452,6 +510,8 @@ def publish_candidate(candidate_path, source_receipt, run_binding, output_dir, a
         with tempfile.TemporaryDirectory(prefix="verify-", dir=state_dir) as temporary:
             frozen = Path(temporary)
             (frozen / "package").mkdir(mode=0o700)
+            if any(path.startswith("package/web-runtime/") for path in files):
+                (frozen / "package/web-runtime").mkdir(mode=0o700)
             for relative, payload in files.items():
                 _write_new(frozen / relative, payload)
             _run_independent_checks(frozen / "candidate.json")

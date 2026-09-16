@@ -1,0 +1,10 @@
+{
+  "name": "vibapp-mobile-browser-sync-dependencies",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Exact browser adapter dependencies for the shared GUI synchronizer; not mobile runtime authority",
+  "dependencies": {
+    "@trystero-p2p/core": "0.25.3",
+    "@trystero-p2p/torrent": "0.25.3"
+  }
+}

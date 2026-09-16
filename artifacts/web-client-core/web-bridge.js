@@ -279,7 +279,8 @@ function isPublicRegistryRecord(record) {
     && record.verification?.revocation === 'not-revoked'
     && ['private', 'public'].includes(record.source?.visibility)
     && record.source?.github_archive?.organization === 'vib-app'
-    && /^app-[0-9a-f]{64}$/.test(record.source?.github_archive?.repository || '')
+    && (record.source?.github_archive?.repository === 'sources' && record.source?.visibility === 'public'
+      || /^app-[0-9a-f]{64}$/.test(record.source?.github_archive?.repository || ''))
     && Number.isSafeInteger(record.source?.github_archive?.repository_id)
     && record.source.github_archive.repository_id > 0
     && /^[0-9a-f]{40}$/.test(record.source?.github_archive?.commit_sha || '')
@@ -358,7 +359,9 @@ function isRealPublicBrowserBinding(record, binding) {
     && files.some(item => item.path === binding.entry.path && item.sha256 === binding.entry.sha256)
     && binding.attestation?.verification_state === 'verified'
     && binding.attestation?.canonical_component_transformation_proven === true
-    && binding.attestation?.stage0_activation_eligible === true
+    && (binding.attestation?.stage0_activation_eligible === true
+      || binding.attestation?.stage0_activation_eligible === false && binding.attestation?.product_activation_eligible === true
+      && binding.attestation?.kind === 'product-verified-jco-derivation')
     && SHA256.test(binding.attestation?.binding_payload_sha256 || '')
     && validPublicBrowserDescriptor(binding.attestation?.artifact, prefix);
 }

@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-import fcntl
+import copy
 import json
 import os
 from pathlib import Path
@@ -13,6 +13,12 @@ import stat
 import sys
 import tempfile
 from typing import Any
+
+try:
+    import fcntl
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runtime-daemon"))
+    from vibapp_daemon.host_storage import fcntl
 
 from common import (
     APP_ID_RE,
@@ -126,6 +132,69 @@ def _require_integer(value: Any, context: str, minimum: int, maximum: int) -> in
 
 
 def _validate_manifest_schema(manifest: dict[str, Any]) -> None:
+    if manifest.get("artifacts", {}).get("browser_derivations"):
+        return _validate_product_browser_manifest(manifest)
+    return _validate_native_manifest_schema(manifest)
+
+
+def _validate_product_browser_manifest(manifest: dict[str, Any]) -> None:
+    """A product extension, not a change to the frozen Stage 0 profile.
+
+    Validate every new field before reducing to the already closed native
+    manifest validator. Browser bytes still require independent rederivation.
+    """
+    value = copy.deepcopy(manifest)
+    if value.get("app", {}).get("kind") != "ui" or value.get("privacy") != {
+        "network_access": "none", "stores_personal_data": False
+    }:
+        raise PipelineError("incompatible-contract", "stateless browser policy requires a non-personal, offline UI")
+    derivations = value["artifacts"].get("browser_derivations")
+    if not isinstance(derivations, list) or len(derivations) != 1:
+        raise PipelineError("schema-invalid", "one product web-runtime derivation is required")
+    derivation = require_exact_object(derivations[0], {"profile", "format", "derived_from_sha256", "entry", "files", "derivation_attestation"}, "browser derivation")
+    if derivation["profile"] != "web-runtime" or derivation["format"] != "jco-esm" or derivation["derived_from_sha256"] != value["artifacts"]["canonical_component"]["sha256"]:
+        raise PipelineError("integrity-failure", "browser derivation canonical component/profile mismatch")
+    if not isinstance(derivation["files"], list) or len(derivation["files"]) != 2:
+        raise PipelineError("schema-invalid", "browser derivation requires entry and host adapter")
+    paths = set()
+    for descriptor in [*derivation["files"], derivation["derivation_attestation"]]:
+        require_exact_object(descriptor, {"path", "media_type", "sha256", "size_bytes"}, "browser artifact")
+        name = normalized_relative_path(descriptor["path"], "browser artifact path")
+        if not re.fullmatch(r"web-runtime/(?:app-[0-9a-f]{64}\.jco\.mjs|host-adapter-[0-9a-f]{64}\.mjs|derivation-[0-9a-f]{64}\.json)", name) or name in paths:
+            raise PipelineError("schema-invalid", "browser artifact path is invalid/duplicate")
+        require_sha256(descriptor["sha256"], "browser artifact digest")
+        if descriptor["sha256"] not in name or descriptor["media_type"] != ("application/json" if name.endswith(".json") else "text/javascript"):
+            raise PipelineError("integrity-failure", "browser artifact content-address/media type mismatch")
+        _require_integer(descriptor["size_bytes"], "browser artifact bytes", 1, 4 * 1024 * 1024)
+        paths.add(name)
+    if derivation["entry"] not in derivation["files"] or not derivation["entry"]["path"].endswith(".jco.mjs") or not derivation["derivation_attestation"]["path"].endswith(".json"):
+        raise PipelineError("schema-invalid", "browser entry/attestation selector is invalid")
+    profiles = value.get("runtime", {}).get("profiles", [])
+    browser = [row for row in profiles if row.get("profile") == "web-runtime"]
+    if len(browser) != 1 or browser[0] != {
+        "profile": "web-runtime", "mode": "degraded", "background": "foreground-only", "artifact_role": "browser-derived",
+        "degradation": "Foreground stateless UI only; read-only empty settings/state, no saved data or background service."
+    }:
+        raise PipelineError("incompatible-contract", "browser profile policy is not exact")
+    value["runtime"]["profiles"] = [row for row in profiles if row.get("profile") != "web-runtime"]
+    browser_platform = {"os": "browser", "arch": "wasm32", "profiles": ["web-runtime"]}
+    if value["runtime"]["platforms"].count(browser_platform) != 1:
+        raise PipelineError("incompatible-contract", "browser platform is missing")
+    value["runtime"]["platforms"].remove(browser_platform)
+    for row in value["entrypoints"]:
+        if row["kind"] != "launcher-ui" or row["profiles"].count("web-runtime") != 1:
+            raise PipelineError("incompatible-contract", "browser entrypoint must be launcher UI")
+        row["profiles"].remove("web-runtime")
+    for capability in value["capabilities"]:
+        rows = [row for row in capability["profiles"] if row.get("profile") == "web-runtime"]
+        if len(rows) != 1 or rows[0] != {"profile": "web-runtime", "availability": "brokered", "behavior": "Bounded stateless foreground host; no persistence, network or background authority."}:
+            raise PipelineError("incompatible-contract", "browser capability policy is not exact")
+        capability["profiles"].remove(rows[0])
+    value["artifacts"]["browser_derivations"] = []
+    _validate_native_manifest_schema(value)
+
+
+def _validate_native_manifest_schema(manifest: dict[str, Any]) -> None:
     require_exact_object(
         manifest,
         {

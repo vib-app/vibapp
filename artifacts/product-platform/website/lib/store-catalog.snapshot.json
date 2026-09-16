@@ -1,25 +1,42 @@
 {
   "schema_version": "vibapp.store-catalog.v1",
-  "apps": [{
-    "app_id": "ai.vibapp.custom.1a04442610c",
-    "display_name": "LED 数字时钟",
-    "summary": "我要一个离线运行的 LED 数字时钟。主界面实时显示小时、分钟、秒，使用醒目的七段数码管风格；窗口尺寸变化时自动适配。",
-    "version": "0.1.1", "kind": "ui", "publisher": "VibApp Local Builder",
-    "package_digest_sha256": "ef40927893f11a379cb036aa33e4f379e7ddd5a29d6aa36b71ec915621f9555d",
-    "component_sha256": "d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982",
-    "permissions": ["vibapp:experimental-v0/clock@0.0.1", "vibapp:experimental-v0/kv@0.0.1", "vibapp:experimental-v0/log@0.0.1", "vibapp:experimental-v0/host-info@0.0.1", "vibapp:experimental-v0/settings@0.0.1"],
-    "source": {
-      "organization": "vib-app", "repository": "sources", "repository_id": 1371257005,
-      "commit_sha": "5a63543855df9200a99d07323f61cb76d4d58197",
-      "source_digest_sha256": "5c55ee5156ed3c03456ba063db53a54d7989b477b6506c60462b0d7c1caef8e3",
-      "package_digest_sha256": "ef40927893f11a379cb036aa33e4f379e7ddd5a29d6aa36b71ec915621f9555d"
-    },
-    "source_url": "https://github.com/vib-app/sources/tree/5a63543855df9200a99d07323f61cb76d4d58197",
-    "release_url": "https://github.com/vib-app/packages/releases/tag/vibapp-package-ef40927893f11a379cb036aa33e4f379e7ddd5a29d6aa36b71ec915621f9555d",
-    "download": {
-      "url": "https://github.com/vib-app/packages/releases/download/vibapp-package-ef40927893f11a379cb036aa33e4f379e7ddd5a29d6aa36b71ec915621f9555d/ef40927893f11a379cb036aa33e4f379e7ddd5a29d6aa36b71ec915621f9555d.zip",
-      "sha256": "b94a97131b67009b402c61119c30eef3d8c41b0752eb648722ac9532dbbb111d", "size_bytes": 75661
-    },
-    "publication_state": "published", "verification_state": "package-verified", "browser_runtime_available": false
-  }]
+  "apps": [
+    {
+      "app_id": "ai.vibapp.custom.1a04442610c",
+      "browser_runtime_available": true,
+      "build_url": "https://github.com/vib-app/sources/actions/runs/34958597298",
+      "component_sha256": "d600259d2545d7a61bc7c797edcab264713b9fe6df0997d62a641af1cb4c2982",
+      "display_name": "LED 数字时钟",
+      "download": {
+        "sha256": "5e35400047c35298624368a7ffaacd649f8beecfceda900a0f76b66bb7856296",
+        "size_bytes": 289355,
+        "url": "https://github.com/vib-app/packages/releases/download/vibapp-package-f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce/f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce.zip"
+      },
+      "kind": "ui",
+      "package_digest_sha256": "f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce",
+      "permissions": [
+        "vibapp:experimental-v0/clock@0.0.1",
+        "vibapp:experimental-v0/kv@0.0.1",
+        "vibapp:experimental-v0/log@0.0.1",
+        "vibapp:experimental-v0/host-info@0.0.1",
+        "vibapp:experimental-v0/settings@0.0.1"
+      ],
+      "publication_state": "published",
+      "publisher": "VibApp Local Builder",
+      "release_url": "https://github.com/vib-app/packages/releases/tag/vibapp-package-f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce",
+      "source": {
+        "commit_sha": "2d60bd8708a36d8f902b03165fdda7766e3385f2",
+        "organization": "vib-app",
+        "package_digest_sha256": "f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce",
+        "repository": "sources",
+        "repository_id": 1371257005,
+        "source_digest_sha256": "5c55ee5156ed3c03456ba063db53a54d7989b477b6506c60462b0d7c1caef8e3"
+      },
+      "source_url": "https://github.com/vib-app/sources/tree/2d60bd8708a36d8f902b03165fdda7766e3385f2",
+      "summary": "我要一个离线运行的 LED 数字时钟。主界面实时显示小时、分钟、秒，使用醒目的七段数码管风格；窗口尺寸变化时自动适配。",
+      "torrent_url": "https://raw.githubusercontent.com/vib-app/packages/d5a78183ac3faf8d06eaf21a38a4a2b4e3cdd646/metadata/f3768d912af30054392f7a8e254ac87283ca02c4fc82476ddcafe3fd00906dce.torrent",
+      "verification_state": "package-verified",
+      "version": "0.1.1"
+    }
+  ]
 }

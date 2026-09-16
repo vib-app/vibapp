@@ -4,7 +4,9 @@ import { createHash, webcrypto } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import vm from 'node:vm';
 import test, { after } from 'node:test';
 import { deriveBrowserComponent } from '../derive-browser-component.mjs';
 import {
@@ -16,6 +18,7 @@ import {
 } from '../sync-web-gui.mjs';
 import { runPolicyFixtures } from '../activation-policy/validate-web-activation.mjs';
 import { classifyInvalidBootstrapError } from '../invalid-bootstrap-audit.mjs';
+import { isSyntheticRegistryRecord } from '../sync-public-package-locators.mjs';
 import {
   verifyBrowserPreviewBinding,
   verifyControlEnvelope,
@@ -143,12 +146,31 @@ test('Website Registry projection excludes private candidates by default and gat
   assert.equal(production.consumer_notes.website_projection_mode, 'production-public-only');
   assert.equal(production.consumer_notes.local_private_preview_enabled, false);
   assert.deepEqual(production.browser_preview_records, []);
-  assert.deepEqual(production.browser_artifact_bindings, []);
-  assert.deepEqual(production.consumer_notes.website_public_shareable_app_ids, []);
-  assert.equal(production.records.length, 0, 'synthetic conformance fixtures are not published apps');
+  assert.ok(!production.records.some(isSyntheticRegistryRecord), 'synthetic conformance fixtures are not published apps');
   assert.ok(production.records.every(isPublicRegistryRecord));
+  const publicRecords = new Map(production.records.map(record => [record.app.id, record]));
+  assert.ok(production.browser_artifact_bindings.every(binding => isRealPublicBrowserBinding(publicRecords.get(binding.app_id), binding)));
+  assert.deepEqual(production.consumer_notes.website_public_shareable_app_ids,
+    [...new Set(production.browser_artifact_bindings.map(binding => binding.app_id))].sort());
+  const led = publicRecords.get('ai.vibapp.custom.1a04442610c');
+  assert.ok(led, 'the released LED app must survive the production trust filter');
+  assert.equal(led.source.github_archive.repository, 'sources');
+  assert.equal(led.source.visibility, 'public');
+  const ledBinding = production.browser_artifact_bindings.find(binding => binding.app_id === led.app.id);
+  assert.equal(ledBinding.profile, 'web-runtime');
+  assert.equal(ledBinding.launch_entrypoint, 'launcher.main');
+  assert.equal(ledBinding.attestation.product_activation_eligible, true);
+  assert.equal(ledBinding.attestation.stage0_activation_eligible, false);
+  const fixturesOnly = buildRegistryProjection({ ...source,
+    records: source.records.filter(isSyntheticRegistryRecord),
+    browser_artifact_bindings: source.browser_artifact_bindings.filter(binding => binding.app_id?.startsWith('ai.vibapp.fixture.')) });
+  assert.deepEqual(fixturesOnly.records, []);
+  assert.deepEqual(fixturesOnly.browser_artifact_bindings, []);
+  assert.deepEqual(fixturesOnly.consumer_notes.website_public_shareable_app_ids, []);
   assert.ok(!JSON.stringify(production).includes('ai.vibapp.hello'));
   await verifyPublicProjectionArtifacts(production, fileURLToPath(publicRoot));
+  await verifyBrowserPreviewBinding(led, ledBinding);
+  await verifyDerivationAttestation(ledBinding, await readFile(new URL(ledBinding.attestation.artifact.path.slice(1), publicRoot)));
 
   const fixture = await browserFixture();
   const local = buildRegistryProjection(source, {
@@ -161,7 +183,9 @@ test('Website Registry projection excludes private candidates by default and gat
   assert.equal(local.browser_preview_records[0].publication.state, 'private-candidate');
   assert.equal(local.browser_artifact_bindings.at(-1).attestation.stage0_activation_eligible, false);
 
-  const publicRecord = structuredClone(source.records.at(-1));
+  // Synthetic policy probe only: this deliberately altered Hello binding never
+  // becomes an executable/public artifact or replaces the real LED attestation.
+  const publicRecord = structuredClone(led);
   publicRecord.record_id = 'registry.public.ai-vibapp-hello.1';
   publicRecord.record_revision = 1;
   publicRecord.app.id = fixture.record.app.id;
@@ -191,7 +215,8 @@ test('Website Registry projection excludes private candidates by default and gat
     records: [...source.records, publicRecord],
     browser_artifact_bindings: [...source.browser_artifact_bindings, publicBinding],
   });
-  assert.deepEqual(withPublicRuntime.consumer_notes.website_public_shareable_app_ids, ['ai.vibapp.hello']);
+  assert.deepEqual(withPublicRuntime.consumer_notes.website_public_shareable_app_ids,
+    [...production.consumer_notes.website_public_shareable_app_ids, 'ai.vibapp.hello'].sort());
   const emptyPublicRoot = await mkdtemp(join(tmpdir(), 'vibapp-empty-public-root-'));
   try {
     await assert.rejects(
@@ -485,6 +510,7 @@ test('website launcher is generated from the exact Desktop GUI source with a has
   assert.equal(cacheVersion, expectedCacheHash.digest('hex').slice(0, 16), 'Web GUI cache token is not source-derived');
   assert.equal(syncManifest.adapter.cache_version, cacheVersion);
   const expectedHtml = desktopHtml
+    .replace('<span data-locale-key="nav_apps">Library</span>', '<span data-locale-key="nav_apps">Store</span>')
     .replace('<small data-locale-key="app_mode_label">LOCAL</small>', '<small data-locale-key="app_mode_label">WEB · WASM</small>')
     .replace('<script src="app.js" defer></script>', `<script type="module" src="${bridge}"></script>\n    <script src="app.js?v=${cacheVersion}" defer></script>`);
   assert.equal(generatedHtml, expectedHtml, 'website index contains edits outside the Web bridge injection');
@@ -495,7 +521,8 @@ test('credentialless preview delegates bounded state and allowlisted product cal
   const parent = await readFile(new URL('app/preview-frame.tsx', website), 'utf8');
   const broker = await readFile(new URL('../../web-preview-host/preview-broker.mjs', import.meta.url), 'utf8');
   assert.match(parent, /credentialless/);
-  assert.match(parent, /sandbox="allow-scripts allow-same-origin allow-forms"/);
+  assert.match(parent, /sandbox=\{trustedShellOnly\s*\? 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-top-navigation-to-custom-protocols'\s*: 'allow-scripts allow-same-origin allow-forms'\}/);
+  assert.match(parent, /trustedShellOnly \? \{\} : \{ credentialless: '' \}/);
   assert.match(parent, /vibapp\.web-launcher\.state\.v1/);
   assert.match(parent, /vibapp\.ui_locale/);
   assert.match(parent, /1024 \* 1024/);
@@ -531,7 +558,11 @@ test('Website product route keeps the backend token server-side and reuses Deskt
   assert.match(route, /Authorization: `Bearer \$\{target\.token\}`/);
   assert.match(route, /credentials: 'omit'/);
   assert.match(route, /backend-unconfigured/);
-  assert.doesNotMatch(route, /NEXT_PUBLIC|PUBLIC_/);
+  const publicEnvironmentNames = [...route.matchAll(/process\.env\.((?:NEXT_PUBLIC_|PUBLIC_)[A-Z_]+)/g)].map(match => match[1]);
+  assert.deepEqual(publicEnvironmentNames, ['NEXT_PUBLIC_VIBAPP_HOSTED_SHELL'], 'only the public shell mode flag may be read; never a public backend credential');
+  assert.match(route, /if \(process\.env\.VIBAPP_PREVIEW_LOCAL !== '1'\) \{\s*return productionReadOnly\(value\.command\);/);
+  assert.ok(route.indexOf('return productionReadOnly(value.command)') < route.indexOf('const target = backend()'));
+  assert.doesNotMatch(route.slice(route.indexOf('async function productionReadOnly'), route.indexOf('function json(')), /VIBAPP_PRODUCT_BACKEND_TOKEN|target\.token|Authorization/);
   for (const module of [
     'model_settings',
     'codeagent_settings',
@@ -562,16 +593,55 @@ test('share route admits only published verified public records with a real bind
   assert.match(page, /origin\.hostname === '127\.0\.0\.1'/);
   assert.match(page, /website_projection_mode === 'loopback-local-development'/);
   assert.match(page, /record\.publication\?\.state === 'private-candidate'/);
-  assert.match(page, /if \(!record\) notFound\(\)/);
+  assert.match(page, /const listed = !record && \(await readStoreCatalog\(\)\)\.apps\.some\(app => app\.app_id === appId\)/);
+  assert.match(page, /if \(!record && !listed\) notFound\(\)/);
   assert.match(page, /<PreviewFrame appId=\{appId\}/);
   const originHelper = await readFile(new URL('lib/preview-origin.ts', website), 'utf8');
   assert.match(originHelper, /https:\/\/preview\.vibapp\.ai/);
   assert.match(originHelper, /parsed\.hostname === '127\.0\.0\.1'/);
   assert.match(originHelper, /VIBAPP_PREVIEW_LOCAL/);
   const previewFrame = await readFile(new URL('app/preview-frame.tsx', website), 'utf8');
-  assert.match(previewFrame, /new URL\('\/preview\.html', previewOrigin\)/);
+  assert.match(previewFrame, /const targetOrigin = trustedShellOnly \? location\.origin : previewOrigin/);
+  assert.match(previewFrame, /new URL\(trustedShellOnly \? '\/launcher\/index\.html' : '\/preview\.html', targetOrigin\)/);
   assert.match(previewFrame, /broker\.searchParams\.set\('app', appId\)/);
   assert.match(previewFrame, /broker\.hash = 'nonce='/);
   assert.match(previewFrame, /new MessageChannel\(\)/);
-  assert.match(previewFrame, /postMessage\([\s\S]+previewOrigin, \[channel\.port2\]\)/);
+  assert.match(previewFrame, /postMessage\([\s\S]+targetOrigin, \[channel\.port2\]\)/);
+});
+
+test('actual share-page policy includes the public LED product runtime and rejects forged publication authority', async () => {
+  const page = await readFile(new URL('app/apps/[appId]/page.tsx', website), 'utf8');
+  const registrySnapshot = JSON.parse(await readFile(new URL('data/registry.snapshot.json', publicRoot), 'utf8'));
+  // Execute the real page's pure policy, without rendering JSX, importing Next,
+  // calling the live catalog, or replacing it with a copy of the implementation.
+  const source = page.slice(page.indexOf('const SHA256 ='), page.indexOf('export function generateStaticParams'));
+  assert.ok(source.startsWith('const SHA256 =') && source.includes('const shareableRecords ='));
+  const context = vm.createContext({ registrySnapshot, process: { env: {} }, URL });
+  vm.runInContext(stripTypeScriptTypes(source) + '\nglobalThis.policy = { isPublicRecord, isRealPublicBrowserBinding, shareableRecords };', context);
+  const { policy } = context;
+  const record = registrySnapshot.records.find(record => record.app.id === 'ai.vibapp.custom.1a04442610c');
+  const binding = registrySnapshot.browser_artifact_bindings.find(binding => binding.app_id === record.app.id);
+  assert.equal(policy.isPublicRecord(record), true, 'shared public sources receipt must be admitted');
+  assert.equal(policy.isRealPublicBrowserBinding(record, binding), true, 'explicit product activation must not depend on Stage 0 acceptance');
+  assert.ok(policy.shareableRecords.some(row => row.app.id === record.app.id), 'LED must be included in generated share routes');
+  for (const mutate of [
+    value => { value.source.visibility = 'private'; },
+    value => { value.source.github_archive.commit_sha = 'pending'; },
+    value => { value.source.github_archive.package_digest_sha256 = '0'.repeat(64); },
+    value => { value.publication.state = 'private-candidate'; },
+    value => { value.verification.revocation = 'revoked'; },
+  ]) {
+    const invalid = structuredClone(record); mutate(invalid);
+    assert.equal(policy.isPublicRecord(invalid), false);
+  }
+  for (const mutate of [
+    value => { value.attestation.product_activation_eligible = false; },
+    value => { value.attestation.kind = 'self-certified'; },
+    value => { value.attestation.verification_state = 'unverified'; },
+    value => { value.canonical_package_digest_sha256 = '0'.repeat(64); },
+    value => { value.derived_from_sha256 = '0'.repeat(64); },
+  ]) {
+    const invalid = structuredClone(binding); mutate(invalid);
+    assert.equal(policy.isRealPublicBrowserBinding(record, invalid), false);
+  }
 });

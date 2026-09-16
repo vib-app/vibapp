@@ -403,7 +403,8 @@ async function readPublicCandidateLocator(args: Record<string, unknown>): Promis
       && verification.revocation === 'not-revoked'
       && (source.visibility === 'public' || source.visibility === 'private')
       && archive.organization === 'vib-app'
-      && typeof archive.repository === 'string' && /^app-[0-9a-f]{64}$/.test(archive.repository)
+      && typeof archive.repository === 'string'
+      && ((archive.repository === 'sources' && source.visibility === 'public') || /^app-[0-9a-f]{64}$/.test(archive.repository))
       && typeof archive.repository_id === 'number' && Number.isSafeInteger(archive.repository_id) && archive.repository_id > 0
       && typeof archive.commit_sha === 'string' && /^[0-9a-f]{40}$/.test(archive.commit_sha)
       && typeof archive.source_digest_sha256 === 'string' && SHA256.test(archive.source_digest_sha256)

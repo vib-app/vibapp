@@ -234,7 +234,9 @@ export function isRealPublicBrowserBinding(record, binding) {
     ))
     && binding.attestation?.verification_state === 'verified'
     && binding.attestation?.canonical_component_transformation_proven === true
-    && binding.attestation?.stage0_activation_eligible === true
+    && (binding.attestation?.stage0_activation_eligible === true
+      || binding.attestation?.stage0_activation_eligible === false && binding.attestation?.product_activation_eligible === true
+      && binding.attestation?.kind === 'product-verified-jco-derivation')
     && SHA256.test(binding.attestation?.binding_payload_sha256 || '')
     && validBrowserDescriptor(binding.attestation?.artifact, componentPrefix, { formatRequired: false });
 }

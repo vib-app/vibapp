@@ -7,7 +7,7 @@ const equalBinding = (actual, expected) => actual && Object.keys(actual).sort().
 
 export function foregroundBinding(request, surface) {
   return {
-    entrypoint: 'main', package_digest_sha256: request.package_digest_sha256,
+    entrypoint: request.binding?.launch_entrypoint || 'main', package_digest_sha256: request.package_digest_sha256,
     component_sha256: request.component_sha256,
     generation: 'web-generation-' + request.component_sha256.slice(0, 24),
     session: request.session, surface: surface.surface, route: surface.route,
