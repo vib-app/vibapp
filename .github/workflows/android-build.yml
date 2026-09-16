@@ -39,7 +39,9 @@ jobs:
         shell: bash
         run: |
           test -n "$ANDROID_HOME"
-          sdkmanager --sdk_root="$ANDROID_HOME" 'platforms;android-36' 'build-tools;35.0.0' 'ndk;28.2.13676358'
+          sdk_manager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$sdk_manager"
+          "$sdk_manager" --sdk_root="$ANDROID_HOME" 'platforms;android-36' 'build-tools;35.0.0' 'ndk;28.2.13676358'
           echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
           rustup toolchain install 1.98.0 --profile minimal --target aarch64-linux-android
           rustup toolchain install 1.93.0 --profile minimal --target wasm32-unknown-unknown
