@@ -11,6 +11,38 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+
+class BinaryStorageTests(unittest.TestCase):
+    def test_verifier_and_store_preserve_binary_crlf_and_ctrl_z(self):
+        artifacts = Path(__file__).resolve().parents[2]
+        sys.path.insert(0, str(artifacts / "app-builder"))
+        sys.path.insert(0, str(artifacts / "registry-store"))
+        from common import read_bounded, exclusive_write, exclusive_copy
+        from local_appstore import _copy_regular, _hash_regular, _read_regular
+        import hashlib
+        payload = b"MZ\r\n\x1a\x00\xff\ncomponent\r\n"
+        with tempfile.TemporaryDirectory() as root:
+            directory = Path(root)
+            source = directory / "source.wasm"
+            exclusive_write(source, payload)
+            self.assertEqual(read_bounded(source, 1024, "binary fixture"), payload)
+            copied = directory / "copied.wasm"
+            exclusive_copy(source, copied, 1024)
+            self.assertEqual(copied.read_bytes(), payload)
+            staged = directory / "staged.wasm"
+            _copy_regular(source, staged, 1024, "binary fixture")
+            self.assertEqual(_read_regular(staged, 1024, "binary fixture"), payload)
+            self.assertEqual(_hash_regular(staged, 1024, "binary fixture"), (hashlib.sha256(payload).hexdigest(), len(payload)))
+
+    def test_component_bytes_are_never_crt_text_translated(self):
+        from vibapp_daemon.core import _read_regular_nofollow
+        payload = b"\x00asm\r\n\x1a\x00binary\r\n\xff"
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "component.wasm"
+            path.write_bytes(payload)
+            self.assertEqual(_read_regular_nofollow(path, 1024), payload)
+
+
 @unittest.skipUnless(os.name == "nt", "requires real Windows APIs")
 class WindowsHostTests(unittest.TestCase):
     def test_private_acl_rejects_world_access_and_repairs_explicitly(self):

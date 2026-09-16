@@ -227,7 +227,7 @@ def _copy_regular(source: Path, destination: Path, maximum: int, label: str) -> 
         raise StoreError("integrity-failure", f"cannot inspect {label}") from error
     if not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode) or before.st_nlink != 1:
         raise StoreError("permission-denied", f"{label} is not a unique regular file")
-    flags = os.O_RDONLY
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     try:
@@ -250,7 +250,7 @@ def _copy_regular(source: Path, destination: Path, maximum: int, label: str) -> 
         destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         destination_fd = os.open(
             destination,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0),
             0o400,
         )
         try:
@@ -288,7 +288,7 @@ def _hash_regular(path: Path, maximum: int, label: str) -> tuple[str, int]:
         raise StoreError("integrity-failure", f"missing {label}") from error
     if not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode) or before.st_nlink != 1:
         raise StoreError("permission-denied", f"{label} is not a unique regular file")
-    flags = os.O_RDONLY
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     try:
@@ -322,7 +322,7 @@ def _read_regular(path: Path, maximum: int, label: str) -> bytes:
         raise StoreError("integrity-failure", f"cannot inspect {label}") from error
     if not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode) or before.st_nlink != 1:
         raise StoreError("permission-denied", f"{label} is not a unique regular file")
-    flags = os.O_RDONLY
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     try:
@@ -738,7 +738,7 @@ class LocalAppStore:
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        flags = os.O_RDWR | os.O_CREAT
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0)
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         fd = os.open(self.lock_path, flags, 0o600)

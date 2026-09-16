@@ -11,6 +11,8 @@ test('installer quotes the handler path and URL and retains user data', () => {
   assert.ok(!source.includes('Page directory'));
   assert.ok(source.includes('Delete "$INSTDIR\\resources\\python\\python.exe"'));
   assert.ok(!source.includes('Delete "$APPDATA'));
+  assert.ok(source.includes('Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'));
+  assert.ok(source.includes('SetErrorLevel 2\n  Abort'));
 });
 
 test('uninstaller refuses an escaping inventory', () => {

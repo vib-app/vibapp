@@ -60,6 +60,15 @@ export async function packagePortableClient({ root, platformKey, python, node, r
   const result = JSON.parse(execFileSync(runtime, ['--component', component, '--expected-sha256', sha(component)], { encoding: 'utf8', timeout: 20000, maxBuffer: 524288 }));
   if (result.component_sha256 !== sha(component)) throw Error('Packaged Rust app runtime smoke failed');
   run(process.execPath, [join(root, 'artifacts/desktop/scripts/tests/smoke_packaged_roomhash.mjs'), packageRoot], { timeout: 90000 });
+  // Exercise the actual shipped host, not test doubles. The published LED's
+  // native manifest only names macOS ARM64: this diagnostic proves host paths,
+  // never grants or advertises additional Store platform eligibility.
+  const daemonSmoke = JSON.parse(execFileSync(packagedPython, ['-I', '-B', '-X', 'utf8',
+    join(root, 'artifacts/desktop/scripts/tests/smoke_packaged_daemon.py'), '--bundle', packageRoot,
+    '--catalog-file', join(root, 'artifacts/product-platform/website/lib/store-catalog.snapshot.json'),
+    '--compatibility-diagnostic'], { encoding: 'utf8', timeout: 180000, maxBuffer: 131072 }));
+  if (daemonSmoke.host_runtime_checked !== true || daemonSmoke.store_native_eligibility_verified !== false
+      || !daemonSmoke.checks.includes('real-component-reopen-and-refresh')) throw Error('Packaged daemon lifecycle check failed');
   if (!windows) {
     // Exercise a real WebKit/GTK window in the runner's virtual display.
     const child = spawn('xvfb-run', ['-a', launcher], { stdio: ['ignore', 'ignore', 'pipe'], env: { ...process.env, WEBKIT_DISABLE_DMABUF_RENDERER: '1' }, detached: true });
@@ -94,6 +103,6 @@ export async function packagePortableClient({ root, platformKey, python, node, r
   const artifact = { name: artifactName, sha256: sha(join(output, artifactName)), size: statSync(join(output, artifactName)).size };
   const manifestName = 'release-manifest-' + platformKey + '.json';
   const manifestPath = join(output, manifestName);
-  writeFileSync(manifestPath, JSON.stringify({ schema_version: 'vibapp.client-release.v1', source_commit: sourceCommit, platform: windows ? 'Windows-x64' : 'Linux-x64', signing: 'unsigned-preview', dependencies: pins, installer, inspector_sha256: sha(inspector), desktop_inputs: receipt, checks: ['packaged-python-imports', 'descriptor-pin', 'launcher-help', 'rust-component-render', 'roomhash-start-stop', ...(!windows ? ['gtk-webkit-window-start'] : [])], artifact }, null, 2) + '\n');
+  writeFileSync(manifestPath, JSON.stringify({ schema_version: 'vibapp.client-release.v1', source_commit: sourceCommit, platform: windows ? 'Windows-x64' : 'Linux-x64', signing: 'unsigned-preview', dependencies: pins, installer, daemon_host_diagnostic: daemonSmoke, inspector_sha256: sha(inspector), desktop_inputs: receipt, checks: ['packaged-python-imports', 'descriptor-pin', 'launcher-help', 'rust-component-render', 'roomhash-start-stop', 'packaged-daemon-lifecycle', ...(!windows ? ['gtk-webkit-window-start'] : [])], artifact }, null, 2) + '\n');
   writeFileSync(join(output, 'SHA256SUMS-' + platformKey), artifact.sha256 + '  ' + artifactName + '\n' + sha(manifestPath) + '  ' + manifestName + '\n');
 }

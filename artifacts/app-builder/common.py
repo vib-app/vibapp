@@ -151,7 +151,7 @@ def lstat_regular(path: Path, maximum_bytes: int, context: str) -> os.stat_resul
 
 def read_bounded(path: Path, maximum_bytes: int, context: str) -> bytes:
     metadata = lstat_regular(path, maximum_bytes, context)
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
     descriptor = os.open(path, flags)
     try:
         opened = os.fstat(descriptor)
@@ -239,7 +239,7 @@ def exclusive_copy(source: Path, destination: Path, maximum_bytes: int) -> None:
     destination.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
     descriptor = os.open(
         destination,
-        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0),
         0o400,
     )
     try:
@@ -259,7 +259,7 @@ def exclusive_write(path: Path, payload: bytes, mode: int = 0o400) -> None:
     path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
     descriptor = os.open(
         path,
-        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0),
         mode,
     )
     try:

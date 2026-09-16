@@ -3,12 +3,12 @@ from __future__ import annotations
 import ctypes
 import json
 import os
-import platform
 import selectors
 import signal
 import shutil
 import stat
 import subprocess
+import sys
 import time
 import uuid
 import threading
@@ -65,8 +65,7 @@ class _DarwinTaskInfo(ctypes.Structure):
 
 
 def _resident_bytes(pid: int) -> int | None:
-    system = platform.system()
-    if system == "Darwin":
+    if sys.platform == "darwin":
         try:
             libproc = ctypes.CDLL("libproc.dylib", use_errno=True)
             proc_pidinfo = libproc.proc_pidinfo
@@ -78,14 +77,14 @@ def _resident_bytes(pid: int) -> int | None:
                 return int(info.resident_size)
         except (AttributeError, OSError):
             return None
-    elif system == "Linux":
+    elif sys.platform == "linux":
         try:
             for line in Path(f"/proc/{pid}/status").read_text().splitlines():
                 if line.startswith("VmRSS:"):
                     return int(line.split()[1]) * 1024
         except (OSError, ValueError, IndexError):
             return None
-    elif system == "Windows":
+    elif os.name == "nt":
         from ctypes import wintypes as w
         class Counters(ctypes.Structure):
             _fields_ = [("cb", w.DWORD), ("page_faults", w.DWORD)] + [(name, ctypes.c_size_t) for name in ("peak_working", "working", "peak_paged", "paged", "peak_nonpaged", "nonpaged", "pagefile", "peak_pagefile")]

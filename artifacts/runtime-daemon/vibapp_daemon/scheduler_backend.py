@@ -804,7 +804,7 @@ class PrivateJsonStore:
         self._local = threading.local()
 
     def _open(self, name: str, flags: int) -> int:
-        fd = os.open(self.root / name, flags | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        fd = os.open(self.root / name, flags | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o600)
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode) or not owner_controlled(self.root / name, info, private=True) or (os.name != "nt" and stat.S_IMODE(info.st_mode) != 0o600) or info.st_nlink != 1:
             os.close(fd)

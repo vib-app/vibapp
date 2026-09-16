@@ -85,8 +85,30 @@ fn validate_private_directory(path: &Path) -> Result<(), String> {
         return Err("Workspace must be an absolute existing private directory".into());
     }
     let metadata = std::fs::symlink_metadata(path).map_err(|_| "Workspace directory does not exist")?;
-    if !metadata.is_dir() || std::fs::canonicalize(path).map_err(|_| "Cannot resolve workspace directory")? != path {
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
         return Err("Workspace directory must not contain symbolic links".into());
+    }
+    #[cfg(not(windows))]
+    if std::fs::canonicalize(path).map_err(|_| "Cannot resolve workspace directory")? != path {
+        return Err("Workspace directory must not contain symbolic links".into());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        use std::path::Prefix;
+        // canonicalize adds \\?\ to ordinary Windows paths. Inspect ancestry
+        // without following reparse points instead of comparing unlike forms.
+        if !matches!(path.components().next(), Some(Component::Prefix(prefix)) if matches!(prefix.kind(), Prefix::Disk(_) | Prefix::VerbatimDisk(_))) {
+            return Err("Workspace must use an absolute local Windows drive".into());
+        }
+        for ancestor in path.ancestors() {
+            let info = std::fs::symlink_metadata(ancestor).map_err(|_| "Cannot inspect workspace ancestry")?;
+            if !info.is_dir() || info.file_type().is_symlink() || info.file_attributes() & 0x400 != 0 {
+                return Err("Workspace ancestry must not contain Windows reparse points".into());
+            }
+        }
+        // Selection is read-only: never repair a caller-selected workspace ACL.
+        crate::native_platform::verify_private_directory(path)?;
     }
     #[cfg(unix)]
     {

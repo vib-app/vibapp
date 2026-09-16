@@ -30,7 +30,7 @@ struct PackagedLayout {
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum DaemonTransportPolicy {
     UnixOwnerSocket { path: PathBuf },
-    WindowsOwnerNamedPipeRequired { pipe_name: String },
+    WindowsOwnerNamedPipe { endpoint: PathBuf },
     Unsupported,
 }
 
@@ -282,9 +282,8 @@ fn python_candidates(os: HostOs) -> &'static [&'static str] {
             "/usr/bin/python3",
         ],
         HostOs::Linux => &["/usr/bin/python3", "/usr/local/bin/python3"],
-        // Windows discovery is intentionally not delegated to PATH, py.exe, the
-        // registry, or a user-writable install directory. A packaged/ACL-verified
-        // interpreter policy must land before Python-backed product features run.
+        // Windows uses only the verified bundled interpreter, never PATH,
+        // py.exe, the registry, or a guessed user install directory.
         HostOs::Windows | HostOs::Unsupported => &[],
     }
 }
@@ -445,8 +444,8 @@ fn daemon_transport_policy_for(os: HostOs, data_dir: &Path) -> DaemonTransportPo
         HostOs::Macos | HostOs::Linux => DaemonTransportPolicy::UnixOwnerSocket {
             path: data_dir.join("runtime-daemon/run/vibappd.sock"),
         },
-        HostOs::Windows => DaemonTransportPolicy::WindowsOwnerNamedPipeRequired {
-            pipe_name: r"\\.\pipe\vibappd-owner-v1-{owner-sid-sha256}".to_string(),
+        HostOs::Windows => DaemonTransportPolicy::WindowsOwnerNamedPipe {
+            endpoint: data_dir.join("runtime-daemon/run/vibappd.sock"),
         },
         HostOs::Unsupported => DaemonTransportPolicy::Unsupported,
     }
@@ -455,14 +454,9 @@ fn daemon_transport_policy_for(os: HostOs, data_dir: &Path) -> DaemonTransportPo
 pub fn unix_daemon_socket(data_dir: &Path) -> Result<PathBuf, String> {
     // Windows uses this root-derived logical address only as input to a
     // SID-hashed named pipe; it never opens a Unix socket or TCP listener.
-    if current_os() == HostOs::Windows {
-        return Ok(data_dir.join("runtime-daemon/run/vibappd.sock"));
-    }
     match daemon_transport_policy_for(current_os(), data_dir) {
         DaemonTransportPolicy::UnixOwnerSocket { path } => Ok(path),
-        DaemonTransportPolicy::WindowsOwnerNamedPipeRequired { pipe_name } => Err(format!(
-            "Windows daemon 需要 owner-only named pipe {pipe_name}；当前没有实现 ACL/客户端身份校验，已停止。"
-        )),
+        DaemonTransportPolicy::WindowsOwnerNamedPipe { endpoint } => Ok(endpoint),
         DaemonTransportPolicy::Unsupported => {
             Err("当前平台没有 owner-authenticated daemon transport。".to_string())
         }
@@ -539,6 +533,11 @@ pub fn verify_private_file(path: &Path) -> Result<(), String> {
         SecretProtectionPolicy::WindowsOwnerAclRequired => windows_private_storage("verify-file", path),
         SecretProtectionPolicy::Unsupported => Err("当前平台没有私有文件保护策略。".to_string()),
     }
+}
+
+#[cfg(windows)]
+pub fn verify_private_directory(path: &Path) -> Result<(), String> {
+    windows_private_storage("verify-directory", path)
 }
 
 #[cfg(windows)]
@@ -896,8 +895,8 @@ mod tests {
         );
         assert_eq!(
             daemon_transport_policy_for(HostOs::Windows, data),
-            DaemonTransportPolicy::WindowsOwnerNamedPipeRequired {
-                pipe_name: r"\\.\pipe\vibappd-owner-v1-{owner-sid-sha256}".to_string()
+            DaemonTransportPolicy::WindowsOwnerNamedPipe {
+                endpoint: data.join("runtime-daemon/run/vibappd.sock")
             }
         );
     }

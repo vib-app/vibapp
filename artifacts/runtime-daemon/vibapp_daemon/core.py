@@ -165,7 +165,7 @@ def _sha256_file(path: Path, expected_maximum: int = MAX_PACKAGE_BYTES) -> tuple
 
 def _read_regular_nofollow(path: Path, maximum: int) -> bytes:
     before = _regular_file(path, maximum=maximum)
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
     try:
         opened = os.fstat(descriptor)
         if not stat.S_ISREG(opened.st_mode) or opened.st_dev != before.st_dev or opened.st_ino != before.st_ino or opened.st_size != before.st_size:
@@ -407,7 +407,7 @@ class RuntimeDaemon:
             if not stat.S_ISREG(lock_info.st_mode) or stat.S_ISLNK(lock_info.st_mode) or lock_info.st_nlink != 1:
                 raise DaemonError("integrity-failure", "daemon lock file is unsafe")
         else:
-            descriptor = os.open(self.lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+            descriptor = os.open(self.lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o600)
             os.close(descriptor)
         protect(self.lock_path)
 
@@ -479,7 +479,7 @@ class RuntimeDaemon:
             "fields": safe_fields,
         }
         encoded = canonical_json(record) + b"\n"
-        descriptor = os.open(self.audit_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        descriptor = os.open(self.audit_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o600)
         try:
             opened = os.fstat(descriptor)
             if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
@@ -1125,7 +1125,7 @@ class RuntimeDaemon:
                 data = _read_regular_nofollow(source, MAX_PACKAGE_BYTES)
                 target = temporary.joinpath(*PurePosixPath(relative).parts)
                 target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-                descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+                descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o600)
                 try:
                     with os.fdopen(descriptor, "wb", closefd=True) as handle:
                         handle.write(data)
@@ -1516,7 +1516,7 @@ class RuntimeDaemon:
                 target = destination / relative_root / name
                 descriptor = os.open(
                     target,
-                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0),
                     0o600,
                 )
                 with os.fdopen(descriptor, "wb") as handle:
@@ -1573,11 +1573,7 @@ class RuntimeDaemon:
 
     @staticmethod
     def _fsync_directory(path: Path) -> None:
-        descriptor = os.open(path, os.O_RDONLY)
-        try:
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
+        sync_directory(path)
 
     def _remove_package(self, app_id: str, package_digest: str) -> None:
         package = self.packages_root / app_id / package_digest
@@ -4067,7 +4063,7 @@ class RuntimeDaemon:
         elif disposition == "export-then-delete":
             export_path = self.exports_root / f"{archive_id}.json"
             export = {"schema_version": "vibapp.app-data-export.experimental-v1", "app_id": app_id, "publisher_id": app["publisher_id"], "exported_at_utc": self.clock(), "data_present": data_dir.exists()}
-            descriptor = os.open(export_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            descriptor = os.open(export_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
             with os.fdopen(descriptor, "wb") as handle:
                 handle.write(canonical_json(export) + b"\n")
                 handle.flush()

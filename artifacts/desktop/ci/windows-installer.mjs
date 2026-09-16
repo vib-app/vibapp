@@ -20,6 +20,26 @@ UninstallIcon ${quote(icon)}
 Page instfiles
 UninstPage uninstConfirm
 UninstPage instfiles
+Function .onInit
+  ; Microsoft-documented Evergreen detection, including per-user installs.
+  SetRegView 64
+  ReadRegStr $0 HKCU "Software\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+  StrCmp $0 "" check_machine
+  StrCmp $0 "0.0.0.0" check_machine webview_ready
+check_machine:
+  SetRegView 32
+  ReadRegStr $0 HKLM "Software\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+  StrCmp $0 "" webview_missing
+  StrCmp $0 "0.0.0.0" webview_missing webview_ready
+webview_missing:
+  MessageBox MB_YESNO|MB_ICONINFORMATION "VibApp requires Microsoft Edge WebView2 Runtime. Open Microsoft's download page, install Evergreen Runtime, then run this installer again?" /SD IDNO IDNO abort_install
+  ExecShell "open" "https://developer.microsoft.com/microsoft-edge/webview2/"
+abort_install:
+  SetErrorLevel 2
+  Abort
+webview_ready:
+  SetRegView 64
+FunctionEnd
 Section "VibApp"
   SetShellVarContext current
   SetOutPath "$INSTDIR"
@@ -36,6 +56,7 @@ Section "VibApp"
 SectionEnd
 Section "Uninstall"
   SetShellVarContext current
+  SetRegView 64
   Delete "$SMPROGRAMS\\VibApp.lnk"
   ReadRegStr $0 HKCU "Software\\Classes\\vibapp\\shell\\open\\command" ""
   StrCmp $0 '"$INSTDIR\\vibapp-launcher.exe" "%1"' 0 +2
@@ -75,5 +96,25 @@ export function packageWindowsInstaller({ root, packageRoot, output }) {
   const command = execFileSync('reg.exe', ['query', 'HKCU\\Software\\Classes\\vibapp\\shell\\open\\command', '/ve'], { encoding: 'utf8', timeout: 10000 });
   if (!command.includes('"' + installed + '" "%1"')) throw Error('Installed deep-link command does not match launcher');
   execFileSync(installed, ['--help'], { stdio: 'inherit', timeout: 20000 });
-  return { compiler: 'NSIS 3.10', checks: ['silent-user-install', 'installed-launcher-help', 'registered-vibapp-url-handler'] };
+  const smoke = resolve(root, 'generated/client-staging/installed-window-smoke.ps1');
+  writeFileSync(smoke, `param([Parameter(Mandatory=$true)][string]$Launcher)
+$ErrorActionPreference = 'Stop'
+$child = Start-Process -FilePath $Launcher -PassThru
+try {
+  $deadline = [DateTime]::UtcNow.AddSeconds(25)
+  $ready = $false
+  while ([DateTime]::UtcNow -lt $deadline) {
+    $child.Refresh()
+    if ($child.HasExited) { throw 'Installed launcher exited before creating its window' }
+    if ($child.MainWindowHandle -ne 0 -and $child.MainWindowTitle -eq 'VibApp') { $ready = $true; break }
+    Start-Sleep -Milliseconds 200
+  }
+  if (-not $ready) { throw 'Installed launcher did not create a VibApp window' }
+  Write-Output 'Installed native VibApp window created'
+} finally {
+  if (-not $child.HasExited) { & taskkill.exe /PID $child.Id /T /F | Out-Null }
+}
+`);
+  execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', smoke, '-Launcher', installed], { stdio: 'inherit', timeout: 45000 });
+  return { compiler: 'NSIS 3.10', checks: ['silent-user-install', 'installed-launcher-help', 'registered-vibapp-url-handler', 'installed-native-window-created'] };
 }
