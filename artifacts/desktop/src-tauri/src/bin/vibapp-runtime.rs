@@ -156,7 +156,16 @@ fn local_clock_context(unix_seconds: i64) -> Result<(String, i32), String> {
     Ok((time_zone, offset_seconds))
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(windows)]
+#[path = "../../../../runtime-daemon/service-runtime/src/windows.rs"]
+mod windows;
+
+#[cfg(windows)]
+fn local_clock_context(unix_seconds: i64) -> Result<(String, i32), String> {
+    windows::clock_context(unix_seconds)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
 fn local_clock_context(_unix_seconds: i64) -> Result<(String, i32), String> {
     Ok(("UTC".to_string(), 0))
 }

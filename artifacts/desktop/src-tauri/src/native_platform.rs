@@ -128,6 +128,11 @@ fn ordinary_path(path: &Path, kind: ResourceKind) -> bool {
     if metadata.file_type().is_symlink() {
         return false;
     }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 { return false; }
+    }
     match kind {
         ResourceKind::File => metadata.file_type().is_file(),
         ResourceKind::Directory => metadata.file_type().is_dir(),
@@ -349,9 +354,7 @@ pub fn safe_path() -> Result<OsString, String> {
             "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
         )),
         HostOs::Linux => Ok(OsString::from("/usr/local/bin:/usr/bin:/bin")),
-        HostOs::Windows => Err(
-            "Windows 受信任 PATH 与 helper 策略尚未实现；已拒绝启动 Python helper。".to_string(),
-        ),
+        HostOs::Windows => windows_system_directory().map(OsString::from),
         HostOs::Unsupported => Err("当前平台没有受支持的 helper 搜索策略。".to_string()),
     }
 }
@@ -365,7 +368,7 @@ pub fn python_executable(require_tomllib: bool) -> Result<PathBuf, String> {
         if fs::symlink_metadata(layout.package_root.join(&relative)).is_ok() {
             let python = contained_ordinary_path(
                 &layout.package_root,
-                &relative.join("bin/python3.13"),
+                &relative.join(if current_os() == HostOs::Windows { "python.exe" } else { "bin/python3.13" }),
                 ResourceKind::File,
             ).ok_or_else(|| "打包的 Python 运行时缺失或路径无效。".to_string())?;
             return if python_supported(&python, require_tomllib)? {
@@ -385,9 +388,7 @@ pub fn python_executable(require_tomllib: bool) -> Result<PathBuf, String> {
         }
     }
     match current_os() {
-        HostOs::Windows => Err(
-            "Windows Python 3.11+ 仅允许未来的打包且 owner-ACL 验证路径；当前已停止。".to_string(),
-        ),
+        HostOs::Windows => Err("未找到打包的 Windows Python 3.11+，请重新安装 VibApp。".to_string()),
         _ => Err("未找到受信任的 Python 3.11+ 运行时。".to_string()),
     }
 }
@@ -399,7 +400,7 @@ fn python_supported(path: &Path, require_tomllib: bool) -> Result<bool, String> 
             "import sys;raise SystemExit(0 if sys.version_info >= (3, 11) else 1)"
         };
         let supported = Command::new(&path)
-            .args(["-I", "-B", "-c", probe])
+            .args(["-I", "-B", "-X", "utf8", "-c", probe])
             .env_clear()
             .env("PATH", safe_path()?)
             .stdin(Stdio::null())
@@ -452,6 +453,11 @@ fn daemon_transport_policy_for(os: HostOs, data_dir: &Path) -> DaemonTransportPo
 }
 
 pub fn unix_daemon_socket(data_dir: &Path) -> Result<PathBuf, String> {
+    // Windows uses this root-derived logical address only as input to a
+    // SID-hashed named pipe; it never opens a Unix socket or TCP listener.
+    if current_os() == HostOs::Windows {
+        return Ok(data_dir.join("runtime-daemon/run/vibappd.sock"));
+    }
     match daemon_transport_policy_for(current_os(), data_dir) {
         DaemonTransportPolicy::UnixOwnerSocket { path } => Ok(path),
         DaemonTransportPolicy::WindowsOwnerNamedPipeRequired { pipe_name } => Err(format!(
@@ -485,9 +491,7 @@ pub fn protect_private_directory(path: &Path) -> Result<(), String> {
                 Err("Unix owner-mode 策略无法在当前构建目标执行。".to_string())
             }
         }
-        SecretProtectionPolicy::WindowsOwnerAclRequired => Err(
-            "Windows owner-only secret ACL 尚未实现；已拒绝创建或使用 BYOM 密钥存储。".to_string(),
-        ),
+        SecretProtectionPolicy::WindowsOwnerAclRequired => windows_private_storage("protect-directory", path),
         SecretProtectionPolicy::Unsupported => Err("当前平台没有私有目录保护策略。".to_string()),
     }
 }
@@ -506,9 +510,7 @@ pub fn protect_private_file(path: &Path) -> Result<(), String> {
                 Err("Unix owner-mode 策略无法在当前构建目标执行。".to_string())
             }
         }
-        SecretProtectionPolicy::WindowsOwnerAclRequired => {
-            Err("Windows owner-only secret ACL 尚未实现；已拒绝持久化 BYOM 密钥。".to_string())
-        }
+        SecretProtectionPolicy::WindowsOwnerAclRequired => windows_private_storage("protect-file", path),
         SecretProtectionPolicy::Unsupported => Err("当前平台没有私有文件保护策略。".to_string()),
     }
 }
@@ -534,10 +536,43 @@ pub fn verify_private_file(path: &Path) -> Result<(), String> {
                 Err("Unix owner-mode 策略无法在当前构建目标执行。".to_string())
             }
         }
-        SecretProtectionPolicy::WindowsOwnerAclRequired => {
-            Err("Windows owner-only secret ACL 尚未实现；已拒绝读取 BYOM 密钥。".to_string())
-        }
+        SecretProtectionPolicy::WindowsOwnerAclRequired => windows_private_storage("verify-file", path),
         SecretProtectionPolicy::Unsupported => Err("当前平台没有私有文件保护策略。".to_string()),
+    }
+}
+
+#[cfg(windows)]
+fn windows_system_directory() -> Result<String, String> {
+    #[link(name = "kernel32")]
+    unsafe extern "system" { fn GetSystemDirectoryW(buffer: *mut u16, length: u32) -> u32; }
+    let mut buffer = vec![0u16; 32768];
+    let length = unsafe { GetSystemDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+    if length == 0 || length >= buffer.len() { return Err("无法定位 Windows 系统目录。".to_string()); }
+    String::from_utf16(&buffer[..length]).map_err(|_| "Windows 系统目录编码无效。".to_string())
+}
+
+#[cfg(not(windows))]
+fn windows_system_directory() -> Result<String, String> {
+    Err("Windows 系统目录只能在 Windows 查询。".to_string())
+}
+
+fn windows_private_storage(action: &str, path: &Path) -> Result<(), String> {
+    let root = resource_directory("runtime-daemon", &Path::new(option_env!("CARGO_MANIFEST_DIR").unwrap_or(".")).join("../../runtime-daemon"))?;
+    let mut child = Command::new(python_executable(false)?)
+        .args(["-I", "-B", "-X", "utf8", "-c", "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('vibapp_daemon.windows_security',run_name='__main__')"])
+        .arg(root).arg(action).arg(path).env_clear().env("PATH", safe_path()?)
+        .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+        .spawn().map_err(|error| format!("无法启动 Windows 私有存储检查：{error}"))?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if let Some(status) = child.try_wait().map_err(|error| error.to_string())? {
+            return if status.success() { Ok(()) } else { Err("Windows 私有存储 ACL 检查失败，已拒绝访问。".to_string()) };
+        }
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill(); let _ = child.wait();
+            return Err("Windows 私有存储检查超时。".to_string());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }
 
@@ -851,7 +886,7 @@ mod tests {
     }
 
     #[test]
-    fn daemon_transport_selection_is_explicit_and_windows_is_not_executable() {
+    fn daemon_transport_selection_is_explicit_and_windows_requires_owner_pipe() {
         let data = Path::new("/var/lib/vibapp");
         assert_eq!(
             daemon_transport_policy_for(HostOs::Linux, data),

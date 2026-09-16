@@ -10,7 +10,10 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
-import resource
+try:
+    import resource
+except ImportError:  # Windows uses the fixed inspector's native Job Object.
+    resource = None
 import selectors
 import shutil
 import signal
@@ -19,6 +22,7 @@ import subprocess
 import sys
 import time
 import unicodedata
+import threading
 from typing import Any
 
 
@@ -223,6 +227,10 @@ def ensure_private_directory(path: Path) -> Path:
     metadata = path.lstat()
     if not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode):
         raise PipelineError("integrity-failure", f"directory is unsafe: {path}")
+    if os.name == "nt":
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runtime-daemon"))
+        from vibapp_daemon.host_storage import protect
+        protect(path, directory=True)
     return path.resolve(strict=True)
 
 
@@ -585,6 +593,9 @@ def run_bounded(
 ) -> ProcessResult:
     if not command or not all(isinstance(item, str) and item for item in command):
         raise PipelineError("invalid-argument", "bounded command is empty or malformed")
+    if os.name == "nt":
+        return _run_windows_inspector(command, cwd=cwd, environment=environment,
+                                      limits=limits, disk_root=disk_root, cancellation=cancellation)
     started = time.monotonic()
     process = subprocess.Popen(
         command,
@@ -674,6 +685,83 @@ def run_bounded(
         peak_pids=peak_pids,
         disk_bytes=disk_bytes,
     )
+
+
+def _run_windows_inspector(command, *, cwd, environment, limits, disk_root, cancellation):
+    """Only the pinned self-contained inspector may use this Windows path.
+
+    Generated native builds are deliberately not run under a reduced sandbox:
+    they need the Docker builder. The fixed Rust inspector establishes a native
+    one-process, memory-limited Job Object before reading/instantiating Wasm.
+    This parent independently bounds output, wall time, RSS and disk usage.
+    """
+    from descriptor_reconciliation import validated_component_inspector
+    if (len(command) != 8 or command[1] != "--inspect-descriptor"
+            or command[2] != "--component" or command[4] != "--expected-sha256"
+            or command[6] != "--world"):
+        raise PipelineError("verification-unavailable", "Native Windows source builds require the Docker builder")
+    validated_component_inspector(Path(command[0]))
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runtime-daemon"))
+    from vibapp_daemon.service_executor import _resident_bytes
+    started = time.monotonic()
+    clean_environment = dict(environment)
+    if os.environ.get("SystemRoot"):
+        clean_environment["SystemRoot"] = os.environ["SystemRoot"]
+    process = subprocess.Popen(command, cwd=cwd, env=clean_environment, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True,
+                               creationflags=subprocess.CREATE_NO_WINDOW)
+    buffers = {"stdout": bytearray(), "stderr": bytearray()}
+    overflow = threading.Event()
+    failures = []
+    def drain(name, pipe, maximum):
+        try:
+            while True:
+                chunk = pipe.read(4096)
+                if not chunk:
+                    return
+                remaining = maximum + 1 - len(buffers[name])
+                buffers[name].extend(chunk[:max(0, remaining)])
+                if len(buffers[name]) > maximum:
+                    overflow.set()
+                    return
+        except OSError as error:
+            failures.append(error)
+    readers = [threading.Thread(target=drain, args=(name, getattr(process, name), maximum), daemon=True)
+               for name, maximum in (("stdout", limits.stdout_bytes), ("stderr", limits.stderr_bytes))]
+    for reader in readers:
+        reader.start()
+    peak_rss = 0
+    disk_bytes = 0
+    try:
+        while process.poll() is None:
+            if cancellation is not None and cancellation.is_set():
+                raise PipelineError("cancelled", "Inspector operation was cancelled")
+            if time.monotonic() - started > limits.wall_seconds:
+                raise PipelineError("timeout", "Inspector exceeded its wall deadline")
+            if overflow.is_set():
+                raise PipelineError("resource-limit", "Inspector output exceeded its bound")
+            rss = _resident_bytes(process.pid)
+            if rss is None and process.poll() is None:
+                raise PipelineError("verification-unavailable", "Cannot observe inspector memory")
+            peak_rss = max(peak_rss, rss or 0)
+            if peak_rss > limits.memory_bytes:
+                raise PipelineError("resource-limit", "Inspector RSS exceeded its bound")
+            disk_bytes = bounded_tree_size(disk_root, limits.disk_bytes)
+            time.sleep(0.02)
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=5)
+        for reader in readers:
+            reader.join(timeout=2)
+        process.stdout.close()
+        process.stderr.close()
+    if overflow.is_set() or any(reader.is_alive() for reader in readers) or failures:
+        raise PipelineError("resource-limit", "Inspector output was incomplete or exceeded its bound")
+    if process.returncode:
+        raise PipelineError("process-failed", "Inspector failed: " + bounded_failure_diagnostic(bytes(buffers["stderr"])))
+    return ProcessResult(process.returncode, bytes(buffers["stdout"]), bytes(buffers["stderr"]),
+                         int((time.monotonic() - started) * 1000), peak_rss, 1, disk_bytes)
 
 
 def remove_tree(path: Path) -> None:

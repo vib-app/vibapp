@@ -320,7 +320,7 @@ fn base_command(
 ) -> Result<Command, String> {
     let mut command = Command::new(&paths.python);
     command
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(&paths.controller)
         .arg("--root")
@@ -1395,7 +1395,7 @@ fn validate_waiting_consent(
     // Reuse the authority's read-only validation, including expiry, without
     // importing credentials, renewing consent, or adding a second date parser.
     let mut command = Command::new(&paths.python);
-    command.arg("-I").arg("-B").arg(&paths.cloud_agent).arg("validate")
+    command.args(["-X", "utf8"]).arg("-I").arg("-B").arg(&paths.cloud_agent).arg("validate")
         .arg(paths.root.join("tasks").join(task_id).join("attempts").join(attempt_id).join("input/task.json"))
         .env_clear().env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8").env("LC_ALL", "C.UTF-8").env("TZ", "UTC")
@@ -2292,7 +2292,7 @@ fn parse_archived_task_ids(bytes: &[u8]) -> Option<ArchivedTaskIds> {
 fn archive_list_command(paths: &DeliveryPaths, data_dir: &Path) -> Result<Command, String> {
     let mut command = Command::new(&paths.python);
     command
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(paths.controller.with_file_name("task_archive.py"))
         .arg("--data-root")
@@ -3483,7 +3483,7 @@ mod tests {
     fn synthetic_python(program: &str) -> Command {
         let mut command = Command::new("/usr/bin/python3");
         command
-            .arg("-I")
+            .args(["-X", "utf8"]).arg("-I")
             .arg("-B")
             .arg("-c")
             .arg(program)

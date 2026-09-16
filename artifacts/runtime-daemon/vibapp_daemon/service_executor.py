@@ -11,8 +11,11 @@ import stat
 import subprocess
 import time
 import uuid
+import threading
+import queue
 from pathlib import Path
 from typing import Any
+from .host_storage import owner_controlled, protect
 
 
 PROTOCOL_SCHEMA = "vibapp.service-runtime.protocol.experimental-v1"
@@ -118,14 +121,14 @@ def resolve_runtime_binary(explicit: Path | str | None = None) -> Path:
             info = candidate.lstat()
         except OSError:
             continue
-        trusted_owner = info.st_uid in {os.getuid(), 0}
-        writable_by_others = bool(info.st_mode & 0o022)
+        trusted_owner = owner_controlled(candidate, info, system=True)
+        writable_by_others = os.name != "nt" and bool(info.st_mode & 0o022)
         if (
             stat.S_ISREG(info.st_mode)
             and not stat.S_ISLNK(info.st_mode)
             and trusted_owner
             and not writable_by_others
-            and info.st_mode & 0o111
+            and (os.name == "nt" or info.st_mode & 0o111)
         ):
             return candidate.resolve(strict=True)
     raise ServiceExecutionError(
@@ -199,7 +202,7 @@ class ServiceWorker:
             )
         context_root = runtime_root / "runtime-contexts"
         context_root.mkdir(parents=True, exist_ok=True, mode=0o700)
-        os.chmod(context_root, 0o700)
+        protect(context_root, directory=True)
         context_directory = context_root / uuid.uuid4().hex
         context_directory.mkdir(mode=0o700)
         settings_path = context_directory / "settings.json"
@@ -244,7 +247,7 @@ class ServiceWorker:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 close_fds=True,
-                start_new_session=True,
+                start_new_session=os.name != "nt",
             )
         except OSError as exc:
             shutil.rmtree(context_directory, ignore_errors=True)
@@ -274,6 +277,50 @@ class ServiceWorker:
     def _read_response(self, timeout: float) -> dict[str, Any]:
         if self.process.stdout is None:
             raise ServiceExecutionError("internal", "service runtime output channel is unavailable")
+        if os.name == "nt":
+            line = self._read_windows_line(timeout)
+        else:
+            line = self._read_unix_line(timeout)
+        if not line:
+            self.terminate()
+            raise ServiceExecutionError("internal", "service runtime exited without a response", retryable=True)
+        if len(line) > MAX_RUNTIME_OUTPUT_BYTES + 1 or not line.endswith(b"\n"):
+            self.terminate()
+            raise ServiceExecutionError("resource-limit", "service runtime response exceeds its byte bound")
+        try:
+            value = json.loads(line, object_pairs_hook=_strict_response_object, parse_constant=_reject_response_constant)
+        except (UnicodeDecodeError, ValueError, json.JSONDecodeError) as exc:
+            self.terminate()
+            raise ServiceExecutionError("malformed-output", "service runtime response is not strict JSON") from exc
+        if not isinstance(value, dict) or value.get("schema_version") != PROTOCOL_SCHEMA:
+            self.terminate()
+            raise ServiceExecutionError("malformed-output", "service runtime response schema is invalid")
+        return value
+
+    def _read_windows_line(self, timeout: float) -> bytes:
+        # Anonymous Windows process pipes cannot be waited on by select(). One
+        # bounded reader is joined after timeout/termination, never abandoned.
+        result = queue.Queue(maxsize=1)
+        def read():
+            try:
+                result.put(self.process.stdout.readline(MAX_RUNTIME_OUTPUT_BYTES + 2))
+            except OSError:
+                result.put(b"")
+        reader = threading.Thread(target=read, daemon=True)
+        reader.start()
+        try:
+            return result.get(timeout=timeout)
+        except queue.Empty:
+            self.process.kill()
+            self.process.wait(timeout=1)
+            reader.join(timeout=1)
+            self.terminate()
+            raise ServiceExecutionError("deadline-exceeded", "service runtime exceeded its outer deadline", retryable=True)
+        finally:
+            if not reader.is_alive():
+                reader.join()
+
+    def _read_unix_line(self, timeout: float) -> bytes:
         selector = selectors.DefaultSelector()
         try:
             selector.register(self.process.stdout, selectors.EVENT_READ)
@@ -298,22 +345,7 @@ class ServiceWorker:
                     break
         finally:
             selector.close()
-        line = self.process.stdout.readline(MAX_RUNTIME_OUTPUT_BYTES + 2)
-        if not line:
-            self.terminate()
-            raise ServiceExecutionError("internal", "service runtime exited without a response", retryable=True)
-        if len(line) > MAX_RUNTIME_OUTPUT_BYTES + 1 or not line.endswith(b"\n"):
-            self.terminate()
-            raise ServiceExecutionError("resource-limit", "service runtime response exceeds its byte bound")
-        try:
-            value = json.loads(line, object_pairs_hook=_strict_response_object, parse_constant=_reject_response_constant)
-        except (UnicodeDecodeError, ValueError, json.JSONDecodeError) as exc:
-            self.terminate()
-            raise ServiceExecutionError("malformed-output", "service runtime response is not strict JSON") from exc
-        if not isinstance(value, dict) or value.get("schema_version") != PROTOCOL_SCHEMA:
-            self.terminate()
-            raise ServiceExecutionError("malformed-output", "service runtime response schema is invalid")
-        return value
+        return self.process.stdout.readline(MAX_RUNTIME_OUTPUT_BYTES + 2)
 
     def _ui_rejection_revision(self, response: dict[str, Any], command: dict[str, Any]) -> int | None:
         marker = response.get("ui_input_rejection")
@@ -476,14 +508,20 @@ class ServiceWorker:
         self._closed = True
         if self.process.poll() is None:
             try:
-                os.killpg(self.process.pid, signal.SIGTERM)
+                if os.name == "nt":
+                    self.process.terminate()
+                else:
+                    os.killpg(self.process.pid, signal.SIGTERM)
             except (ProcessLookupError, PermissionError):
                 self.process.terminate()
             try:
                 self.process.wait(timeout=0.5)
             except subprocess.TimeoutExpired:
                 try:
-                    os.killpg(self.process.pid, signal.SIGKILL)
+                    if os.name == "nt":
+                        self.process.kill()
+                    else:
+                        os.killpg(self.process.pid, signal.SIGKILL)
                 except (ProcessLookupError, PermissionError):
                     self.process.kill()
                 self.process.wait(timeout=1.0)

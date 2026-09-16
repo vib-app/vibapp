@@ -32,6 +32,7 @@ for (const [name, pin] of Object.entries(selectedPins)) {
 }
 const python = join(deps, isWindows ? 'python/python.exe' : 'python/bin/python3.13');
 const node = join(deps, isWindows ? 'node/node.exe' : 'node/bin/node');
+if (isWindows) run(python, ['-X', 'utf8', '-B', '-m', 'unittest', 'discover', '-s', 'artifacts/runtime-daemon/tests', '-p', 'test_windows_host.py']);
 const roomhash = join(deps, 'RoomHash/headless');
 const roomhashCommit = execFileSync('git', ['-C', roomhash, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 if (roomhashCommit !== pins.roomhash_commit) throw new Error('RoomHash source revision mismatch');

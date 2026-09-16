@@ -6,6 +6,10 @@ on:
         description: 'Optional new preview tag, e.g. client-v0.1.0-preview.1; blank only builds'
         required: false
         default: ''
+      platforms:
+        description: 'JSON platform list; subset builds are diagnostic only'
+        required: false
+        default: '["darwin-arm64","darwin-x64","linux-x64","win32-x64"]'
   push:
     tags: ['client-v*']
   pull_request:
@@ -13,13 +17,14 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: client-release-${{ github.ref }}
+  group: client-release-${{ github.run_id }}
   cancel-in-progress: false
 jobs:
   build:
     strategy:
       fail-fast: false
       matrix:
+        platform: ${{ fromJSON(inputs.platforms || '["darwin-arm64","darwin-x64","linux-x64","win32-x64"]') }}
         include:
           - runner: macos-15
             platform: darwin-arm64

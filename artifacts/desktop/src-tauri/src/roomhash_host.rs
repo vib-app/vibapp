@@ -186,6 +186,7 @@ impl RoomHashHost {
         let node = resolve_file(
             "VIBAPP_ROOMHASH_NODE_BIN",
             packaged_candidates(&[
+                "roomhash/node.exe",
                 "roomhash/node",
                 "roomhash-runtime/bin/node",
                 "node/bin/node",
@@ -835,6 +836,8 @@ fn private_directory(path: &Path) -> Result<PathBuf, String> {
         fs::set_permissions(path, fs::Permissions::from_mode(0o700))
             .map_err(|error| format!("failed to protect RoomHash data directory: {error}"))?;
     }
+    #[cfg(windows)]
+    crate::native_platform::protect_private_directory(path)?;
     fs::canonicalize(path)
         .map_err(|error| format!("failed to resolve RoomHash data directory: {error}"))
 }
@@ -907,7 +910,13 @@ fn packaged_candidates(relative_paths: &[&str]) -> Vec<PathBuf> {
     let Some(contents_dir) = macos_dir.parent() else {
         return Vec::new();
     };
-    let resources = contents_dir.join("Resources");
+    let resources = if cfg!(target_os = "macos") {
+        contents_dir.join("Resources")
+    } else if cfg!(target_os = "windows") {
+        macos_dir.join("resources")
+    } else {
+        contents_dir.join("resources")
+    };
     relative_paths
         .iter()
         .map(|path| resources.join(path))
@@ -1191,8 +1200,8 @@ fn protect_private_child_directory(path: &Path, label: &str) -> Result<(), Strin
 }
 
 #[cfg(not(unix))]
-fn protect_private_child_directory(_path: &Path, _label: &str) -> Result<(), String> {
-    Ok(())
+fn protect_private_child_directory(path: &Path, _label: &str) -> Result<(), String> {
+    crate::native_platform::protect_private_directory(path)
 }
 
 fn existing_locator_directory(app_data_root: &Path) -> Result<Option<PathBuf>, String> {

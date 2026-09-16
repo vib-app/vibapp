@@ -225,6 +225,7 @@ fn appstore_command(data_dir: &Path, arguments: &[&str]) -> Result<Value, String
     command
         .arg("-I")
         .arg("-B")
+        .args(["-X", "utf8"])
         .arg(appstore_script()?)
         .arg("--store-root")
         .arg(store_root(data_dir));
@@ -261,7 +262,7 @@ pub fn fetch_public_store_app(data_dir: &Path, app_id: &str) -> Result<Value, St
     let script = native_platform::resource_file("registry-store/public_app_download.py",
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../registry-store/public_app_download.py"))?;
     let child = Command::new(native_platform::python_executable(false)?)
-        .args(["-I", "-B"]).arg(script).arg("--store-root").arg(store_root(data_dir))
+        .args(["-I", "-B", "-X", "utf8"]).arg(script).arg("--store-root").arg(store_root(data_dir))
         .arg("--app-id").arg(app_id)
         .env_clear().env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8").env("PYTHONDONTWRITEBYTECODE", "1")
@@ -623,11 +624,16 @@ fn daemon_is_active(path: &Path) -> bool {
 }
 
 #[cfg(not(unix))]
-fn daemon_is_active(_path: &Path) -> bool {
-    false
+fn daemon_is_active(path: &Path) -> bool {
+    let Ok(python) = native_platform::python_executable(false) else { return false; };
+    let Ok(root) = daemon_module_root() else { return false; };
+    let Ok(safe_path) = native_platform::safe_path() else { return false; };
+    Command::new(python).args(["-I", "-B", "-X", "utf8", "-c", "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('vibapp_daemon',run_name='__main__')"])
+        .arg(root).arg("probe").arg("--socket").arg(path)
+        .env_clear().env("PATH", safe_path).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+        .status().is_ok_and(|status| status.success())
 }
 
-#[cfg(unix)]
 fn ensure_daemon(data_dir: &Path) -> Result<(), String> {
     let socket = native_platform::unix_daemon_socket(data_dir)?;
     if daemon_is_active(&socket) {
@@ -636,11 +642,14 @@ fn ensure_daemon(data_dir: &Path) -> Result<(), String> {
     let module_root = daemon_module_root()?;
     fs::create_dir_all(store_root(data_dir).join("candidates"))
         .map_err(|error| format!("无法创建本地 AppStore candidate 目录：{error}"))?;
+    native_platform::protect_private_directory(&store_root(data_dir))?;
+    native_platform::protect_private_directory(&store_root(data_dir).join("candidates"))?;
     let runtime = runtime_root(data_dir);
     let mut command = Command::new(native_platform::python_executable(false)?);
     command
         .arg("-I")
         .arg("-B")
+        .args(["-X", "utf8"])
         .arg("-c")
         .arg("import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('vibapp_daemon',run_name='__main__')")
         .arg(&module_root)
@@ -682,11 +691,6 @@ fn ensure_daemon(data_dir: &Path) -> Result<(), String> {
     Err("Runtime daemon 未在 5 秒内就绪。".to_string())
 }
 
-#[cfg(not(unix))]
-fn ensure_daemon(_data_dir: &Path) -> Result<(), String> {
-    native_platform::unix_daemon_socket(_data_dir).map(|_| ())
-}
-
 fn daemon_command(
     data_dir: &Path,
     tag: &str,
@@ -713,6 +717,7 @@ fn daemon_command(
     command
         .arg("-I")
         .arg("-B")
+        .args(["-X", "utf8"])
         .arg("-c")
         .arg("import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('vibapp_daemon',run_name='__main__')")
         .arg(&module_root)

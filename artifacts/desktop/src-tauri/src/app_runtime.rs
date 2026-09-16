@@ -233,7 +233,7 @@ fn runtime_binary() -> Result<PathBuf, String> {
         std::env::current_exe().map_err(|error| format!("无法定位 VibApp Launcher：{error}"))?;
     let runtime = executable
         .parent()
-        .map(|parent| parent.join("vibapp-runtime"))
+        .map(|parent| parent.join(if cfg!(windows) { "vibapp-runtime.exe" } else { "vibapp-runtime" }))
         .ok_or_else(|| "无法定位 VibApp Runtime。".to_string())?;
     let metadata = fs::symlink_metadata(&runtime)
         .map_err(|error| format!("VibApp Runtime 尚未构建或打包：{error}"))?;

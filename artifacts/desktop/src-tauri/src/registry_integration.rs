@@ -492,7 +492,7 @@ fn call_need_analyzer(
     }))
     .map_err(|error| format!("无法序列化需求预处理请求：{error}"))?;
     let mut child = Command::new(native_platform::python_executable(false)?)
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(analyzer_script()?)
         .arg("analyze")
@@ -552,7 +552,7 @@ fn call_registry(
     }
     let mut command = Command::new(native_platform::python_executable(false)?);
     command
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(registry_script()?)
         .arg("search")

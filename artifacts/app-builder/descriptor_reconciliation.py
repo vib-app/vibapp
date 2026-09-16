@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 import unicodedata
@@ -23,12 +24,13 @@ from common import (
 
 BASE = Path(__file__).resolve().parent
 REPO = BASE.parents[1]
+INSPECTOR_NAME = "vibapp-service-runtime.exe" if os.name == "nt" else "vibapp-service-runtime"
 _BUNDLED_COMPONENT_INSPECTOR = (
-    BASE.parent / "runtime-daemon/service-runtime/vibapp-service-runtime"
+    BASE.parent / "runtime-daemon/service-runtime" / INSPECTOR_NAME
 )
 _REPOSITORY_COMPONENT_INSPECTOR = (
     REPO
-    / "artifacts/runtime-daemon/target-service-1_98/release/vibapp-service-runtime"
+    / "artifacts/runtime-daemon/target-service-1_98/release" / INSPECTOR_NAME
 )
 DEFAULT_COMPONENT_INSPECTOR = (
     _BUNDLED_COMPONENT_INSPECTOR

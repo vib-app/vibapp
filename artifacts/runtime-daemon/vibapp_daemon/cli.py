@@ -59,6 +59,9 @@ def serve(args: argparse.Namespace) -> int:
     socket_path = Path(args.socket).expanduser().resolve()
     if not socket_path.is_relative_to(runtime_root) or socket_path == runtime_root:
         raise SystemExit("socket path must stay below the explicit runtime root")
+    if os.name == "nt":
+        from .windows_transport import Listener
+        return _serve_windows(daemon, Listener(str(socket_path)))
     socket_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(socket_path.parent, 0o700)
     if socket_path.exists():
@@ -126,17 +129,67 @@ def control(args: argparse.Namespace) -> int:
         raw = Path(args.envelope).read_bytes()
     envelope = loads_strict_json(raw, maximum=MAX_ENVELOPE_BYTES)
     transport = {"schema_version": TRANSPORT_SCHEMA, "envelope": envelope, "promotion_record": args.promotion_record}
-    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    client.settimeout(args.timeout)
-    client.connect(str(Path(args.socket).expanduser().resolve()))
+    if os.name == "nt":
+        from .windows_transport import connect
+        client = connect(str(Path(args.socket).expanduser().resolve()), args.timeout)
+    else:
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        client.settimeout(args.timeout)
+        client.connect(str(Path(args.socket).expanduser().resolve()))
     try:
         client.sendall(canonical_json(transport) + b"\n")
         response = _read_one_line(client)
+        if os.name == "nt":
+            client.sendall(b"\0")
     finally:
         client.close()
     sys.stdout.buffer.write(response + b"\n")
     parsed = loads_strict_json(response, maximum=MAX_ENVELOPE_BYTES)
     return 1 if isinstance(parsed, dict) and "error" in parsed else 0
+
+
+def _serve_windows(daemon, server) -> int:
+    from .windows_security import process_sid
+    import time
+    try:
+        while True:
+            try:
+                connection, _ = server.accept()
+            except TimeoutError:
+                time.sleep(0.02)
+                continue
+            except OSError:
+                server.close()
+                continue
+            with connection:
+                try:
+                    transport = loads_strict_json(_read_one_line(connection), maximum=MAX_ENVELOPE_BYTES)
+                    if not isinstance(transport, dict) or set(transport) != {"schema_version", "envelope", "promotion_record"} or transport.get("schema_version") != TRANSPORT_SCHEMA:
+                        raise DaemonError("invalid-argument", "transport wrapper fields are invalid")
+                    response = daemon.execute(transport["envelope"], principal=f"sid:{process_sid()}", allowed_apps={"*"}, promotion_record=transport["promotion_record"])
+                except DaemonError as error:
+                    response = {"request_id": "unknown", "error": error.as_dict()}
+                except (TimeoutError, OSError):
+                    continue
+                try:
+                    connection.sendall(canonical_json(response) + b"\n")
+                    connection.recv(1)  # bounded delivery acknowledgement before pipe close
+                except (OSError, TimeoutError):
+                    pass
+    finally:
+        daemon.shutdown()
+        server.close()
+
+
+def probe(args):
+    if os.name == "nt":
+        from .windows_transport import connect
+        with connect(str(Path(args.socket).expanduser().resolve()), 0.1):
+            return 0
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.settimeout(0.1)
+        connection.connect(str(Path(args.socket).expanduser().resolve()))
+    return 0
 
 
 def parser() -> argparse.ArgumentParser:
@@ -156,6 +209,9 @@ def parser() -> argparse.ArgumentParser:
     )
     ctl.add_argument("--timeout", type=float, default=5.0)
     ctl.set_defaults(handler=control)
+    readiness = subcommands.add_parser("probe", help="verify the owner-authenticated endpoint")
+    readiness.add_argument("--socket", required=True)
+    readiness.set_defaults(handler=probe)
     return result
 
 

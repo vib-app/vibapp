@@ -473,7 +473,7 @@ pub fn codeagent_identity_observation(provider_id: &str, model: &str) -> Result<
     };
     let mut command = Command::new(python);
     command
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(adapter)
         .arg("--cloud-agent")
@@ -636,7 +636,7 @@ pub fn submit(
     fs::create_dir_all(queue_root).map_err(|error| format!("无法创建本地开发队列：{error}"))?;
     let mut command = Command::new(native_platform::python_executable(true)?);
     command
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(orchestrator_path()?)
         .arg("submit")
@@ -737,7 +737,7 @@ pub fn start_codeagent(
     let status_path = status_root.join(format!("{digest}.json"));
     let mut command = Command::new(native_platform::python_executable(true)?);
     command
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(codeagent_adapter_path()?)
         .arg("--cloud-agent")

@@ -25,7 +25,7 @@ test('trusted image bridge inputs are explicit in Node, Rust and packaging inven
   }
 });
 
-test('packaging copies the exact trusted bridges into the image identity lookup directory', async t => {
+test('packaging copies the exact trusted bridges into the image identity lookup directory', { skip: process.platform === 'win32' ? 'macOS shell packager; portable packager has its own runtime smoke' : false }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'vibapp-bridge-staging-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const launcherRoot = join(root, 'codeagent-launcher');
@@ -73,7 +73,7 @@ test('bridge byte changes invalidate receipts despite old mtimes; missing and li
   }
 });
 
-test('UI/UX skill has one shared receipt label and is staged byte-for-byte', async t => {
+test('UI/UX skill has one shared receipt label and is staged byte-for-byte', { skip: process.platform === 'win32' ? 'macOS shell packager; portable packager has its own runtime smoke' : false }, async t => {
   const label = 'cloud-agent/skills/vibapp-ui-ux/SKILL.md';
   const inputs = await desktopBuildInputs(desktopRoot);
   assert.equal(inputs.filter(input => input.label === label).length, 1);

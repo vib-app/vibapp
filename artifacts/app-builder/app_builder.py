@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass, replace
-import fcntl
 import hashlib
 import json
 import math
@@ -19,6 +18,12 @@ import tempfile
 import time
 import tomllib
 from typing import Any, Protocol
+
+try:
+    import fcntl
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runtime-daemon"))
+    from vibapp_daemon.host_storage import fcntl
 
 from common import (
     APP_ID_RE,

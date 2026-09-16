@@ -242,7 +242,7 @@ impl KvBroker {
         let state_directory = state_directory
             .canonicalize()
             .map_err(|error| format!("cannot resolve state directory: {error}"))?;
-        let directory = fs::File::open(&state_directory)
+        let directory = open_state_directory(&state_directory)
             .map_err(|error| format!("cannot open state directory: {error}"))?;
         let path = state_directory.join("kv-state.json");
         let document = if enabled && path.exists() {
@@ -352,6 +352,8 @@ impl KvBroker {
                 io::Error::last_os_error()
             ));
         }
+        #[cfg(windows)]
+        file.lock().map_err(|error| format!("cannot acquire Windows KV lock: {error}"))?;
         Ok(file)
     }
 
@@ -409,15 +411,19 @@ impl KvBroker {
                 .map_err(|error| format!("cannot sync KV transaction: {error}"))?;
             fs::rename(&temporary, &self.path)
                 .map_err(|error| format!("cannot commit KV transaction: {error}"))?;
+            #[cfg(not(windows))]
             let directory = fs::File::open(
                 self.path
                     .parent()
                     .ok_or_else(|| "KV state has no parent directory".to_string())?,
             )
             .map_err(|error| format!("cannot open KV state directory: {error}"))?;
-            directory
+            #[cfg(not(windows))]
+            return directory
                 .sync_all()
-                .map_err(|error| format!("cannot sync KV state directory: {error}"))
+                .map_err(|error| format!("cannot sync KV state directory: {error}"));
+            #[cfg(windows)]
+            Ok(())
         })();
         if write_result.is_err() {
             let _ = fs::remove_file(&temporary);
@@ -465,7 +471,7 @@ impl KvBroker {
         if !metadata.file_type().is_dir() || metadata.file_type().is_symlink() {
             return Err("rebound state directory is not a real directory".to_string());
         }
-        let rebound = fs::File::open(state_directory)
+        let rebound = open_state_directory(state_directory)
             .map_err(|error| format!("cannot open rebound state directory: {error}"))?;
         #[cfg(unix)]
         {
@@ -483,7 +489,11 @@ impl KvBroker {
                 );
             }
         }
-        #[cfg(not(unix))]
+        #[cfg(windows)]
+        if !windows::same_directory(&self.directory, &rebound)? {
+            return Err("rebound state directory is not the activated candidate file ID".to_string());
+        }
+        #[cfg(not(any(unix, windows)))]
         return Err("secure state rebinding is unavailable on this host".to_string());
         self.directory = rebound;
         self.path = state_directory.join("kv-state.json");
@@ -622,7 +632,11 @@ struct InspectionState {
 
 #[cfg(unix)]
 fn apply_process_limits() -> Result<(), String> {
-    fn set(resource: libc::c_int, value: u64, name: &str) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    type Resource = libc::__rlimit_resource_t;
+    #[cfg(not(target_os = "linux"))]
+    type Resource = libc::c_int;
+    fn set(resource: Resource, value: u64, name: &str) -> Result<(), String> {
         let mut current = libc::rlimit {
             rlim_cur: 0,
             rlim_max: 0,
@@ -659,7 +673,22 @@ fn apply_process_limits() -> Result<(), String> {
     set(libc::RLIMIT_CORE, 0, "core-dump")
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+mod windows;
+
+fn open_state_directory(path: &Path) -> io::Result<fs::File> {
+    #[cfg(windows)]
+    { windows::open_directory(path) }
+    #[cfg(not(windows))]
+    { fs::File::open(path) }
+}
+
+#[cfg(windows)]
+fn apply_process_limits() -> Result<(), String> {
+    windows::process_limits(MAX_PROCESS_MEMORY_BYTES)
+}
+
+#[cfg(not(any(unix, windows)))]
 fn apply_process_limits() -> Result<(), String> {
     Err("OS process limits are unavailable on this runtime build".to_string())
 }
@@ -791,7 +820,12 @@ fn local_clock_context(unix_seconds: i64) -> Result<(String, i32), String> {
     Ok((time_zone, offset_seconds))
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(windows)]
+fn local_clock_context(unix_seconds: i64) -> Result<(String, i32), String> {
+    windows::clock_context(unix_seconds)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
 fn local_clock_context(_unix_seconds: i64) -> Result<(String, i32), String> {
     Ok(("UTC".to_string(), 0))
 }

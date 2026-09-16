@@ -22,7 +22,6 @@ from __future__ import annotations
 import contextlib
 import copy
 import datetime as dt
-import fcntl
 import hashlib
 import json
 import os
@@ -33,6 +32,7 @@ import threading
 from pathlib import Path
 from typing import Any, Iterator
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from .host_storage import fcntl, owner_controlled, protect, sync_directory
 
 
 SCHEMA = "vibapp.scheduler-ledger.experimental-v1"
@@ -796,15 +796,17 @@ class PrivateJsonStore:
     def __init__(self, root: Path):
         self.root = Path(root)
         self.root.mkdir(mode=0o700, parents=False, exist_ok=True)
+        if os.name == "nt":
+            protect(self.root, directory=True)
         info = self.root.lstat()
-        if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+        if not stat.S_ISDIR(info.st_mode) or not owner_controlled(self.root, info, private=True) or (os.name != "nt" and stat.S_IMODE(info.st_mode) != 0o700):
             _error("permission-denied", "scheduler store must be an owner-private 0700 directory")
         self._local = threading.local()
 
     def _open(self, name: str, flags: int) -> int:
-        fd = os.open(self.root / name, flags | os.O_NOFOLLOW, 0o600)
+        fd = os.open(self.root / name, flags | getattr(os, "O_NOFOLLOW", 0), 0o600)
         info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1:
+        if not stat.S_ISREG(info.st_mode) or not owner_controlled(self.root / name, info, private=True) or (os.name != "nt" and stat.S_IMODE(info.st_mode) != 0o600) or info.st_nlink != 1:
             os.close(fd)
             _error("permission-denied", "scheduler store member is not owner-private regular storage")
         return fd
@@ -851,11 +853,7 @@ class PrivateJsonStore:
                     stream.flush()
                     os.fsync(stream.fileno())
                 os.replace(temp_name, self.root / "state.json")
-                directory = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-                try:
-                    os.fsync(directory)
-                finally:
-                    os.close(directory)
+                sync_directory(self.root)
             finally:
                 if os.path.exists(temp_name):
                     os.unlink(temp_name)

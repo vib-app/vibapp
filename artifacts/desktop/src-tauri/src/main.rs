@@ -1735,7 +1735,7 @@ mod tests {
         fs::create_dir_all(&promotion_root).unwrap();
         let socket = native_platform::unix_daemon_socket(data_dir).unwrap();
         let mut child = Command::new(native_platform::python_executable(false).unwrap())
-            .arg("-I")
+            .args(["-X", "utf8"]).arg("-I")
             .arg("-B")
             .arg("-c")
             .arg("import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('vibapp_daemon',run_name='__main__')")

@@ -97,7 +97,7 @@ pub fn submit(
     fs::create_dir_all(&root).map_err(|error| format!("无法创建本地 CodeAgent 队列：{error}"))?;
     fs::create_dir_all(&candidates).map_err(|error| format!("无法创建私有候选目录：{error}"))?;
     let mut child = Command::new(native_platform::python_executable(false)?)
-        .arg("-I")
+        .args(["-X", "utf8"]).arg("-I")
         .arg("-B")
         .arg(script_path()?)
         .arg("run")
@@ -130,7 +130,7 @@ pub fn state(data_dir: &Path) -> Vec<Value> {
         Ok(path) => path,
         Err(_) => return Vec::new(),
     })
-    .arg("-I")
+    .args(["-X", "utf8"]).arg("-I")
     .arg("-B")
     .arg(match script_path() {
         Ok(path) => path,

@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import copy
 import datetime as dt
-import fcntl
 import hashlib
 import hmac
 import json
@@ -23,6 +22,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Callable, Iterator
 
 from .service_executor import ServiceExecutionError, ServiceWorker, resolve_runtime_binary
+from .host_storage import fcntl, owner_controlled, protect, sync_directory
 
 
 STATE_SCHEMA = "vibapp.runtime-daemon.state.experimental-v1"
@@ -383,13 +383,14 @@ class RuntimeDaemon:
 
     def _prepare_roots(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        protect(self.root, directory=True)
         try:
             promotion_info = self.promotion_root.lstat()
         except OSError as exc:
             raise DaemonError("not-found", "configured promotion root must already exist") from exc
         if not stat.S_ISDIR(promotion_info.st_mode) or stat.S_ISLNK(promotion_info.st_mode):
             raise DaemonError("integrity-failure", "configured promotion root must be a real directory")
-        if promotion_info.st_uid != os.getuid() or promotion_info.st_mode & 0o022:
+        if not owner_controlled(self.promotion_root, promotion_info):
             raise DaemonError("permission-denied", "configured promotion root must be owner-controlled and not group/world writable")
         for path in (
             self.packages_root,
@@ -399,7 +400,8 @@ class RuntimeDaemon:
             self.updates_root,
         ):
             path.mkdir(parents=True, exist_ok=True, mode=0o700)
-        os.chmod(self.root, 0o700)
+            if os.name == "nt":
+                protect(path, directory=True)
         if self.lock_path.exists():
             lock_info = self.lock_path.lstat()
             if not stat.S_ISREG(lock_info.st_mode) or stat.S_ISLNK(lock_info.st_mode) or lock_info.st_nlink != 1:
@@ -407,7 +409,7 @@ class RuntimeDaemon:
         else:
             descriptor = os.open(self.lock_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
             os.close(descriptor)
-        os.chmod(self.lock_path, 0o600)
+        protect(self.lock_path)
 
     @staticmethod
     def _empty_state() -> dict[str, Any]:
@@ -436,7 +438,7 @@ class RuntimeDaemon:
             self._write_state(state)
             return state
         info = _regular_file(self.state_path, maximum=16 * 1024 * 1024)
-        if info.st_mode & 0o077:
+        if not owner_controlled(self.state_path, info, private=True):
             raise DaemonError("integrity-failure", "daemon state permissions are not owner-private")
         state = loads_strict_json(self.state_path.read_bytes(), maximum=16 * 1024 * 1024)
         if not isinstance(state, dict) or state.get("schema_version") != STATE_SCHEMA:
@@ -448,17 +450,13 @@ class RuntimeDaemon:
         descriptor, temporary_name = tempfile.mkstemp(prefix=".state-", dir=self.root)
         temporary = Path(temporary_name)
         try:
-            os.fchmod(descriptor, 0o600)
+            protect(temporary)
             with os.fdopen(descriptor, "wb", closefd=True) as handle:
                 handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, self.state_path)
-            directory_fd = os.open(self.root, os.O_RDONLY)
-            try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
+            sync_directory(self.root)
         finally:
             with contextlib.suppress(FileNotFoundError):
                 temporary.unlink()
@@ -611,7 +609,7 @@ class RuntimeDaemon:
             raise DaemonError("not-found", "promotion record does not exist") from exc
         if not stat.S_ISREG(supplied_info.st_mode) or stat.S_ISLNK(supplied_info.st_mode):
             raise DaemonError("integrity-failure", "promotion record must not be a link")
-        if supplied_info.st_uid != os.getuid() or supplied_info.st_mode & 0o022:
+        if not owner_controlled(raw, supplied_info):
             raise DaemonError("permission-denied", "promotion record is not owner-controlled")
         try:
             canonical = raw.resolve(strict=True)
@@ -663,7 +661,7 @@ class RuntimeDaemon:
             raise DaemonError("not-found", "candidate package directory is unavailable") from exc
         if not stat.S_ISDIR(supplied_info.st_mode) or stat.S_ISLNK(supplied_info.st_mode):
             raise DaemonError("integrity-failure", "candidate package must not be a link")
-        if supplied_info.st_uid != os.getuid() or supplied_info.st_mode & 0o022:
+        if not owner_controlled(package_dir, supplied_info):
             raise DaemonError("permission-denied", "candidate package directory is not owner-controlled")
         try:
             canonical_dir = package_dir.resolve(strict=True)
@@ -698,7 +696,7 @@ class RuntimeDaemon:
             for name in files:
                 target = Path(root) / name
                 info = _regular_file(target, maximum=MAX_PACKAGE_BYTES)
-                if info.st_uid != os.getuid() or info.st_mode & 0o022:
+                if not owner_controlled(target, info):
                     raise DaemonError("permission-denied", "candidate artifact is not owner-controlled")
                 relative = (relative_root / name).as_posix()
                 observed_paths.add(relative)
