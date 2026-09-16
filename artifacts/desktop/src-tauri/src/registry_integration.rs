@@ -497,6 +497,7 @@ fn call_need_analyzer(
         .arg(analyzer_script()?)
         .arg("analyze")
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")
@@ -571,6 +572,7 @@ fn call_registry(
     }
     let mut child = command
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")

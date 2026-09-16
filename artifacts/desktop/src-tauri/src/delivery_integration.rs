@@ -334,6 +334,7 @@ fn base_command(
         .arg("--appstore-root")
         .arg(&paths.appstore_root)
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")
@@ -1397,7 +1398,7 @@ fn validate_waiting_consent(
     let mut command = Command::new(&paths.python);
     command.args(["-X", "utf8"]).arg("-I").arg("-B").arg(&paths.cloud_agent).arg("validate")
         .arg(paths.root.join("tasks").join(task_id).join("attempts").join(attempt_id).join("input/task.json"))
-        .env_clear().env("PATH", native_platform::safe_path()?)
+        .env_clear().envs(native_platform::trusted_system_environment()?).env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8").env("LC_ALL", "C.UTF-8").env("TZ", "UTC")
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     if Instant::now() >= deadline {
@@ -2299,6 +2300,7 @@ fn archive_list_command(paths: &DeliveryPaths, data_dir: &Path) -> Result<Comman
         .arg(data_dir)
         .arg("--archived-only")
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")

@@ -10,6 +10,8 @@ import time
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "registry-store/tests"))
+from test_windows_store import WindowsStoreStorageTests  # native release CI discovers this TestCase too
 
 
 class BinaryStorageTests(unittest.TestCase):
@@ -23,6 +25,9 @@ class BinaryStorageTests(unittest.TestCase):
         payload = b"MZ\r\n\x1a\x00\xff\ncomponent\r\n"
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root)
+            if os.name == "nt":
+                from vibapp_daemon.windows_security import protect
+                protect(directory, directory=True)
             source = directory / "source.wasm"
             exclusive_write(source, payload)
             self.assertEqual(read_bounded(source, 1024, "binary fixture"), payload)
@@ -45,6 +50,16 @@ class BinaryStorageTests(unittest.TestCase):
 
 @unittest.skipUnless(os.name == "nt", "requires real Windows APIs")
 class WindowsHostTests(unittest.TestCase):
+    def test_production_cleared_helper_environment_supports_verified_tls(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "desktop/scripts/tests"))
+        from smoke_packaged_daemon import helper_environment
+        environment = helper_environment()
+        self.assertEqual(set(environment), {"PATH", "LANG", "LC_ALL", "TZ", "PYTHONDONTWRITEBYTECODE", "SystemRoot", "WINDIR"})
+        result = subprocess.run([sys.executable, "-I", "-B", "-X", "utf8", "-c",
+                                 "import ssl;context=ssl.create_default_context();assert context.verify_mode==ssl.CERT_REQUIRED;assert context.check_hostname"],
+                                env=environment, capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+
     def test_private_acl_rejects_world_access_and_repairs_explicitly(self):
         from vibapp_daemon import windows_security as security
         with tempfile.TemporaryDirectory() as root:

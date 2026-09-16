@@ -240,6 +240,13 @@ fn runtime_binary() -> Result<PathBuf, String> {
     if !metadata.file_type().is_file() || metadata.file_type().is_symlink() {
         return Err("VibApp Runtime 必须是普通非符号链接文件。".to_string());
     }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 {
+            return Err("VibApp Runtime 不能来自 Windows reparse point。".to_string());
+        }
+    }
     Ok(runtime)
 }
 
@@ -463,6 +470,7 @@ pub fn launch(data_dir: &Path, app_id: &str) -> Result<Value, String> {
         .arg("--expected-sha256")
         .arg(&candidate.component_sha256)
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C")
         .env("LC_ALL", "C")

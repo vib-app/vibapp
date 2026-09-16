@@ -21,6 +21,7 @@ import re
 import sqlite3
 import stat
 import struct
+import sys
 import tempfile
 import unicodedata
 from typing import Any, Callable, Iterator
@@ -67,6 +68,56 @@ class StoreError(Exception):
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
+
+
+def _windows_private(path: Path, *, directory: bool, created: bool = False) -> None:
+    """Only newly created Store objects may receive ownership/private ACLs."""
+    if os.name != "nt":
+        return
+    daemon_modules = str(Path(__file__).resolve().parent.parent / "runtime-daemon")
+    if daemon_modules not in sys.path:
+        sys.path.insert(0, daemon_modules)
+    from vibapp_daemon import windows_security
+    try:
+        if created:
+            windows_security.protect(path, directory=directory)
+        else:
+            windows_security.verify(path, directory=directory)
+    except (OSError, ValueError) as error:
+        raise StoreError("permission-denied", "Store storage must already be owner-private and not a Windows reparse point") from error
+
+
+def _mkdir_private(path: Path, *, parents: bool = False, exist_ok: bool = False) -> None:
+    if os.name != "nt":
+        path.mkdir(parents=parents, exist_ok=exist_ok, mode=0o700)
+        return
+    if parents and not path.parent.exists():
+        _mkdir_private(path.parent, parents=True, exist_ok=True)
+    try:
+        path.mkdir(mode=0o700)
+    except FileExistsError:
+        if not exist_ok:
+            raise
+        _windows_private(path, directory=True)
+    else:
+        _windows_private(path, directory=True, created=True)
+
+
+def _open_private_file(path: Path, flags: int) -> int:
+    flags |= getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    if os.name != "nt":
+        return os.open(path, flags | os.O_CREAT, 0o600)
+    try:
+        fd = os.open(path, flags | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        _windows_private(path, directory=False)
+        return os.open(path, flags & ~(os.O_CREAT | os.O_EXCL), 0o600)
+    try:
+        _windows_private(path, directory=False, created=True)
+        return fd
+    except Exception:
+        os.close(fd)
+        raise
 
 
 def _now_utc() -> str:
@@ -247,11 +298,11 @@ def _copy_regular(source: Path, destination: Path, maximum: int, label: str) -> 
             raise StoreError("permission-denied", f"{label} is not a unique regular file")
         if info.st_size > maximum:
             raise StoreError("resource-limit", f"{label} exceeds {maximum} bytes")
-        destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        _mkdir_private(destination.parent, parents=True, exist_ok=True)
         destination_fd = os.open(
             destination,
             os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0),
-            0o400,
+            0o600 if os.name == "nt" else 0o400,
         )
         try:
             remaining = maximum
@@ -277,6 +328,7 @@ def _copy_regular(source: Path, destination: Path, maximum: int, label: str) -> 
             os.fsync(destination_fd)
         finally:
             os.close(destination_fd)
+        _windows_private(destination, directory=False, created=True)
     finally:
         os.close(source_fd)
 
@@ -372,7 +424,7 @@ def _snapshot_candidate(candidate: Path, staging: Path) -> None:
         raise StoreError("integrity-failure", "candidate has no adjacent package directory") from error
     if not stat.S_ISDIR(package_info.st_mode) or stat.S_ISLNK(package_info.st_mode):
         raise StoreError("permission-denied", "candidate package is not a real directory")
-    (staging / "package").mkdir(mode=0o700)
+    _mkdir_private(staging / "package")
     file_count = 0
     total_bytes = 0
     for root, directories, files in os.walk(package, topdown=True, followlinks=False):
@@ -383,7 +435,7 @@ def _snapshot_candidate(candidate: Path, staging: Path) -> None:
             info = os.lstat(source_dir)
             if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
                 raise StoreError("permission-denied", "package contains a linked or special directory")
-            (staging / "package" / relative_root / name).mkdir(mode=0o700)
+            _mkdir_private(staging / "package" / relative_root / name)
         for name in files:
             source = root_path / name
             info = os.lstat(source)
@@ -724,12 +776,13 @@ class LocalAppStore:
         self.clock = clock
         if self.root.exists() and self.root.is_symlink():
             raise StoreError("permission-denied", "Store root cannot be a symbolic link")
-        self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        _mkdir_private(self.root, parents=True, exist_ok=True)
         if not self.root.is_dir():
             raise StoreError("invalid-argument", "Store root is not a directory")
-        os.chmod(self.root, 0o700)
+        if os.name != "nt":
+            os.chmod(self.root, 0o700)
         self.candidates = self.root / "candidates"
-        self.candidates.mkdir(exist_ok=True, mode=0o700)
+        _mkdir_private(self.candidates, exist_ok=True)
         if self.candidates.is_symlink():
             raise StoreError("permission-denied", "Store candidates path cannot be a symbolic link")
         self.database = self.root / "registry.sqlite3"
@@ -741,7 +794,7 @@ class LocalAppStore:
         flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0)
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
-        fd = os.open(self.lock_path, flags, 0o600)
+        fd = _open_private_file(self.lock_path, flags)
         locked = False
         try:
             if fcntl is not None:
@@ -765,6 +818,11 @@ class LocalAppStore:
             os.close(fd)
 
     def _connect(self) -> sqlite3.Connection:
+        if os.name == "nt":
+            # Pre-create before SQLite opens it: existing ownership is checked,
+            # while only this exclusive creation is allowed to set owner/ACL.
+            fd = _open_private_file(self.database, os.O_RDWR)
+            os.close(fd)
         connection = sqlite3.connect(self.database, timeout=30, isolation_level=None)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
@@ -792,7 +850,8 @@ class LocalAppStore:
                 )
             finally:
                 connection.close()
-            os.chmod(self.database, 0o600)
+            if os.name != "nt":
+                os.chmod(self.database, 0o600)
 
     @staticmethod
     def _row_record(row: sqlite3.Row) -> dict[str, Any]:
@@ -848,6 +907,7 @@ class LocalAppStore:
             staging = Path(tempfile.mkdtemp(prefix=".ingest-", dir=self.candidates))
             created_path: Path | None = None
             try:
+                _windows_private(staging, directory=True, created=True)
                 _snapshot_candidate(source, staging)
                 validated = _validate_snapshot(staging / "candidate.json", ingested_at=self.clock())
                 connection = self._connect()

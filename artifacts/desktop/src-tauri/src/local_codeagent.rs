@@ -106,6 +106,7 @@ pub fn submit(
         .arg("--candidate-root")
         .arg(candidates)
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")
@@ -140,6 +141,10 @@ pub fn state(data_dir: &Path) -> Vec<Value> {
     .arg("--candidate-root")
     .arg(data_dir.join("private-candidates"))
     .env_clear()
+    .envs(match native_platform::trusted_system_environment() {
+        Ok(environment) => environment,
+        Err(_) => return Vec::new(),
+    })
     .env(
         "PATH",
         match native_platform::safe_path() {

@@ -26,6 +26,7 @@ import uuid
 
 def helper_environment() -> dict[str, str]:
     """Match local_product.rs env_clear, including no inherited auth or HOME."""
+    system = {}
     if os.name == "nt":
         directory = ctypes.create_unicode_buffer(32768)
         get_directory = ctypes.WinDLL("kernel32", use_last_error=True).GetSystemDirectoryW
@@ -35,9 +36,16 @@ def helper_environment() -> dict[str, str]:
         if not 0 < length < len(directory):
             raise OSError("Cannot resolve trusted Windows system PATH")
         path = directory.value
+        get_windows = ctypes.WinDLL("kernel32", use_last_error=True).GetWindowsDirectoryW
+        get_windows.argtypes = [ctypes.c_wchar_p, ctypes.c_uint]
+        get_windows.restype = ctypes.c_uint
+        length = get_windows(directory, len(directory))
+        if not 0 < length < len(directory):
+            raise OSError("Cannot resolve trusted Windows loader root")
+        system = {"SystemRoot": directory.value, "WINDIR": directory.value}
     else:
         path = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" if sys.platform == "darwin" else "/usr/local/bin:/usr/bin:/bin"
-    return {"PATH": path, "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC", "PYTHONDONTWRITEBYTECODE": "1"}
+    return {"PATH": path, "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "TZ": "UTC", "PYTHONDONTWRITEBYTECODE": "1", **system}
 
 
 def layout(bundle: Path) -> tuple[Path, Path, Path, Path]:

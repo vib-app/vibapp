@@ -1107,7 +1107,14 @@ class RuntimeDaemon:
 
     def _stage_package(self, candidate: VerifiedCandidate, record: dict[str, Any]) -> Path:
         app_root = self.packages_root / candidate.app_id
-        app_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:
+            app_root.mkdir(mode=0o700)
+        except FileExistsError:
+            if os.name == "nt" and not owner_controlled(app_root, private=True):
+                raise DaemonError("permission-denied", "existing installed package root is not owner-private")
+        else:
+            if os.name == "nt":
+                protect(app_root, directory=True)
         destination = app_root / candidate.package_digest
         if destination.exists():
             _manifest, actual_digest, _total = self._verify_package_tree(destination, record)
@@ -1117,6 +1124,8 @@ class RuntimeDaemon:
         temporary = app_root / f".stage-{uuid.uuid4().hex}"
         try:
             temporary.mkdir(mode=0o700)
+            if os.name == "nt":
+                protect(temporary, directory=True)
             expected_paths = ["manifest.json", *(item["path"] for item in self._manifest_descriptors(candidate.manifest))]
             for relative in sorted(expected_paths):
                 source = candidate.package_dir.joinpath(*PurePosixPath(relative).parts)
@@ -1124,13 +1133,30 @@ class RuntimeDaemon:
                     raise DaemonError("integrity-failure", "package copy source traverses a link")
                 data = _read_regular_nofollow(source, MAX_PACKAGE_BYTES)
                 target = temporary.joinpath(*PurePosixPath(relative).parts)
-                target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                if os.name != "nt":
+                    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                else:
+                    directory = temporary
+                    for part in target.parent.relative_to(temporary).parts:
+                        directory = directory / part
+                        try:
+                            directory.mkdir(mode=0o700)
+                        except FileExistsError:
+                            if not owner_controlled(directory, private=True):
+                                raise DaemonError("permission-denied", "package staging directory is not owner-private")
+                        else:
+                            protect(directory, directory=True)
                 descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o600)
                 try:
                     with os.fdopen(descriptor, "wb", closefd=True) as handle:
                         handle.write(data)
                         handle.flush()
                         os.fsync(handle.fileno())
+                    if os.name == "nt":
+                        # Inherited DACLs do not inherit the owner SID. Elevated
+                        # Windows processes may otherwise create Admin-owned
+                        # files which the same admission checks rightly reject.
+                        protect(target)
                 except Exception:
                     with contextlib.suppress(FileNotFoundError):
                         target.unlink()

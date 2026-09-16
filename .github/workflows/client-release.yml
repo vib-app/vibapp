@@ -53,7 +53,10 @@ jobs:
             ~/.cargo/registry
             artifacts/runtime-daemon/target-service-1_98
             artifacts/desktop/target
-          key: ${{ matrix.platform }}-product-v2-${{ hashFiles('artifacts/desktop/ci/release-dependencies.json', 'artifacts/desktop/src-tauri/Cargo.lock', 'artifacts/runtime-daemon/service-runtime/Cargo.lock') }}
+          key: ${{ matrix.platform }}-product-v3-${{ hashFiles('artifacts/desktop/ci/release-dependencies.json', 'artifacts/desktop/src-tauri/Cargo.lock', 'artifacts/runtime-daemon/service-runtime/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ matrix.platform }}-product-v3-${{ hashFiles('artifacts/desktop/ci/release-dependencies.json', 'artifacts/desktop/src-tauri/Cargo.lock', 'artifacts/runtime-daemon/service-runtime/Cargo.lock') }}-
+            ${{ matrix.platform }}-product-v2-${{ hashFiles('artifacts/desktop/ci/release-dependencies.json', 'artifacts/desktop/src-tauri/Cargo.lock', 'artifacts/runtime-daemon/service-runtime/Cargo.lock') }}
       - name: Shared UI regression tests
         run: node --test artifacts/desktop/ui/tests/app-ui.test.mjs artifacts/desktop/scripts/tests/desktop-build-inputs.test.mjs artifacts/desktop/ci/release-policy.test.mjs artifacts/desktop/ci/windows-installer.test.mjs
       - name: Compile, package and verify client
@@ -68,7 +71,7 @@ jobs:
             ~/.cargo/registry
             artifacts/runtime-daemon/target-service-1_98
             artifacts/desktop/target
-          key: ${{ matrix.platform }}-product-v2-${{ hashFiles('artifacts/desktop/ci/release-dependencies.json', 'artifacts/desktop/src-tauri/Cargo.lock', 'artifacts/runtime-daemon/service-runtime/Cargo.lock') }}
+          key: ${{ matrix.platform }}-product-v3-${{ hashFiles('artifacts/desktop/ci/release-dependencies.json', 'artifacts/desktop/src-tauri/Cargo.lock', 'artifacts/runtime-daemon/service-runtime/Cargo.lock') }}-${{ github.sha }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: client-${{ matrix.platform }}

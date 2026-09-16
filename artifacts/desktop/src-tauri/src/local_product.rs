@@ -232,6 +232,7 @@ fn appstore_command(data_dir: &Path, arguments: &[&str]) -> Result<Value, String
     command.args(arguments);
     let child = command
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")
@@ -264,7 +265,7 @@ pub fn fetch_public_store_app(data_dir: &Path, app_id: &str) -> Result<Value, St
     let child = Command::new(native_platform::python_executable(false)?)
         .args(["-I", "-B", "-X", "utf8"]).arg(script).arg("--store-root").arg(store_root(data_dir))
         .arg("--app-id").arg(app_id)
-        .env_clear().env("PATH", native_platform::safe_path()?)
+        .env_clear().envs(native_platform::trusted_system_environment()?).env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8").env("PYTHONDONTWRITEBYTECODE", "1")
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped())
         .spawn().map_err(|e| format!("Cannot start Store download: {e}"))?;
@@ -628,9 +629,10 @@ fn daemon_is_active(path: &Path) -> bool {
     let Ok(python) = native_platform::python_executable(false) else { return false; };
     let Ok(root) = daemon_module_root() else { return false; };
     let Ok(safe_path) = native_platform::safe_path() else { return false; };
+    let Ok(system_environment) = native_platform::trusted_system_environment() else { return false; };
     Command::new(python).args(["-I", "-B", "-X", "utf8", "-c", "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('vibapp_daemon',run_name='__main__')"])
         .arg(root).arg("probe").arg("--socket").arg(path)
-        .env_clear().env("PATH", safe_path).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+        .env_clear().envs(system_environment).env("PATH", safe_path).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
         .status().is_ok_and(|status| status.success())
 }
 
@@ -661,6 +663,7 @@ fn ensure_daemon(data_dir: &Path) -> Result<(), String> {
         .arg("--socket")
         .arg(&socket)
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")
@@ -731,6 +734,7 @@ fn daemon_command(
     }
     let mut child = command
         .env_clear()
+        .envs(native_platform::trusted_system_environment()?)
         .env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8")
         .env("LC_ALL", "C.UTF-8")
@@ -1334,6 +1338,7 @@ mod tests {
             .arg("--socket")
             .arg(&socket)
             .env_clear()
+            .envs(native_platform::trusted_system_environment().unwrap())
             .env("PATH", native_platform::safe_path().unwrap())
             .env("LANG", "C.UTF-8")
             .env("LC_ALL", "C.UTF-8")

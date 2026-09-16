@@ -227,6 +227,7 @@ impl RoomHashHost {
             .arg(script)
             .current_dir(&data_dir)
             .env_clear()
+            .envs(crate::native_platform::trusted_system_environment()?)
             .env("VIBAPP_ROOMHASH_ROOT", &roomhash_root)
             .env("VIBAPP_ROOMHASH_COLLABORATION_ROOT", &collaboration_root)
             .env("VIBAPP_ROOMHASH_DATA_DIR", &data_dir)

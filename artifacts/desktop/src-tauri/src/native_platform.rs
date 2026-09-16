@@ -358,6 +358,26 @@ pub fn safe_path() -> Result<OsString, String> {
     }
 }
 
+/// Minimal OS loader environment, obtained from Win32 rather than inherited
+/// user variables. Python/OpenSSL and side-by-side assemblies need SystemRoot.
+pub fn trusted_system_environment() -> Result<Vec<(OsString, OsString)>, String> {
+    #[cfg(windows)]
+    {
+        #[link(name = "kernel32")]
+        unsafe extern "system" { fn GetWindowsDirectoryW(buffer: *mut u16, length: u32) -> u32; }
+        let mut buffer = vec![0u16; 32768];
+        let length = unsafe { GetWindowsDirectoryW(buffer.as_mut_ptr(), buffer.len() as u32) } as usize;
+        if length == 0 || length >= buffer.len() {
+            return Err("无法定位可信 Windows 根目录。".to_string());
+        }
+        let root = OsString::from(String::from_utf16(&buffer[..length])
+            .map_err(|_| "Windows 根目录编码无效。".to_string())?);
+        Ok(vec![(OsString::from("SystemRoot"), root.clone()), (OsString::from("WINDIR"), root)])
+    }
+    #[cfg(not(windows))]
+    { Ok(Vec::new()) }
+}
+
 pub fn python_executable(require_tomllib: bool) -> Result<PathBuf, String> {
     // Release distributions carry an isolated interpreter. Never let a broken
     // or redirected bundled interpreter silently select a developer tool.
@@ -401,6 +421,7 @@ fn python_supported(path: &Path, require_tomllib: bool) -> Result<bool, String> 
         let supported = Command::new(&path)
             .args(["-I", "-B", "-X", "utf8", "-c", probe])
             .env_clear()
+            .envs(trusted_system_environment()?)
             .env("PATH", safe_path()?)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -559,7 +580,7 @@ fn windows_private_storage(action: &str, path: &Path) -> Result<(), String> {
     let root = resource_directory("runtime-daemon", &Path::new(option_env!("CARGO_MANIFEST_DIR").unwrap_or(".")).join("../../runtime-daemon"))?;
     let mut child = Command::new(python_executable(false)?)
         .args(["-I", "-B", "-X", "utf8", "-c", "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('vibapp_daemon.windows_security',run_name='__main__')"])
-        .arg(root).arg(action).arg(path).env_clear().env("PATH", safe_path()?)
+        .arg(root).arg(action).arg(path).env_clear().envs(trusted_system_environment()?).env("PATH", safe_path()?)
         .stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
         .spawn().map_err(|error| format!("无法启动 Windows 私有存储检查：{error}"))?;
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);

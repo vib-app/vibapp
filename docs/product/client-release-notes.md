@@ -40,7 +40,9 @@ apps use vibapp:// to request explicit installation, never a URL permission gran
   source builds use Docker/remote; local agent auto-discovery is not advertised.
 - Android currently supports **foreground Web/Wasm apps only**. The Store snapshot
   is bundled. Dynamic catalog updates, desktop background services, local
-  CodeAgent, connected remote development and mobile P2P/RTC are not included.
+  CodeAgent, connected remote development, vibapp:// deep links and mobile P2P/RTC
+  are not included. Installing this Android preview does not enable desktop-only
+  applications; use their verified browser version where available.
 - Client platform support does not change an app's verified manifest. The LED
   browser package is separately qualified; its legacy native manifest retains
   its original macOS ARM64 declaration.
