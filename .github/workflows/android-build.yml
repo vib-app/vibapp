@@ -62,6 +62,13 @@ jobs:
         run: npm test --prefix artifacts/mobile
       - name: Build native ARM64 APK (unsigned)
         run: node artifacts/mobile/build-android.mjs
+      - name: Show bounded Android build diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          if test -f artifacts/mobile/output/android-build.log; then
+            tail -c 12000 artifacts/mobile/output/android-build.log
+          fi
       - name: Collect bounded unsigned build evidence
         run: node artifacts/mobile/collect-ci-artifact.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
