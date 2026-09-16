@@ -85,6 +85,26 @@ def _resident_bytes(pid: int) -> int | None:
                     return int(line.split()[1]) * 1024
         except (OSError, ValueError, IndexError):
             return None
+    elif system == "Windows":
+        from ctypes import wintypes as w
+        class Counters(ctypes.Structure):
+            _fields_ = [("cb", w.DWORD), ("page_faults", w.DWORD)] + [(name, ctypes.c_size_t) for name in ("peak_working", "working", "peak_paged", "paged", "peak_nonpaged", "nonpaged", "pagefile", "peak_pagefile")]
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]
+        kernel.OpenProcess.restype = w.HANDLE
+        kernel.CloseHandle.argtypes = [w.HANDLE]
+        kernel.K32GetProcessMemoryInfo.argtypes = [w.HANDLE, ctypes.POINTER(Counters), w.DWORD]
+        kernel.K32GetProcessMemoryInfo.restype = w.BOOL
+        handle = kernel.OpenProcess(0x0410, False, pid)
+        if not handle:
+            return None
+        try:
+            info = Counters()
+            info.cb = ctypes.sizeof(info)
+            if kernel.K32GetProcessMemoryInfo(handle, ctypes.byref(info), info.cb):
+                return int(info.working)
+        finally:
+            kernel.CloseHandle(handle)
     return None
 
 
@@ -109,11 +129,12 @@ def resolve_runtime_binary(explicit: Path | str | None = None) -> Path:
     if configured:
         candidates.append(Path(configured).expanduser())
     artifact_root = Path(__file__).resolve().parents[1]
+    runtime_name = "vibapp-service-runtime.exe" if os.name == "nt" else "vibapp-service-runtime"
     candidates.extend(
         [
-            artifact_root / "target-service-1_98" / "release" / "vibapp-service-runtime",
-            artifact_root / "target-service-1_98" / "debug" / "vibapp-service-runtime",
-            artifact_root / "service-runtime" / "vibapp-service-runtime",
+            artifact_root / "target-service-1_98" / "release" / runtime_name,
+            artifact_root / "target-service-1_98" / "debug" / runtime_name,
+            artifact_root / "service-runtime" / runtime_name,
         ]
     )
     for candidate in candidates:
@@ -309,7 +330,20 @@ class ServiceWorker:
         reader = threading.Thread(target=read, daemon=True)
         reader.start()
         try:
-            return result.get(timeout=timeout)
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                resident = _resident_bytes(self.process.pid)
+                if resident is not None and resident > MAX_RUNTIME_RESIDENT_BYTES:
+                    self.process.kill()
+                    self.process.wait(timeout=1)
+                    reader.join(timeout=1)
+                    self.terminate()
+                    raise ServiceExecutionError("resource-limit", "service runtime exceeded its 512 MiB resident-memory ceiling")
+                try:
+                    return result.get(timeout=min(MEMORY_SAMPLE_SECONDS, max(0.001, deadline - time.monotonic())))
+                except queue.Empty:
+                    pass
+            raise queue.Empty
         except queue.Empty:
             self.process.kill()
             self.process.wait(timeout=1)

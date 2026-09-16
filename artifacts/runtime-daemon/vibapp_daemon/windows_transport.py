@@ -115,7 +115,13 @@ class Listener:
             self._new()
         if not _connect(self.handle, None):
             error = ctypes.get_last_error()
-            if error in (232, 536):
+            if error in (232, 233):
+                # A client may close between CreateFile and ConnectNamedPipe.
+                # That instance is disconnected, not listening; retaining it
+                # permanently returns PIPE_BUSY to every later client.
+                self.close()
+                raise TimeoutError("pipe client disconnected before accept")
+            if error == 536:
                 raise TimeoutError("no pipe client")
             if error != 535:
                 checked(False)

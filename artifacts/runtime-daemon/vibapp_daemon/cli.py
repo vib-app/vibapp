@@ -160,6 +160,7 @@ def _serve_windows(daemon, server) -> int:
                 continue
             except OSError:
                 server.close()
+                time.sleep(0.02)
                 continue
             with connection:
                 try:
@@ -184,7 +185,13 @@ def _serve_windows(daemon, server) -> int:
 def probe(args):
     if os.name == "nt":
         from .windows_transport import connect
-        with connect(str(Path(args.socket).expanduser().resolve()), 0.1):
+        with connect(str(Path(args.socket).expanduser().resolve()), 0.5) as connection:
+            # Exercise framing without invoking a daemon lifecycle operation.
+            connection.sendall(b"{}\n")
+            reply = loads_strict_json(_read_one_line(connection), maximum=MAX_ENVELOPE_BYTES)
+            if reply.get("error", {}).get("code") != "invalid-argument":
+                raise DaemonError("integrity-failure", "unexpected daemon readiness reply")
+            connection.sendall(b"\0")
             return 0
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(0.1)
