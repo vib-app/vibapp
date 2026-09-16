@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import subprocess
 import sys
 import tempfile
@@ -15,6 +15,15 @@ from test_windows_store import WindowsStoreStorageTests  # native release CI dis
 
 
 class BinaryStorageTests(unittest.TestCase):
+    def test_persisted_relative_paths_use_one_canonical_format_on_every_host(self):
+        from vibapp_daemon.core import _canonical_relative, _safe_relative_path, DaemonError
+        relative = "packages/ai.vibapp.test.clock/" + "a" * 64
+        for root in (PurePosixPath("/private/runtime"), PureWindowsPath("C:/private/runtime")):
+            self.assertEqual(_canonical_relative(root / relative, root), relative)
+        for invalid in ("packages\\clock", "../escape", "/absolute"):
+            with self.assertRaises(DaemonError):
+                _safe_relative_path(invalid)
+
     def test_verifier_and_store_preserve_binary_crlf_and_ctrl_z(self):
         artifacts = Path(__file__).resolve().parents[2]
         sys.path.insert(0, str(artifacts / "app-builder"))

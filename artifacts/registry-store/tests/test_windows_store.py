@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -53,8 +54,26 @@ class WindowsStoreStorageTests(unittest.TestCase):
                 self.assertNotIn("error", outcome, outcome)
                 for path in daemon.packages_root.rglob("*"):
                     security.verify(path, directory=path.is_dir())
+                state = json.loads(daemon.state_path.read_bytes())
+                app_id = record["app"]["id"]
+                self.assertEqual(state["apps"][app_id]["package_path"], f"packages/{app_id}/{digest}")
+                security.verify(daemon.data_root / app_id, directory=True)
+                status = daemon.execute({"request_id": "storage-status", "idempotency_key": "storage-status",
+                                         "client": "cli", "subject": app_id, "command": {"tag": "status", "value": None}},
+                                        principal="sid:" + security.process_sid(), allowed_apps={"*"})
+                self.assertNotIn("error", status, status)
+                self.assertFalse(status["outcome"]["value"]["enabled"])
             finally:
                 daemon.shutdown()
+            restored = RuntimeDaemon(root / "runtime", store.candidates)
+            try:
+                status = restored.execute({"request_id": "storage-reopened", "idempotency_key": "storage-reopened",
+                                           "client": "cli", "subject": app_id, "command": {"tag": "status", "value": None}},
+                                          principal="sid:" + security.process_sid(), allowed_apps={"*"})
+                self.assertNotIn("error", status, status)
+                self.assertFalse(status["outcome"]["value"]["enabled"])
+            finally:
+                restored.shutdown()
 
     def test_existing_public_root_is_rejected_without_permission_repair(self):
         from local_appstore import LocalAppStore, StoreError

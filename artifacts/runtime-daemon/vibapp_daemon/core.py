@@ -230,6 +230,12 @@ def _safe_relative_path(value: Any) -> str:
     return text
 
 
+def _canonical_relative(path: Path, root: Path) -> str:
+    # Durable metadata is platform-neutral; Windows filesystem separators
+    # must not leak into the strict POSIX-relative wire/state contract.
+    return _safe_relative_path(path.relative_to(root).as_posix())
+
+
 def _copy_json(value: Any) -> Any:
     return copy.deepcopy(value)
 
@@ -1788,18 +1794,14 @@ class RuntimeDaemon:
                 root = record.get("transaction_root")
                 if root is not None:
                     protected_updates.add(
-                        str(self._update_path(root, "transaction_root").relative_to(self.root))
+                        _canonical_relative(self._update_path(root, "transaction_root"), self.root)
                     )
         enable_transaction = app.get("enable_transaction")
         if isinstance(enable_transaction, dict):
             root = enable_transaction.get("transaction_root")
             if root is not None:
                 protected_updates.add(
-                    str(
-                        self._update_path(
-                            root, "enable_transaction.transaction_root"
-                        ).relative_to(self.root)
-                    )
+                    _canonical_relative(self._update_path(root, "enable_transaction.transaction_root"), self.root)
                 )
         targets: list[dict[str, str]] = []
         package_root = self.packages_root / app_id
@@ -1817,7 +1819,7 @@ class RuntimeDaemon:
                 targets.append(
                     {
                         "kind": "package",
-                        "path": str(child.relative_to(self.root)),
+                        "path": _canonical_relative(child, self.root),
                     }
                 )
         update_root = self.updates_root / app_id
@@ -1828,7 +1830,7 @@ class RuntimeDaemon:
             if len(children) > MAX_UPDATE_HISTORY + MAX_GC_DELETIONS_PER_PASS:
                 raise DaemonError("resource-limit", "app update generation inventory is unbounded")
             for child in children:
-                relative = str(child.relative_to(self.root))
+                relative = _canonical_relative(child, self.root)
                 if relative in protected_updates:
                     continue
                 if not child.is_dir() or child.is_symlink():
@@ -2256,7 +2258,7 @@ class RuntimeDaemon:
             "component_sha256": candidate.component_digest,
             "manifest_sha256": candidate.manifest_digest,
             "runtime_world": candidate.runtime_world,
-            "package_path": str(installed_dir.relative_to(self.root)),
+            "package_path": _canonical_relative(installed_dir, self.root),
             "enabled": False,
             "lifecycle_state": "installed-disabled",
             "quarantined": False,
@@ -2297,7 +2299,15 @@ class RuntimeDaemon:
                 "values": [],
             },
         }
-        (self.data_root / candidate.app_id).mkdir(parents=True, exist_ok=True, mode=0o700)
+        data_directory = self.data_root / candidate.app_id
+        try:
+            data_directory.mkdir(mode=0o700)
+        except FileExistsError:
+            if os.name == "nt" and not owner_controlled(data_directory, private=True):
+                raise DaemonError("permission-denied", "existing application data must be owner-private")
+        else:
+            if os.name == "nt":
+                protect(data_directory, directory=True)
         self._append_audit(state, "install", principal=principal, app_id=candidate.app_id, result="installed-disabled", fields={"package_digest_sha256": candidate.package_digest, "verifier": "independent-verifier"})
         return {"tag": "accepted", "value": None}
 
@@ -2323,7 +2333,7 @@ class RuntimeDaemon:
                 "component_sha256": candidate.component_digest,
                 "manifest_sha256": candidate.manifest_digest,
                 "runtime_world": candidate.runtime_world,
-                "package_path": str(installed_dir.relative_to(runtime_root)),
+                "package_path": _canonical_relative(installed_dir, runtime_root),
                 "ui_entrypoints": list(candidate.ui_entrypoints),
                 "service_entrypoints": list(candidate.service_entrypoints),
                 "allowed_data_dispositions": list(candidate.allowed_dispositions),
@@ -2503,9 +2513,9 @@ class RuntimeDaemon:
             "error": None,
             "started_at_utc": self.clock(),
             "completed_at_utc": None,
-            "transaction_root": str(transaction_root.relative_to(self.root)),
-            "candidate_state_path": str(candidate_state.relative_to(self.root)),
-            "previous_state_path": str(previous_state.relative_to(self.root)),
+            "transaction_root": _canonical_relative(transaction_root, self.root),
+            "candidate_state_path": _canonical_relative(candidate_state, self.root),
+            "previous_state_path": _canonical_relative(previous_state, self.root),
             "previous": previous,
         }
         original_app = _copy_json(app)
@@ -2710,8 +2720,8 @@ class RuntimeDaemon:
                 "transaction_id": transaction_id,
                 "from_package_digest_sha256": previous["package_digest_sha256"],
                 "to_package_digest_sha256": candidate.package_digest,
-                "previous_state_path": str(previous_state.relative_to(self.root)),
-                "transaction_root": str(transaction_root.relative_to(self.root)),
+                "previous_state_path": _canonical_relative(previous_state, self.root),
+                "transaction_root": _canonical_relative(transaction_root, self.root),
                 "previous": previous,
                 "observation_started_at_utc": observation_started_at,
                 "observation_deadline_utc": observation_deadline_at,
@@ -2887,9 +2897,9 @@ class RuntimeDaemon:
             "status": "preparing",
             "app_id": app_id,
             "package_digest_sha256": app["package_digest_sha256"],
-            "transaction_root": str(transaction_root.relative_to(self.root)),
-            "candidate_state_path": str(candidate_state.relative_to(self.root)),
-            "previous_state_path": str(previous_state.relative_to(self.root)),
+            "transaction_root": _canonical_relative(transaction_root, self.root),
+            "candidate_state_path": _canonical_relative(candidate_state, self.root),
+            "previous_state_path": _canonical_relative(previous_state, self.root),
             "original_state_revision": app["state"]["revision"],
             "service_entrypoints": [item["id"] for item in on_enable_entrypoints],
             "started_at_utc": self.clock(),
@@ -4094,7 +4104,7 @@ class RuntimeDaemon:
                 handle.write(canonical_json(export) + b"\n")
                 handle.flush()
                 os.fsync(handle.fileno())
-            state["exports"][archive_id] = {"app_id": app_id, "path": str(export_path.relative_to(self.root)), "created_at_utc": self.clock()}
+            state["exports"][archive_id] = {"app_id": app_id, "path": _canonical_relative(export_path, self.root), "created_at_utc": self.clock()}
             if data_dir.exists():
                 shutil.rmtree(data_dir)
         elif data_dir.exists():
