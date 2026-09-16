@@ -314,7 +314,14 @@ test('ordinary production start keeps server rendering and CSP on the public pre
     assert.equal(publicStateValue.result.meta.runtime_mode, 'public-website-read-only');
     assert.equal(publicStateValue.result.meta.mutation_authority, false);
     assert.deepEqual(publicStateValue.result.jobs, []);
-    assert.deepEqual(publicStateValue.result.apps, []);
+    // Public discovery can contain real listings; catalog metadata alone must
+    // still grant neither install nor browser execution authority.
+    assert.ok(publicStateValue.result.apps.every(app => app.publication_state === 'published'
+      && app.install_eligible === false && app.launch_eligible === false));
+    for (const record of productionSnapshot.records) {
+      const publicShare = await fetch(`${publicOrigin}/apps/${record.app.id}`);
+      assert.equal(publicShare.status, 200, 'verified public app must have a working share route');
+    }
     const deniedMutation = await productRequest(publicOrigin, 'submit_need', {
       title: 'must not cross the public route',
       description: 'an unauthenticated public visitor has no shared mutation authority',

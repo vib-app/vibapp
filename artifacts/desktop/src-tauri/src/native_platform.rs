@@ -913,7 +913,9 @@ mod tests {
         assert!(
             trusted_helper_candidates(HostOs::Macos, "codex")
                 .iter()
-                .all(|path| path.is_absolute())
+                // These are modeled Unix paths even when the test itself runs
+                // on Windows, where is_absolute additionally requires a drive.
+                .all(|path| path.has_root())
         );
     }
 
