@@ -8,6 +8,8 @@ codesign_bin=/usr/bin/codesign
 otool_bin=/usr/bin/otool
 shasum_bin=/usr/bin/shasum
 strings_bin=/usr/bin/strings
+host_arch=$(/usr/bin/uname -m)
+case "$host_arch" in arm64|x86_64) ;; *) echo "unsupported macOS architecture" >&2; exit 64 ;; esac
 
 case "$build_profile" in
   debug|release) ;;
@@ -497,9 +499,9 @@ validate_relocatable_node() {
   node_path=$1
   node_label=$2
   node_failure_status=$3
-  if ! /usr/bin/file -L "$node_path" | /usr/bin/grep -q "Mach-O.*arm64"; then
-    echo "$node_label must be an arm64 macOS executable: $node_path" >&2
-    echo "set VIBAPP_ROOMHASH_NODE_BIN to a standalone arm64 Node executable" >&2
+  if ! /usr/bin/file -L "$node_path" | /usr/bin/grep -q "Mach-O.*$host_arch"; then
+    echo "$node_label must be a $host_arch macOS executable: $node_path" >&2
+    echo "set VIBAPP_ROOMHASH_NODE_BIN to a standalone $host_arch Node executable" >&2
     exit "$node_failure_status"
   fi
   if ! node_dependency_report=$("$otool_bin" -L "$node_path" 2>&1); then
@@ -742,7 +744,7 @@ fi
 validate_relocatable_node "$contents/Resources/roomhash/node" "packaged RoomHash Node" 70
 find "$contents/Resources/roomhash/current/headless/node_modules" -type f -name '*.node' -exec sh -c '
   for binary do
-    if /usr/bin/file "$binary" | /usr/bin/grep -q "Mach-O.*arm64"; then
+    if /usr/bin/file "$binary" | /usr/bin/grep -q "Mach-O"; then
       /usr/bin/codesign --force --sign - --timestamp=none "$binary" || exit 1
     fi
   done

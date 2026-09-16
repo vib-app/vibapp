@@ -11,10 +11,11 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DESKTOP_ROOT = resolve(HERE, '../..');
 const BUNDLE = resolve(process.argv[2] || join(DESKTOP_ROOT, 'dist/VibApp.app'));
-const NODE = join(BUNDLE, 'Contents/Resources/roomhash/node');
-const HOST = join(BUNDLE, 'Contents/Resources/roomhash/roomhash-host.mjs');
-const ROOMHASH_ROOT = join(BUNDLE, 'Contents/Resources/roomhash/current');
-const COLLABORATION_ROOT = join(BUNDLE, 'Contents/Resources/roomhash/collaboration');
+const RESOURCES = join(BUNDLE, process.platform === 'darwin' ? 'Contents/Resources' : 'resources');
+const NODE = join(RESOURCES, process.platform === 'win32' ? 'roomhash/node.exe' : 'roomhash/node');
+const HOST = join(RESOURCES, 'roomhash/roomhash-host.mjs');
+const ROOMHASH_ROOT = join(RESOURCES, 'roomhash/current');
+const COLLABORATION_ROOT = join(RESOURCES, 'roomhash/collaboration');
 const scratch = await mkdtemp(join(tmpdir(), 'vibapp-packaged-roomhash-'));
 
 let child;

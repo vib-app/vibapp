@@ -28,7 +28,8 @@ async function visit(directory) {
     } else if (entry.isFile()) {
       const kind = execFileSync('/usr/bin/file', ['-b', path], { encoding: 'utf8' });
       if (kind.includes('Mach-O')) {
-        if (!kind.includes('arm64')) throw new Error(`wrong Python architecture: ${path}`);
+        const architecture = process.arch === 'arm64' ? 'arm64' : 'x86_64';
+        if (!kind.includes(architecture)) throw new Error(`wrong Python architecture: ${path}`);
         const libraries = execFileSync('/usr/bin/otool', ['-L', path], { encoding: 'utf8' }).split('\n').slice(1);
         const installId = execFileSync('/usr/bin/otool', ['-D', path], { encoding: 'utf8' }).split('\n')[1]?.trim();
         for (const [index, line] of libraries.entries()) {
