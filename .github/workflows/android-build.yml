@@ -52,7 +52,10 @@ jobs:
         run: |
           npm ci --prefix artifacts/mobile --ignore-scripts --no-audit --no-fund
           npm ci --prefix artifacts/mobile/ci-browser-deps --ignore-scripts --no-audit --no-fund
-          cargo fetch --locked --manifest-path artifacts/mobile/src-tauri/Cargo.toml --target aarch64-linux-android
+          # Tauri's release feature/host metadata graph also resolves locked
+          # desktop crates (for example atk), even for an Android artifact.
+          # Prime the complete lockfile before the strictly offline build.
+          cargo fetch --locked --manifest-path artifacts/mobile/src-tauri/Cargo.toml
           rustup run 1.93.0-x86_64-unknown-linux-gnu cargo fetch --locked --manifest-path artifacts/web-client-core/Cargo.toml --target wasm32-unknown-unknown
       - name: Generate the shared GUI and verified public app assets
         env:
