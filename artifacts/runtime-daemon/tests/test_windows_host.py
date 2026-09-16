@@ -32,6 +32,24 @@ class WindowsHostTests(unittest.TestCase):
                 security._free(descriptor)
                 security.protect(secret)
 
+    def test_public_binary_may_be_world_readable_but_not_world_writable(self):
+        from vibapp_daemon import windows_security as security
+        with tempfile.TemporaryDirectory() as root:
+            binary = Path(root) / "test.exe"
+            binary.write_bytes(b"synthetic-non-executable-fixture")
+            security.protect(binary)
+            descriptor = security.P()
+            sid = security.process_sid()
+            security.checked(security._from_sddl(f"D:P(A;;FA;;;{sid})(A;;FA;;;SY)(A;;FR;;;WD)", 1, security.ctypes.byref(descriptor), None))
+            try:
+                security.checked(security._set_file(str(binary), 4 | 0x80000000, descriptor))
+                security.verify(binary, private=False)
+                with self.assertRaises(PermissionError):
+                    security.verify(binary, private=True)
+            finally:
+                security._free(descriptor)
+                security.protect(binary)
+
     def test_daemon_named_pipe_readiness_and_control(self):
         from vibapp_daemon.windows_transport import connect
         from vibapp_daemon.windows_security import protect

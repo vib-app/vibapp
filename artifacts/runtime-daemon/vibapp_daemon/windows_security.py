@@ -94,7 +94,7 @@ def protect(path: Path, *, directory: bool = False) -> None:
         checked(_set_file(str(path), 1 | 4 | 0x80000000, descriptor))
     verify(path, directory=directory)
 
-def verify(path: Path, *, directory: bool | None = None, allow_administrators: bool = False) -> None:
+def verify(path: Path, *, directory: bool | None = None, allow_administrators: bool = False, private: bool = True) -> None:
     ordinary(path, directory=directory)
     owner, dacl, descriptor = P(), P(), P()
     error = _get_named(str(path), 1, 1 | 4, ctypes.byref(owner), None, ctypes.byref(dacl), None, ctypes.byref(descriptor))
@@ -115,9 +115,18 @@ def verify(path: Path, *, directory: bool | None = None, allow_administrators: b
             ace = P()
             checked(_get_ace(dacl, index, ctypes.byref(ace)))
             kind = ctypes.c_ubyte.from_address(ace.value).value
+            flags = ctypes.c_ubyte.from_address(ace.value + 1).value
+            if flags & 8:  # INHERIT_ONLY does not apply to this object.
+                continue
             if kind == 1:  # ACCESS_DENIED_ACE cannot grant access.
                 continue
-            if kind != 0 or sid_string(ace.value + 8) not in allowed:
+            if kind != 0:
+                raise PermissionError("storage DACL contains an unsupported grant type")
+            mask = ctypes.c_uint32.from_address(ace.value + 4).value
+            # Public executable/package files may be readable by other users,
+            # matching POSIX's non-group/world-writable check. Secrets cannot.
+            write_access = 0x2 | 0x4 | 0x10 | 0x40 | 0x100 | 0x10000 | 0x40000 | 0x80000 | 0x40000000 | 0x10000000
+            if sid_string(ace.value + 8) not in allowed and (private or mask & write_access):
                 raise PermissionError("storage DACL grants another principal access")
     finally:
         _free(descriptor)
@@ -132,6 +141,8 @@ def main() -> None:
         protect(path)
     elif action == "verify-file":
         verify(path, directory=False)
+    elif action == "verify-directory":
+        verify(path, directory=True)
     else:
         raise ValueError("unknown private-storage operation")
 

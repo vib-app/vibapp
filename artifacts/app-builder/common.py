@@ -703,10 +703,10 @@ def _run_windows_inspector(command, *, cwd, environment, limits, disk_root, canc
     validated_component_inspector(Path(command[0]))
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "runtime-daemon"))
     from vibapp_daemon.service_executor import _resident_bytes
+    from vibapp_daemon.host_storage import system_environment
     started = time.monotonic()
     clean_environment = dict(environment)
-    if os.environ.get("SystemRoot"):
-        clean_environment["SystemRoot"] = os.environ["SystemRoot"]
+    clean_environment.update(system_environment())
     process = subprocess.Popen(command, cwd=cwd, env=clean_environment, stdin=subprocess.DEVNULL,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True,
                                creationflags=subprocess.CREATE_NO_WINDOW)

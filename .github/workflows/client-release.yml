@@ -54,7 +54,7 @@ jobs:
             artifacts/desktop/target
           key: ${{ matrix.platform }}-product-v2-${{ hashFiles('artifacts/desktop/ci/release-dependencies.json', 'artifacts/desktop/src-tauri/Cargo.lock', 'artifacts/runtime-daemon/service-runtime/Cargo.lock') }}
       - name: Shared UI regression tests
-        run: node --test artifacts/desktop/ui/tests/app-ui.test.mjs artifacts/desktop/scripts/tests/desktop-build-inputs.test.mjs artifacts/desktop/ci/release-policy.test.mjs
+        run: node --test artifacts/desktop/ui/tests/app-ui.test.mjs artifacts/desktop/scripts/tests/desktop-build-inputs.test.mjs artifacts/desktop/ci/release-policy.test.mjs artifacts/desktop/ci/windows-installer.test.mjs
       - name: Compile, package and verify client
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}

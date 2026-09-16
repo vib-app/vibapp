@@ -2258,6 +2258,12 @@ fn run_descriptor_inspection() -> Result<(), String> {
     config.consume_fuel(true);
     config.epoch_interruption(true);
     config.max_wasm_stack(2 * 1024 * 1024);
+    // Wasmtime's 64-bit default reserves 4 GiB per memory, incompatible with
+    // our 768 MiB process limit on Linux. Keep explicit bounds checks and the
+    // existing Store limiter rather than weakening the process ceiling.
+    config.memory_reservation(MAX_LINEAR_MEMORY_BYTES as u64);
+    config.memory_guard_size(64 * 1024);
+    config.memory_reservation_for_growth(0);
     let engine =
         Engine::new(&config).map_err(|error| format!("engine configuration failed: {error}"))?;
     let epoch_engine = engine.clone();
@@ -2449,6 +2455,9 @@ fn run() -> Result<(), String> {
     config.consume_fuel(true);
     config.epoch_interruption(true);
     config.max_wasm_stack(2 * 1024 * 1024);
+    config.memory_reservation(MAX_LINEAR_MEMORY_BYTES as u64);
+    config.memory_guard_size(64 * 1024);
+    config.memory_reservation_for_growth(0);
     let engine =
         Engine::new(&config).map_err(|error| format!("engine configuration failed: {error}"))?;
     let epoch_engine = engine.clone();
@@ -2538,7 +2547,8 @@ fn run() -> Result<(), String> {
             "separate_process": true,
             "ambient_wasi_linked": false,
             "memory_limit_bytes": MAX_LINEAR_MEMORY_BYTES,
-            "native_address_space_limit_bytes": if cfg!(target_os = "macos") { Value::Null } else { json!(MAX_PROCESS_MEMORY_BYTES) },
+            "native_address_space_limit_bytes": if cfg!(target_os = "linux") { json!(MAX_PROCESS_MEMORY_BYTES) } else { Value::Null },
+            "native_process_commit_limit_bytes": if cfg!(windows) { json!(MAX_PROCESS_MEMORY_BYTES) } else { Value::Null },
             "event_fuel_budget": EVENT_FUEL_BUDGET,
             "health_fuel_budget": HEALTH_FUEL_BUDGET,
             "event_deadline_ms": EVENT_DEADLINE.as_millis(),

@@ -87,3 +87,32 @@ pub fn clock_context(unix_seconds: i64) -> Result<(String, i32), String> {
     let absolute = offset.unsigned_abs();
     Ok((format!("UTC{sign}{:02}:{:02}", absolute / 3600, absolute % 3600 / 60), offset))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn directory_identity_survives_rename_but_rejects_another_directory() {
+        let unique = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
+        let root = std::env::temp_dir().join(format!("vibapp-file-id-{}-{unique}", std::process::id()));
+        std::fs::create_dir(&root).unwrap();
+        std::fs::create_dir(root.join("staged")).unwrap();
+        std::fs::create_dir(root.join("foreign")).unwrap();
+        let first = open_directory(&root.join("staged")).unwrap();
+        std::fs::rename(root.join("staged"), root.join("active")).unwrap();
+        let active = open_directory(&root.join("active")).unwrap();
+        let foreign = open_directory(&root.join("foreign")).unwrap();
+        assert!(same_directory(&first, &active).unwrap());
+        assert!(!same_directory(&first, &foreign).unwrap());
+        drop((first, active, foreign));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn local_clock_returns_a_bounded_actual_offset() {
+        let (zone, offset) = clock_context(1_700_000_000).unwrap();
+        assert!(zone.starts_with("UTC"));
+        assert!((-86_400..=86_400).contains(&offset));
+        assert!(clock_context(i64::MAX).is_err());
+    }
+}

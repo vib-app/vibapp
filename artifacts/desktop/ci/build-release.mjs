@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, statSync, symlinkSync, cpSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, statSync, symlinkSync, cpSync, renameSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stampInspectorPin, releaseTag } from './release-policy.mjs';
@@ -57,7 +57,13 @@ for (const manifest of [serviceManifest, desktopManifest]) {
 const serviceTarget = resolve('artifacts/runtime-daemon/target-service-1_98');
 run(cargo, ['build', '--locked', '--offline', '--release', '--manifest-path', serviceManifest], { env: { ...baseEnv, CARGO_TARGET_DIR: serviceTarget } });
 const inspector = join(serviceTarget, `release/vibapp-service-runtime${exe}`);
+// Cargo may hard-link its output to deps/. Ship an independent trusted file;
+// the verifier correctly refuses a runtime whose bytes have another write path.
+cpSync(inspector, inspector + '.detached');
+renameSync(inspector + '.detached', inspector);
+if (process.platform === 'linux') run('/usr/bin/strip', ['--strip-unneeded', inspector]);
 if (isMac) run('/usr/bin/codesign', ['--force', '--sign', '-', '--timestamp=none', '--options', 'runtime', '--entitlements', 'artifacts/desktop/packaging/macos/Runtime.entitlements.plist', inspector]);
+if (isWindows) run(cargo, ['test', '--locked', '--offline', '--release', '--manifest-path', serviceManifest, 'windows::tests'], { env: { ...baseEnv, CARGO_TARGET_DIR: serviceTarget } });
 if (statSync(inspector).size > 16 * 1024 * 1024) throw new Error('Inspector exceeds verifier executable budget');
 const component = resolve('artifacts/desktop/runtime-apps/hello/component.wasm');
 const inspectionArgs = ['--inspect-descriptor', '--component', component, '--expected-sha256', sha(component), '--world', 'ui-only-reference'];

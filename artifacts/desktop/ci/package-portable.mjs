@@ -4,6 +4,7 @@ import { join, dirname, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn } from 'node:child_process';
 import { computeDesktopBuildInputs } from '../scripts/desktop-build-inputs.mjs';
+import { packageWindowsInstaller } from './windows-installer.mjs';
 
 const sha = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 const run = (file, args, options = {}) => execFileSync(file, args, { stdio: 'inherit', timeout: 120000, ...options });
@@ -75,9 +76,10 @@ export async function packagePortableClient({ root, platformKey, python, node, r
   const output = join(root, 'generated/client-release');
   mkdirSync(output, { recursive: true });
   let artifactName;
+  let installer = null;
   if (windows) {
-    artifactName = 'VibApp-Windows-x64.zip';
-    run('tar.exe', ['-a', '-cf', join(output, artifactName), '-C', dirname(packageRoot), 'VibApp']);
+    artifactName = 'VibApp-Windows-x64-Setup.exe';
+    installer = packageWindowsInstaller({ root, packageRoot, output: join(output, artifactName) });
   } else {
     artifactName = 'VibApp-Linux-x64.deb';
     const debRoot = join(root, 'generated/client-deb');
@@ -92,6 +94,6 @@ export async function packagePortableClient({ root, platformKey, python, node, r
   const artifact = { name: artifactName, sha256: sha(join(output, artifactName)), size: statSync(join(output, artifactName)).size };
   const manifestName = 'release-manifest-' + platformKey + '.json';
   const manifestPath = join(output, manifestName);
-  writeFileSync(manifestPath, JSON.stringify({ schema_version: 'vibapp.client-release.v1', source_commit: sourceCommit, platform: windows ? 'Windows-x64' : 'Linux-x64', signing: 'unsigned-preview', dependencies: pins, inspector_sha256: sha(inspector), desktop_inputs: receipt, checks: ['packaged-python-imports', 'descriptor-pin', 'launcher-help', 'rust-component-render', 'roomhash-start-stop', ...(!windows ? ['gtk-webkit-window-start'] : [])], artifact }, null, 2) + '\n');
+  writeFileSync(manifestPath, JSON.stringify({ schema_version: 'vibapp.client-release.v1', source_commit: sourceCommit, platform: windows ? 'Windows-x64' : 'Linux-x64', signing: 'unsigned-preview', dependencies: pins, installer, inspector_sha256: sha(inspector), desktop_inputs: receipt, checks: ['packaged-python-imports', 'descriptor-pin', 'launcher-help', 'rust-component-render', 'roomhash-start-stop', ...(!windows ? ['gtk-webkit-window-start'] : [])], artifact }, null, 2) + '\n');
   writeFileSync(join(output, 'SHA256SUMS-' + platformKey), artifact.sha256 + '  ' + artifactName + '\n' + sha(manifestPath) + '  ' + manifestName + '\n');
 }

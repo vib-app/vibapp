@@ -33,7 +33,7 @@ else:
 def owner_controlled(path: Path, info=None, *, private: bool = False, system: bool = False) -> bool:
     if os.name == "nt":
         try:
-            windows_security.verify(path, allow_administrators=system)
+            windows_security.verify(path, allow_administrators=system, private=private)
             return True
         except (OSError, ValueError):
             return False
@@ -55,3 +55,16 @@ def sync_directory(path: Path):
             os.fsync(fd)
         finally:
             os.close(fd)
+
+def system_environment() -> dict[str, str]:
+    """Windows loader needs SystemRoot; obtain it from Win32, not user env."""
+    if os.name != "nt":
+        return {}
+    from ctypes import create_unicode_buffer
+    from ctypes import wintypes as w
+    function = windows_security._api(windows_security.k32, "GetWindowsDirectoryW", w.UINT, w.LPWSTR, w.UINT)
+    buffer = create_unicode_buffer(32768)
+    size = function(buffer, len(buffer))
+    if not size or size >= len(buffer):
+        raise OSError("cannot resolve trusted Windows loader directory")
+    return {"SystemRoot": buffer.value, "WINDIR": buffer.value}

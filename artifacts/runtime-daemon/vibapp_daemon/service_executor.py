@@ -15,7 +15,7 @@ import threading
 import queue
 from pathlib import Path
 from typing import Any
-from .host_storage import owner_controlled, protect
+from .host_storage import owner_controlled, protect, system_environment
 
 
 PROTOCOL_SCHEMA = "vibapp.service-runtime.protocol.experimental-v1"
@@ -263,7 +263,7 @@ class ServiceWorker:
             self.process = subprocess.Popen(
                 arguments,
                 cwd=runtime_root,
-                env={"LANG": "C", "LC_ALL": "C"},
+                env={"LANG": "C", "LC_ALL": "C", **system_environment()},
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
