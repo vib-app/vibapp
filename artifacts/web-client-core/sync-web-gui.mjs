@@ -278,6 +278,7 @@ if (webHtml === sourceHtml || !webHtml.includes(bridgeSpecifier)) {
 }
 await writeFile(join(launcherRoot, 'index.html'), webHtml, 'utf8');
 await copyFile(join(coreRoot, 'web-bridge.js'), join(launcherRoot, 'web-bridge.js'));
+await copyFile(join(coreRoot, 'runtime-cache-worker.js'), join(launcherRoot, 'runtime-cache-worker.js'));
 await copyFile(join(coreRoot, 'app-runtime-worker.js'), join(launcherRoot, 'app-runtime-worker.js'));
 await copyFile(join(coreRoot, 'foreground-session.mjs'), join(launcherRoot, 'foreground-session.mjs'));
 await copyFile(join(coreRoot, 'runtime-integrity.mjs'), join(launcherRoot, 'runtime-integrity.mjs'));

@@ -49,6 +49,14 @@ function safeRelativePath(value, reason) {
   return value;
 }
 
+export function candidateHttpBase(value, digest) {
+  if (!SHA256.test(digest || '') || typeof value !== 'string'
+    || !new RegExp('^https://raw\\.githubusercontent\\.com/vib-app/packages/[0-9a-f]{40}/packages/' + digest + '\\.vibapp-candidate/$').test(value)) {
+    fail('candidate-http-origin');
+  }
+  return value;
+}
+
 function candidateFileDescriptor(value, index) {
   exactKeys(value, ['path', 'sha256', 'sizeBytes'], 'candidate-file-' + index);
   const path = safeRelativePath(value.path, 'candidate-file-path');
@@ -107,7 +115,7 @@ function strictCandidateMagnet(input, packageDigestSha256) {
 function candidateLocator(input) {
   exactKeys(
     input,
-    ['packageDigestSha256', 'infoHash', 'magnetURI', 'files', 'timeoutMs'],
+    ['packageDigestSha256', 'infoHash', 'magnetURI', 'files', 'timeoutMs', 'httpBase', 'signal', 'onProgress'],
     'candidate-locator',
   );
   if (!SHA256.test(input.packageDigestSha256 || '')) fail('candidate-package-digest');
@@ -291,17 +299,25 @@ function torrentIdentity(torrent, expectedInfoHash) {
   return { infoHash, magnetURI: torrent.magnetURI };
 }
 
-function callWithCallback(target, method, args) {
+function callWithCallback(target, method, args, { signal, timeoutMs = 0 } = {}) {
   return new Promise((resolve, reject) => {
-    let settled = false;
+    let settled = false, returned;
+    const onAbort = () => done(new DOMException('Download cancelled', 'AbortError'));
+    const timer = timeoutMs ? setTimeout(() => done(new Error('roomhash-browser:transport-timeout')), timeoutMs) : null;
     const done = (error, value) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer); signal?.removeEventListener('abort', onAbort);
+      if (error && method === 'add' && returned?.infoHash) {
+        try { target.remove(returned.infoHash, () => {}); } catch {}
+      }
       if (error) reject(error);
       else resolve(value);
     };
     try {
-      const returned = target[method](...args, (...callbackArgs) => {
+      signal?.throwIfAborted();
+      signal?.addEventListener('abort', onAbort, { once: true });
+      returned = target[method](...args, (...callbackArgs) => {
         if (callbackArgs[0] instanceof Error) done(callbackArgs[0]);
         else done(null, callbackArgs.at(-1));
       });
@@ -312,7 +328,8 @@ function callWithCallback(target, method, args) {
   });
 }
 
-function waitForDone(torrent, timeoutMs) {
+function waitForDone(torrent, timeoutMs, signal, onProgress) {
+  signal?.throwIfAborted();
   if (torrent?.done === true) return Promise.resolve(torrent);
   if (typeof torrent?.once !== 'function') return Promise.resolve(torrent);
   return new Promise((resolve, reject) => {
@@ -321,10 +338,16 @@ function waitForDone(torrent, timeoutMs) {
       clearTimeout(timeout);
       torrent.removeListener?.('done', onDone);
       torrent.removeListener?.('error', onError);
+      torrent.removeListener?.('download', onDownload);
+      signal?.removeEventListener('abort', onAbort);
       error ? reject(error) : resolve(torrent);
     };
     const onDone = () => finish();
     const onError = error => finish(error || new Error('roomhash-browser:fetch-failed'));
+    const onAbort = () => finish(new DOMException('Download cancelled', 'AbortError'));
+    const onDownload = () => onProgress?.(Math.max(0, Number(torrent.downloaded) || 0));
+    signal?.addEventListener('abort', onAbort, { once: true });
+    torrent.on?.('download', onDownload);
     torrent.once('done', onDone);
     torrent.once('error', onError);
   });
@@ -698,8 +721,14 @@ export function createRoomHashBrowserNode({ transportFactory = defaultTransportF
         ) fail('candidate-store-stage');
         transport = reserveTransfer(locator.totalBytes);
         reserved = true;
-        torrent = await callWithCallback(transport, 'add', [locator.magnetURI, { announce: locator.trackers }]);
-        await waitForDone(torrent, timeoutMs);
+        input.signal?.throwIfAborted();
+        // The pinned GitHub tree has the same <digest>.vibapp-candidate root
+        // as the torrent. WebTorrent appends the torrent's complete file path.
+        const webseed = input.httpBase ? candidateHttpBase(input.httpBase, locator.packageDigestSha256).replace(/[^/]+\/$/, '') : null;
+        torrent = await callWithCallback(transport, 'add', [locator.magnetURI, {
+          announce: locator.trackers, ...(webseed ? { urlList: [webseed] } : {}),
+        }], { signal: input.signal, timeoutMs: Math.min(timeoutMs, 10_000) });
+        await waitForDone(torrent, timeoutMs, input.signal, input.onProgress);
         torrentIdentity(torrent, locator.infoHash);
         await stageCandidateFiles(torrent, locator.files, locator.packageDigestSha256, stage);
         return candidateStoreReceipt(await stage.commit(), locator);
@@ -722,6 +751,43 @@ export function createRoomHashBrowserNode({ transportFactory = defaultTransportF
     } finally {
       if (candidateStoreFetches.get(key) === operation) candidateStoreFetches.delete(key);
     }
+  }
+
+  async function fetchHttpCandidateToStore(input) {
+    if (!candidateStore) fail('candidate-store-unavailable');
+    const locator = candidateLocator(input);
+    const base = candidateHttpBase(input.httpBase, locator.packageDigestSha256);
+    const stage = await candidateStore.begin({ packageDigestSha256: locator.packageDigestSha256,
+      sizeBytes: locator.totalBytes, files: locator.files });
+    if (stage.alreadyCommitted) return stage.commit();
+    let candidateBytes, manifestBytes, received = 0;
+    const signal = AbortSignal.any([input.signal || new AbortController().signal, AbortSignal.timeout(120_000)]);
+    try {
+      for (const descriptor of locator.files) {
+        signal.throwIfAborted();
+        const response = await fetch(base + descriptor.path, { signal, credentials: 'omit', redirect: 'error', cache: 'force-cache' });
+        if (!response.ok || !response.body) fail('http-unavailable');
+        const reader = response.body.getReader();
+        const bytes = new Uint8Array(descriptor.sizeBytes);
+        let offset = 0;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (offset + value.length > bytes.length) fail('http-size-mismatch');
+            bytes.set(value, offset); offset += value.length; received += value.length;
+            input.onProgress?.(received);
+          }
+        } finally { await reader.cancel().catch(() => {}); }
+        if (offset !== bytes.length) fail('http-size-mismatch');
+        if (descriptor.path === 'candidate.json') candidateBytes = bytes;
+        if (descriptor.path === 'package/manifest.json') manifestBytes = bytes;
+        await stage.writeFile({ ...descriptor, bytes });
+      }
+      verifyCandidateDocuments(locator.files, locator.packageDigestSha256, candidateBytes, manifestBytes);
+      signal.throwIfAborted();
+      return candidateStoreReceipt(await stage.commit(), locator);
+    } catch (error) { await stage.abort(); throw error; }
   }
 
   async function stop() {
@@ -760,6 +826,7 @@ export function createRoomHashBrowserNode({ transportFactory = defaultTransportF
     fetchVerifiedPackage,
     fetchVerifiedCandidate,
     fetchVerifiedCandidateToStore,
+    fetchHttpCandidateToStore,
     status,
     stop,
   });

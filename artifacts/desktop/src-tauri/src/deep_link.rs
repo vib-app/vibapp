@@ -59,14 +59,19 @@ pub fn receive(app: &AppHandle, url: &str) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let result = (|| -> Result<Value, String> {
             let data = app_data_dir(&app)?;
+            show_confirmation(&app)?;
+            let cache = app.path().download_dir().ok().map(|path| path.join("VibApp").join("Packages"));
+            // Resolve the current Store version before deciding an installed
+            // application is up to date. Acquiring bytes never grants permissions.
+            let downloaded = local_product::fetch_public_store_app(&data, &id, cache.as_deref())?;
             if let Some(item) = local_product::catalog(&data)?.into_iter().find(|a| a["app_id"] == id)
                 && startup::require_installed_application(&item).is_ok()
+                && item["package_digest_sha256"] == downloaded["record"]["digests"]["package_sha256"]
             {
                 open_known_app_window(&app, &id, true)?;
+                if let Some(window) = app.get_webview_window(INSTALL_WINDOW) { let _ = window.close(); }
                 return Ok(Value::Null);
             }
-            show_confirmation(&app)?;
-            let downloaded = local_product::fetch_public_store_app(&data, &id)?;
             Ok(json!({"request_id":token, "app_id":id, "status":"ready",
                 "record":downloaded["record"], "source_url":downloaded["public_source_url"]}))
         })();

@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import roomHashSync from '../public/roomhash/SYNC.json';
+import guiSync from '../public/launcher/gui-sync-manifest.json';
+import storeCatalog from '../lib/store-catalog.snapshot.json';
+import { useAppDownloads } from './download-panel';
 
 type PreviewFrameProps = {
   appId?: string;
@@ -78,6 +81,7 @@ type BrowserRoomHashNode = {
   status: () => unknown | Promise<unknown>;
   stop: () => unknown | Promise<unknown>;
   fetchVerifiedCandidateToStore: (input: Record<string, unknown>) => unknown | Promise<unknown>;
+  fetchHttpCandidateToStore: (input: Record<string, unknown>) => unknown | Promise<unknown>;
 };
 
 type BrowserNetworkController = {
@@ -502,6 +506,9 @@ async function readPublicCandidateLocator(args: Record<string, unknown>): Promis
     || !paths.has('package/manifest.json')
   ) throw new Error('integrity-failure:public-package-inventory');
 
+  const listing = storeCatalog.apps.find(item => item.app_id === appId && item.package_digest_sha256 === packageDigestSha256);
+  const raw = listing?.torrent_url?.match(/^https:\/\/raw\.githubusercontent\.com\/vib-app\/packages\/([0-9a-f]{40})\/metadata\/[0-9a-f]{64}\.torrent$/);
+  if (!raw) throw new Error('public-package-http-source-unavailable');
   return {
     appId,
     packageDigestSha256,
@@ -514,6 +521,7 @@ async function readPublicCandidateLocator(args: Record<string, unknown>): Promis
       magnetURI: locator.magnet_uri,
       files,
       timeoutMs: 120_000,
+      httpBase: `https://raw.githubusercontent.com/vib-app/packages/${raw[1]}/packages/${packageDigestSha256}.vibapp-candidate/`,
     },
   };
 }
@@ -590,6 +598,7 @@ function isReadyMessage(value: unknown, expected: {
 
 export default function PreviewFrame({ appId, previewOrigin, title, trustedShellOnly = false }: PreviewFrameProps) {
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const { manager: downloads, panel } = useAppDownloads();
 
   useEffect(() => {
     const frame = frameRef.current;
@@ -609,7 +618,9 @@ export default function PreviewFrame({ appId, previewOrigin, title, trustedShell
     // retains the separate preview origin; this mode also denies Workers in CSP.
     const targetOrigin = trustedShellOnly ? location.origin : previewOrigin;
     const broker = new URL(trustedShellOnly ? '/launcher/index.html' : '/preview.html', targetOrigin);
+    if (trustedShellOnly) broker.searchParams.set('v', guiSync.adapter.cache_version);
     if (appId) broker.searchParams.set('app', appId);
+    if (appId && new URLSearchParams(location.search).get('run') === '1') broker.searchParams.set('run', '1');
     broker.hash = 'nonce=' + encodeURIComponent(nonce);
     const channel = new MessageChannel();
     let networkController: Promise<BrowserNetworkController> | null = null;
@@ -683,13 +694,11 @@ export default function PreviewFrame({ appId, previewOrigin, title, trustedShell
     const ensurePublicAppAvailable = async (args: Record<string, unknown>): Promise<Record<string, unknown>> => {
       if (publicPackageFetchInProgress) throw new Error('public-package-fetch-in-progress');
       const settings = await invokeProductBackend('get_network_settings', {}) as Record<string, unknown>;
-      if (settings.p2pEnabled !== true) throw new Error('p2p-disabled-in-settings');
       const locator = await readPublicCandidateLocator(args);
       const controller = await getNetworkController(settings);
-      await controller.node.start(settings);
       publicPackageFetchInProgress = true;
       try {
-        const rawReceipt = await controller.node.fetchVerifiedCandidateToStore(locator.candidate);
+        const rawReceipt = await downloads.current.acquire(locator, controller, settings);
         const receipt = exactObject(
           rawReceipt,
           'committedAtUnixMs,fileCount,packageDigestSha256,schemaVersion,sizeBytes,state',
@@ -862,6 +871,7 @@ export default function PreviewFrame({ appId, previewOrigin, title, trustedShell
         : null)
       .catch(() => null);
     return () => {
+      downloads.current.cancel();
       window.removeEventListener('languagechange', updateDocumentLanguage);
       frame.removeEventListener('load', bind);
       channel.port1.close();
@@ -871,15 +881,15 @@ export default function PreviewFrame({ appId, previewOrigin, title, trustedShell
   }, [appId, previewOrigin, trustedShellOnly]);
 
   return (
-    <iframe
+    <>{trustedShellOnly && panel}<iframe
       {...(trustedShellOnly ? {} : { credentialless: '' })}
       ref={frameRef}
       className="web-client-frame"
       title={title}
       sandbox={trustedShellOnly
-        ? 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-top-navigation-to-custom-protocols'
+        ? 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-top-navigation-to-custom-protocols allow-top-navigation-by-user-activation'
         : 'allow-scripts allow-same-origin allow-forms'}
       referrerPolicy="no-referrer"
-    />
+    /></>
   );
 }

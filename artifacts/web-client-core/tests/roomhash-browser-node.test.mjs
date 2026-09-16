@@ -394,6 +394,7 @@ test('module has no Service Worker, ambient app global, or raw transport export'
   const fake = fakeFactory();
   const node = createRoomHashBrowserNode({ transportFactory: fake.factory });
   assert.deepEqual(Object.keys(node).sort(), [
+    'fetchHttpCandidateToStore',
     'fetchVerifiedCandidate',
     'fetchVerifiedCandidateToStore',
     'fetchVerifiedPackage',
@@ -403,6 +404,57 @@ test('module has no Service Worker, ambient app global, or raw transport export'
     'stop',
   ]);
   assert.equal('client' in node, false);
+});
+
+test('HTTP acquisition works without starting P2P, is bounded and can be cancelled', async () => {
+  const fixture = candidateFixture();
+  const files = fixture.entries.map(({ path, sha256, sizeBytes }) => ({ path, sha256, sizeBytes }));
+  const total = files.reduce((sum, file) => sum + file.sizeBytes, 0);
+  let aborted = 0, committed = 0, starts = 0;
+  const store = { async begin() { return {
+    async writeFile(file) { assert.equal(digest(file.bytes), file.sha256); },
+    async commit() { committed++; return { schemaVersion: 'vibapp.browser-package-cache-receipt.experimental-v1', packageDigestSha256: fixture.packageDigestSha256, state: 'committed', fileCount: files.length, sizeBytes: total, committedAtUnixMs: 1 }; },
+    async abort() { aborted++; },
+  }; } };
+  const node = createRoomHashBrowserNode({ candidateStore: store, transportFactory: () => { starts++; throw new Error('P2P must stay off'); } });
+  const base = `https://raw.githubusercontent.com/vib-app/packages/${'b'.repeat(40)}/packages/${fixture.packageDigestSha256}.vibapp-candidate/`;
+  const input = { packageDigestSha256: fixture.packageDigestSha256, infoHash: INFO_HASH, magnetURI: candidateMagnet(fixture.packageDigestSha256), httpBase: base, files };
+  const originalFetch = globalThis.fetch;
+  try {
+    let progress = 0;
+    globalThis.fetch = async url => new Response(fixture.entries.find(file => url === base + file.path).bytes);
+    await node.fetchHttpCandidateToStore({ ...input, onProgress: n => { progress = n; } });
+    assert.equal(progress, total); assert.equal(starts, 0); assert.equal(committed, 1);
+    const abort = new AbortController(); abort.abort();
+    await assert.rejects(node.fetchHttpCandidateToStore({ ...input, signal: abort.signal }), /abort/i);
+    globalThis.fetch = async () => new Response(new Uint8Array(total + 1));
+    await assert.rejects(node.fetchHttpCandidateToStore(input), /size-mismatch/);
+    await assert.rejects(node.fetchHttpCandidateToStore({ ...input, httpBase: 'https://evil.example/' }), /http-origin/);
+    assert.equal(aborted, 2); assert.equal(committed, 1);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('cancel while waiting for torrent metadata aborts staging and removes the pending torrent', async () => {
+  const fixture = candidateFixture();
+  const abort = new AbortController();
+  let discarded = 0, removed = 0;
+  const node = createRoomHashBrowserNode({
+    candidateStore: { async begin() { return { async writeFile() {}, async commit() {}, async abort() { discarded++; } }; } },
+    transportFactory: async () => ({
+      seed() { throw new Error('Not part of metadata cancellation'); },
+      add() { queueMicrotask(() => abort.abort()); return { infoHash: INFO_HASH }; },
+      remove(hash, callback) { assert.equal(hash, INFO_HASH); removed++; callback(); },
+      destroy(callback) { callback(); },
+    }),
+  });
+  await node.start({ p2pEnabled: true });
+  await assert.rejects(node.fetchVerifiedCandidateToStore({
+    infoHash: INFO_HASH, magnetURI: candidateMagnet(fixture.packageDigestSha256),
+    packageDigestSha256: fixture.packageDigestSha256,
+    files: fixture.entries.map(({ path, sha256, sizeBytes }) => ({ path, sha256, sizeBytes })), signal: abort.signal,
+  }), /cancel/i);
+  assert.equal(discarded, 1); assert.equal(removed, 1); assert.equal(node.status().activeTransfers, 0);
+  await node.stop();
 });
 
 test('sync emits exact adapter and vendored bundle digests for cache binding', async () => {

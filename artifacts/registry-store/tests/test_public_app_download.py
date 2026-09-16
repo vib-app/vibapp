@@ -3,6 +3,8 @@ import copy
 import hashlib
 import io
 import json
+import shutil
+from unittest.mock import patch
 from pathlib import Path
 import sys
 import tempfile
@@ -49,6 +51,30 @@ class PublicDownloadTests(unittest.TestCase):
         result = download.LocalAppStore(self.root / "store").ingest(candidate)
         self.assertEqual(result["record"]["authority"], {"install": "daemon", "publish": "none"})
         self.assertFalse((self.root / "runtime-daemon").exists())
+
+    def test_shared_cache_avoids_archive_download_but_revalidates_private_copy(self):
+        cache = (self.root / 'cache').resolve()
+        package = cache / (self.item['package_digest_sha256'] + '.vibapp-candidate')
+        shutil.copytree(self.root / 'original', package)
+        catalog = json.dumps({'schema_version': 'vibapp.store-catalog.v1', 'apps': [self.item]}).encode()
+        with patch.object(download, 'fetch', return_value=catalog) as fetch:
+            result = download.download_app(self.root / 'store', self.item['app_id'], cache)
+        self.assertEqual(result['download_source'], 'shared-cache')
+        self.assertEqual(fetch.call_count, 1)
+        (package / 'package' / 'component.wasm').write_bytes(b'tampered')
+        with patch.object(download, 'fetch', side_effect=[catalog, self.data]) as fetch:
+            result = download.download_app(self.root / 'store2', self.item['app_id'], cache)
+        self.assertNotIn('download_source', result)
+        self.assertEqual(fetch.call_count, 2)
+
+    def test_shared_cache_symlinks_are_rejected(self):
+        cache = (self.root / 'cache').resolve()
+        package = cache / (self.item['package_digest_sha256'] + '.vibapp-candidate')
+        shutil.copytree(self.root / 'original', package)
+        (package / 'package' / 'escape').symlink_to(self.root / 'original' / 'candidate.json')
+        destination = self.root / 'staged-cache'; destination.mkdir()
+        with self.assertRaises((OSError, download.StoreError)):
+            download.stage_shared_cache(cache, self.item, destination)
 
     def test_missing_duplicate_revoked_and_external_download_are_rejected(self):
         cases = [[], [self.item, self.item]]

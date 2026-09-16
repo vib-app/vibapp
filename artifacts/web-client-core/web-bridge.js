@@ -10,6 +10,7 @@ import {
   verifyRuntimeResult,
 } from './runtime-integrity.mjs';
 import { ForegroundClient } from './foreground-session.mjs';
+import { createBrowserPackageStore } from '../roomhash/browser-package-store.mjs';
 
 const STATE_KEY = 'vibapp.web-launcher.state.v1';
 const LOCALE_KEY = 'vibapp.ui_locale';
@@ -26,7 +27,16 @@ let publicLocatorIndex = { entries: [] };
 let parentStoragePort;
 let foregroundSession = null;
 let foregroundAppId = null;
-addEventListener('pagehide', () => { foregroundSession?.close(); foregroundSession = null; foregroundAppId = null; });
+let launchEpoch = 0;
+let launchAbort = null;
+let cancelBootstrap = null;
+function closeForeground() {
+  launchEpoch++;
+  launchAbort?.abort(); launchAbort = null;
+  cancelBootstrap?.(); cancelBootstrap = null;
+  foregroundSession?.close(); foregroundSession = null; foregroundAppId = null;
+}
+addEventListener('pagehide', closeForeground);
 const parentStorageRequests = new Map();
 const parentProductRequests = new Map();
 
@@ -124,7 +134,7 @@ let parentProductQueueTail = Promise.resolve();
 let parentProductQueueSize = 0;
 function parentProduct(command, args = {}) {
   if (parentProductQueueSize >= 16) return Promise.reject(new Error('产品请求队列已满，请稍后再试。'));
-  const deadline = Date.now() + 80_000;
+  const deadline = Date.now() + (command === 'ensure_public_app_available' ? 600_000 : 80_000);
   parentProductQueueSize++;
   const pending = parentProductQueueTail.then(async () => {
     await parentStorageBinding;
@@ -503,7 +513,11 @@ async function completeNeed(payload) {
 }
 
 async function launchApp(appId) {
-  foregroundSession?.close(); foregroundSession = null; foregroundAppId = null;
+  closeForeground();
+  const epoch = launchEpoch;
+  const abort = new AbortController(); launchAbort = abort;
+  const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(30_000)]);
+  const assertCurrent = () => { signal.throwIfAborted(); if (epoch !== launchEpoch) throw new Error('Web runtime launch cancelled'); };
   const record = allRecords().find(item => item.app.id === appId);
   const binding = record ? browserBindingForRecord(record) : null;
   if (!record || !binding) {
@@ -514,6 +528,35 @@ async function launchApp(appId) {
     throw new Error('This app has no verified public browser runtime. Open it in VibApp.');
   }
   await verifyBrowserPreviewBinding(record, binding);
+  // Public verified files only. The host Service Worker independently rehashes
+  // cache reads; directory handles and private application state stay outside it.
+  if (hostedShellOnly && navigator.serviceWorker && globalThis.caches) {
+    const store = createBrowserPackageStore();
+    try {
+      const cache = await caches.open('vibapp-verified-runtime-v1');
+      for (const descriptor of binding.files) {
+        const bytes = await store.readFile(binding.canonical_package_digest_sha256, 'package/web-runtime/' + descriptor.path.split('/').at(-1));
+        const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), n => n.toString(16).padStart(2, '0')).join('');
+        if (digest !== descriptor.sha256) throw new Error('Runtime cache integrity mismatch');
+        await cache.put(new URL(descriptor.path, location.origin), new Response(bytes, { headers: { 'X-VibApp-Size': String(bytes.byteLength) } }));
+      }
+      const keys = await cache.keys(); let total = 0;
+      for (const key of [...keys].reverse()) {
+        const value = await cache.match(key);
+        total += Number(value?.headers.get('X-VibApp-Size') || 64 * 1024 * 1024);
+        if (total > 256 * 1024 * 1024) await cache.delete(key);
+      }
+      assertCurrent();
+      await navigator.serviceWorker.register('/launcher/runtime-cache-worker.js', { scope: '/launcher/' });
+      await Promise.race([navigator.serviceWorker.ready, new Promise(resolve => setTimeout(resolve, 3_000))]);
+      if (!navigator.serviceWorker.controller) await new Promise(resolve => {
+        const done = () => { clearTimeout(timer); navigator.serviceWorker.removeEventListener('controllerchange', done); resolve(); };
+        const timer = setTimeout(done, 2_000);
+        navigator.serviceWorker.addEventListener('controllerchange', done, { once: true });
+      });
+    } catch { assertCurrent(); /* Private mode can fall back to verified HTTP. */ }
+    finally { await store.close(); }
+  }
   const attestationUrl = new URL(binding.attestation.artifact.path, location.origin);
   if (attestationUrl.origin !== location.origin || !attestationUrl.pathname.startsWith('/launcher/components/')) {
     throw new Error('integrity-failure:attestation-origin');
@@ -524,15 +567,17 @@ async function launchApp(appId) {
     if (fileUrl.origin !== location.origin || !fileUrl.pathname.startsWith('/launcher/components/')) {
       throw new Error('integrity-failure:derivation-file-origin');
     }
-    const response = await fetch(fileUrl, { cache: 'no-store', credentials: 'omit', redirect: 'error' });
+    assertCurrent();
+    const response = await fetch(fileUrl, { signal, cache: 'force-cache', credentials: 'omit', redirect: 'error' });
     if (!response.ok) throw new Error('浏览器派生物不可用。');
     fileValues.set(descriptor.path, await response.arrayBuffer());
   }
   await verifyDerivationFileSet(binding, fileValues);
-  const attestationResponse = await fetch(attestationUrl, { cache: 'no-store', credentials: 'omit', redirect: 'error' });
+  const attestationResponse = await fetch(attestationUrl, { signal, cache: 'force-cache', credentials: 'omit', redirect: 'error' });
   if (!attestationResponse.ok) throw new Error('浏览器派生证明不可用。');
   const attestationBytes = await attestationResponse.arrayBuffer();
   await verifyDerivationAttestation(binding, attestationBytes);
+  assertCurrent();
   const session = 'web-session-' + crypto.randomUUID();
   const request = {
     schema_version: 'vibapp.web-worker-launch.experimental-v1',
@@ -568,15 +613,18 @@ async function launchApp(appId) {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
+      if (epoch === launchEpoch) cancelBootstrap = null;
       channel.port1.close();
       worker.terminate();
       callback();
     };
     const timeout = setTimeout(() => {
       finish(() => reject(new Error('Web Runtime 超时，Worker 已终止。')));
-    }, 4_000);
+    }, 15_000);
+    cancelBootstrap = () => finish(() => reject(new Error('Web runtime launch cancelled')));
     channel.port1.onmessage = event => {
       try {
+        assertCurrent();
         verifyLaunchControl(event.data?.control, request, {
           user_id: control.user_id,
           app_id: control.app_id,
@@ -595,6 +643,7 @@ async function launchApp(appId) {
         const result = verifyRuntimeResult(request, event.data.result);
         foregroundSession = new ForegroundClient({ port: channel.port1, worker, binding: result.runtime_binding, appId });
         settled = true;
+        cancelBootstrap = null;
         clearTimeout(timeout);
         foregroundAppId = appId;
         resolve(result);
@@ -616,9 +665,11 @@ async function launchApp(appId) {
 }
 
 async function invoke(command, args = {}) {
+  if (command === 'close_app_window') { closeForeground(); return { closed: true }; }
   await storageReady;
   await initialize();
   const payload = args.payload || {};
+  if (command === 'ensure_public_app_available') return parentProduct(command, args);
   if (command === 'get_state') {
     const [state, product] = await Promise.all([
       readState(),
@@ -733,7 +784,7 @@ async function invoke(command, args = {}) {
     return foregroundSession.call(command === 'refresh_app_surface' ? 'refresh' : 'action', args);
   }
   if (command === 'close_app_window') {
-    foregroundSession?.close(); foregroundSession = null; foregroundAppId = null;
+    closeForeground();
     return { closed: true, background_authority_changed: false };
   }
   throw new Error('Web GUI 不支持命令：' + command);

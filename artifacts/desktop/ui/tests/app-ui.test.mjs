@@ -1123,7 +1123,15 @@ test("browser package cache is shown as verified cache and never as an installat
   app.install_eligible = true;
   const candidate = ui.renderApps();
   assert.match(candidate, /data-install-app=/);
-  assert.match(candidate, /Download and verify/);
+  assert.match(candidate, /Install privately/);
+  ui.model.data.meta = { runtime_mode: 'browser-wasm' };
+  ui.testWindow.VibAppWebBridge = { invoke() {} };
+  ui.model.storeDetailOpen = true;
+  app.web_runtime_available = true;
+  app.launch_eligible = true;
+  const browser = ui.renderApps();
+  assert.doesNotMatch(browser, /Download and verify|data-install-app=/);
+  assert.match(browser, /data-launch=/);
 });
 
 test("desktop-only browser rows explain the unavailable runtime without offering native controls", () => {

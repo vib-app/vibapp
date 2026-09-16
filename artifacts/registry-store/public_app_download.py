@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import io
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import ssl
@@ -129,6 +130,10 @@ def stage_archive(data: bytes, item: dict, directory: Path) -> Path:
                     target.write(chunk)
                     remaining -= len(chunk)
                 require(not source.read(1), "Oversized archive member")
+    return validate_staged(directory, item)
+
+
+def validate_staged(directory: Path, item: dict) -> Path:
     candidate = directory / "candidate.json"
     validated = _validate_snapshot(candidate, ingested_at="2026-01-01T00:00:00Z")
     require(validated.app_id == item["app_id"] and validated.app_version == item["version"]
@@ -138,11 +143,72 @@ def stage_archive(data: bytes, item: dict, directory: Path) -> Path:
     return candidate
 
 
-def download_app(root: Path, app_id: str) -> dict:
+def stage_shared_cache(cache_root: Path, item: dict, directory: Path) -> Path:
+    """Read public cache into private staging, without following links.
+
+    No cache receipt grants trust. The existing validator and current live Store
+    digest must both accept the private copy. Unsupported platforms use HTTP.
+    """
+    require(os.open in os.supports_dir_fd and hasattr(os, "O_NOFOLLOW"), "Safe shared-cache reader unavailable")
+    require(cache_root.is_absolute(), "Shared cache requires an absolute path")
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_DIRECTORY
+    # Resolve every directory using handles; a swapped parent cannot redirect us.
+    fd = os.open(cache_root.anchor, flags)
+    try:
+        for part in (*cache_root.parts[1:], item["package_digest_sha256"] + ".vibapp-candidate"):
+            next_fd = os.open(part, flags, dir_fd=fd)
+            os.close(fd); fd = next_fd
+        count, total = 0, 0
+
+        def copy_tree(source_fd: int, target: Path, depth: int = 0):
+            nonlocal count, total
+            require(depth <= 8, "Cache nesting limit")
+            with os.scandir(source_fd) as entries:
+                for entry in entries:
+                    count += 1
+                    require(count <= 257 and re.fullmatch(r"[A-Za-z0-9._-]{1,160}", entry.name)
+                            and entry.name not in {".", ".."}, "Unsafe cache layout")
+                    info = entry.stat(follow_symlinks=False)
+                    destination = target / entry.name
+                    if stat.S_ISDIR(info.st_mode):
+                        child = os.open(entry.name, flags, dir_fd=source_fd)
+                        try:
+                            destination.mkdir(mode=0o700)
+                            copy_tree(child, destination, depth + 1)
+                        finally: os.close(child)
+                    else:
+                        require(stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and 0 < info.st_size <= MAX_ZIP, "Unsafe cache file")
+                        total += info.st_size
+                        require(total <= MAX_EXPANDED, "Cache size limit")
+                        file_fd = os.open(entry.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=source_fd)
+                        with os.fdopen(file_fd, "rb") as source, destination.open("xb") as output:
+                            actual = os.fstat(source.fileno())
+                            require(stat.S_ISREG(actual.st_mode) and actual.st_nlink == 1 and actual.st_size == info.st_size, "Cache file changed")
+                            remaining = info.st_size
+                            while remaining:
+                                chunk = source.read(min(65536, remaining))
+                                require(bool(chunk), "Truncated cache")
+                                output.write(chunk); remaining -= len(chunk)
+                            require(not source.read(1), "Cache file grew")
+        copy_tree(fd, directory)
+        return validate_staged(directory, item)
+    finally: os.close(fd)
+
+
+def download_app(root: Path, app_id: str, cache_root: Path | None = None) -> dict:
     deadline = time.monotonic() + 75
     item = select_app(fetch(CATALOG_URL, MAX_CATALOG, deadline), app_id)
-    data = fetch(item["download"]["url"], item["download"]["size_bytes"], deadline, release=True)
     store = LocalAppStore(root)
+    if cache_root:
+        try:
+            with tempfile.TemporaryDirectory(prefix=".public-cache-", dir=store.root) as temporary:
+                result = store.ingest(stage_shared_cache(cache_root, item, Path(temporary)))
+            result["public_source_url"] = item["source_url"]
+            result["download_source"] = "shared-cache"
+            return result
+        except (OSError, ValueError, StoreError):
+            pass  # Partial, tampered, incompatible, or missing cache -> verified HTTP.
+    data = fetch(item["download"]["url"], item["download"]["size_bytes"], deadline, release=True)
     with tempfile.TemporaryDirectory(prefix=".public-download-", dir=store.root) as temporary:
         candidate = stage_archive(data, item, Path(temporary))
         result = store.ingest(candidate)
@@ -154,9 +220,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store-root", required=True, type=Path)
     parser.add_argument("--app-id", required=True)
+    parser.add_argument("--cache-root", type=Path)
     args = parser.parse_args()
     try:
-        result = download_app(args.store_root, args.app_id)
+        result = download_app(args.store_root, args.app_id, args.cache_root)
     except Exception as error:
         # No signed redirect URLs or transport exception details in GUI/logs.
         message = str(error)[:512] if isinstance(error, StoreError) else "Public Store download failed; check your connection and retry."

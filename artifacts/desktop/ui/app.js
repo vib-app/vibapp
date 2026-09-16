@@ -3,6 +3,8 @@
 const NATIVE_RUNTIME_WINDOW_APP_ID = window.__TAURI__?.core?.invoke
   ? new URLSearchParams(window.location?.search || "").get("runtimeApp")
   : null;
+const BROWSER_RUNTIME_APP_ID = !window.__TAURI__?.core?.invoke && new URLSearchParams(window.location?.search || "").get("run") === "1"
+  ? new URLSearchParams(window.location?.search || "").get("app") : null;
 
 let isGlobalComposing = false;
 let lastGlobalCompositionEndTime = 0;
@@ -1782,7 +1784,7 @@ function renderApps() {
         </details>
         <div class="app-actions">
           ${desktopHandoff ? `<a class="primary-button" href="${esc(desktopAppUrl(selected.app_id))}" target="_blank" rel="noopener" data-open-desktop-app="${esc(selected.app_id)}">${icon("play")}${lx("在客户端打开", "Open in VibApp")}</a>` : ""}
-          ${candidate ? `<button class="primary-button" data-install-app="${esc(selected.app_id)}" data-package-digest="${esc(selected.package_digest_sha256)}">${icon("box")}${selected.web_cache_eligible ? lx("下载并校验", "Download and verify") : lx("私有安装", "Install privately")}</button>` : ""}
+          ${candidate && !isWebStore ? `<button class="primary-button" data-install-app="${esc(selected.app_id)}" data-package-digest="${esc(selected.package_digest_sha256)}">${icon("box")}${lx("私有安装", "Install privately")}</button>` : ""}
           ${installedDisabled ? `<button class="primary-button" data-app-action="enable" data-action-app="${esc(selected.app_id)}">${icon("check")}${model.locale === "en-US" ? "Enable app" : "启用应用"}</button>` : ""}
           ${(installed || installedDisabled) && availableUpdate ? `<button class="primary-button" data-app-action="update" data-action-app="${esc(selected.app_id)}" data-package-digest="${esc(availableUpdate.package_digest_sha256)}">${icon("arrow")}${model.locale === "en-US" ? `Update to ${esc(availableUpdate.version)}` : `更新到 ${esc(availableUpdate.version)}`}</button>` : ""}
           ${launchable ? `<button class="primary-button" data-launch="${esc(selected.app_id)}">${icon("play")}${previewOnly ? t("page_apps_open_preview") : t("page_apps_open")}</button>` : ""}
@@ -2040,11 +2042,11 @@ function renderRuntime() {
   const closeLabel = model.runtimeWindowAppId ? lx("关闭窗口", "Close window") : t("page_runtime_back");
   const guestSurfaceClass = runtimeSurfaceIsSingleDisplay(surface) ? " single-display" : "";
   const trusted = runtimeTrustedIdentity(result);
-  const trustedWindowLabel = lx(
+  const trustedWindowLabel = BROWSER_RUNTIME_APP_ID ? `${runtimeIdentity.display_name || result.descriptor?.display_name || "App"} — VibApp` : lx(
     `由 VibApp Client 验证并托管的应用窗口：${trusted.displayName}，${trusted.appId}，版本 ${trusted.version}`,
     `VibApp Client verified application window: ${trusted.displayName}, ${trusted.appId}, version ${trusted.version}`,
   );
-  const trustedIdentity = model.runtimeWindowAppId
+  const trustedIdentity = BROWSER_RUNTIME_APP_ID ? "" : model.runtimeWindowAppId
     ? renderRuntimeTrustStrip(result)
     : `<header>${appIdentityIcon(result.descriptor)}<div><strong>${esc(result.descriptor?.display_name)}</strong><small>${esc(result.descriptor?.id)} · ${esc(result.descriptor?.version)}</small></div><span class="runtime-identity-badges">${publicationBadge(runtimeIdentity)}<span class="compatibility-badge">${lx("Client 托管", "Client hosted")}</span></span></header>`;
   return `<div class="runtime-page${model.runtimeWindowAppId ? " standalone" : ""}">
@@ -2184,6 +2186,7 @@ async function refreshRuntimeSurface() {
   const previous = model.runningApp;
   const binding = previous.runtime_binding;
   const previousSurface = JSON.stringify(previous.surface);
+  let request;
   model.runtimeRefreshInFlight = true;
   try {
     model.runtimeRefreshRequest = call("refresh_app_surface", {
@@ -2197,7 +2200,8 @@ async function refreshRuntimeSurface() {
       route: binding.route,
       eventId: runtimeEventId().replace("desktop-action-", "desktop-refresh-"),
     });
-    const next = await model.runtimeRefreshRequest;
+    request = model.runtimeRefreshRequest;
+    const next = await request;
     if (model.runningApp !== previous) return;
     const accepted = acceptRuntimeActionResult(previous, next);
     const changed = JSON.stringify(accepted.surface) !== previousSurface;
@@ -2213,9 +2217,11 @@ async function refreshRuntimeSurface() {
       render();
     }
   } finally {
-    model.runtimeRefreshInFlight = false;
-    model.runtimeRefreshRequest = null;
-    scheduleRuntimeSurfaceRefresh();
+    if (model.runtimeRefreshRequest === request) {
+      model.runtimeRefreshInFlight = false;
+      model.runtimeRefreshRequest = null;
+      scheduleRuntimeSurfaceRefresh();
+    }
   }
 }
 
@@ -2824,6 +2830,12 @@ document.addEventListener("click", async event => {
     }
   }
   if (closeRuntime && !model.busy) {
+    stopRuntimeSurfaceRefresh();
+    if (BROWSER_RUNTIME_APP_ID) {
+      await call("close_app_window").catch(() => {});
+      window.top.location.href = `/apps/${encodeURIComponent(BROWSER_RUNTIME_APP_ID)}`;
+      return;
+    }
     if (model.runtimeWindowAppId) {
       model.busy = true;
       stopRuntimeSurfaceRefresh();
@@ -2970,6 +2982,14 @@ document.addEventListener("click", async event => {
     }
   }
   if (launch && !model.busy) {
+    if (window.VibAppWebBridge?.invoke && !BROWSER_RUNTIME_APP_ID) {
+      // Synchronous user gesture; every app tab owns its own Worker/session.
+      const anchor = document.createElement("a");
+      anchor.href = `/apps/${encodeURIComponent(launch.dataset.launch)}?run=1`;
+      anchor.target = "_blank"; anchor.rel = "noopener";
+      anchor.click();
+      return;
+    }
     model.busy = true;
     launch.disabled = true;
     launch.innerHTML = `<span class="button-spinner"></span>${t("start_runtime")}`;
@@ -3325,7 +3345,7 @@ async function boot() {
     await pollStoreOpenRequest();
     return;
   }
-  if (model.runtimeWindowAppId) document.body?.classList.add("runtime-host-window");
+  if (model.runtimeWindowAppId || BROWSER_RUNTIME_APP_ID) document.body?.classList.add("runtime-host-window");
   try {
     [model.data, model.modelSettings, model.codeAgentSettings, model.networkSettings, model.networkStatus, model.collaborationStatus] = await Promise.all([
       call("get_state"),
@@ -3335,6 +3355,18 @@ async function boot() {
       call("get_network_status").catch(() => ({ state: "unavailable", foregroundOnly: Boolean(window.VibAppWebBridge?.invoke), activeTransfers: 0, torrents: 0, lastError: null })),
       call("get_collaboration_status").catch(() => ({ state: "unavailable", sessionCount: 0, queuedEvents: 0, sessions: [] })),
     ]);
+    if (BROWSER_RUNTIME_APP_ID) {
+      const selected = (model.data?.apps || []).find(app => app.app_id === BROWSER_RUNTIME_APP_ID);
+      if (!selected || webAppOpenMode(selected) !== "browser") throw new Error(lx("此应用需要本地客户端。", "This app requires the desktop client."));
+      document.title = `${selected.display_name || "App"} — VibApp`;
+      view.innerHTML = `<div class="fatal-state" role="status"><strong>${esc(selected.display_name)}</strong><p>${lx("正在准备应用… 下载进度见右上角。", "Preparing your app… Downloads appear at the top right.")}</p></div>`;
+      await call("ensure_public_app_available", { appId: selected.app_id, packageDigestSha256: selected.package_digest_sha256 });
+      model.runningApp = await call("launch_app", { appId: selected.app_id });
+      model.selectedAppId = selected.app_id;
+      model.route = "runtime"; model.runtimeRefreshActive = runtimeInteractive();
+      render(); scheduleRuntimeSurfaceRefresh();
+      return;
+    }
     if (model.runtimeWindowAppId) {
       const selected = (model.data?.apps || []).find(app => app.app_id === model.runtimeWindowAppId);
       if (!selected?.launch_eligible) throw new Error(lx("这个应用当前不可启动。", "This app is not currently launchable."));
@@ -3378,7 +3410,7 @@ async function boot() {
     }
     render();
   } catch (failure) {
-    view.innerHTML = `<div class="fatal-state"><strong>${t("boot_failed")}</strong><p>${esc(failure)}</p></div>`;
+    view.innerHTML = `<div class="fatal-state"><strong>${t("boot_failed")}</strong><p>${esc(failure)}</p>${BROWSER_RUNTIME_APP_ID ? `<a class="primary-button" target="_top" href="/apps/${encodeURIComponent(BROWSER_RUNTIME_APP_ID)}?run=1">${lx("重试", "Retry")}</a><a class="secondary-button" target="_top" href="/apps/${encodeURIComponent(BROWSER_RUNTIME_APP_ID)}">${t("nav_store")}</a>` : ""}</div>`;
   }
 }
 

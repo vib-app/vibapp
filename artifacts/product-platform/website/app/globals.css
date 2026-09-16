@@ -161,3 +161,15 @@ footer > p { margin: 0; font-size: 13px; }
 @media (prefers-color-scheme: dark) {
   .web-client-host, .web-client-frame { background: #161617; }
 }
+/* Downloads belong to the trusted host, never to a guest application. */
+.app-downloads { position: fixed; top: 18px; right: 20px; z-index: 100; color: var(--foreground, #eee); font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; }
+.downloads-toggle { border: 1px solid #8884; border-radius: 50%; width: 38px; height: 38px; font-size: 22px; background: #222; color: #fff; cursor: pointer; }
+.downloads-popover { width: min(360px, calc(100vw - 40px)); max-height: 80vh; overflow: auto; padding: 22px; margin-top: 10px; background: #232325; color: #f5f5f7; border: 1px solid #7775; border-radius: 20px; box-shadow: 0 16px 50px #0005; }
+.downloads-popover h2 { font-size: 20px; margin: 0 0 20px; }
+.downloads-popover p { margin: 10px 0; color: #c5c5ca; }
+.downloads-popover .download-app-id { overflow-wrap: anywhere; }
+.downloads-popover progress { width: 100%; accent-color: #0a84ff; }
+.downloads-popover button { background: #0a84ff; color: white; border: 0; border-radius: 16px; padding: 8px 14px; margin: 6px 6px 6px 0; cursor: pointer; }
+.downloads-popover details { border-top: 1px solid #7775; padding-top: 12px; margin-top: 16px; }
+.downloads-popover label { display: block; margin: 12px 0; }
+.downloads-popover input { width: 66px; margin-left: 10px; padding: 4px; }

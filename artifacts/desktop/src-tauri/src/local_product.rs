@@ -258,13 +258,19 @@ pub fn ingest(data_dir: &Path, candidate_path: &str) -> Result<Value, String> {
     appstore_command(data_dir, &["ingest", candidate_path])
 }
 
-pub fn fetch_public_store_app(data_dir: &Path, app_id: &str) -> Result<Value, String> {
+pub fn fetch_public_store_app(data_dir: &Path, app_id: &str, shared_cache: Option<&Path>) -> Result<Value, String> {
     if !valid_app_id(app_id) { return Err("Invalid Store app ID".into()); }
     let script = native_platform::resource_file("registry-store/public_app_download.py",
         &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../registry-store/public_app_download.py"))?;
-    let child = Command::new(native_platform::python_executable(false)?)
+    let mut command = Command::new(native_platform::python_executable(false)?);
+    if let Some(cache) = shared_cache {
+        if !cache.is_absolute() { return Err("Shared package cache must be absolute".into()); }
+    }
+    command
         .args(["-I", "-B", "-X", "utf8"]).arg(script).arg("--store-root").arg(store_root(data_dir))
-        .arg("--app-id").arg(app_id)
+        .arg("--app-id").arg(app_id);
+    if let Some(cache) = shared_cache { command.arg("--cache-root").arg(cache); }
+    let child = command
         .env_clear().envs(native_platform::trusted_system_environment()?).env("PATH", native_platform::safe_path()?)
         .env("LANG", "C.UTF-8").env("PYTHONDONTWRITEBYTECODE", "1")
         .stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped())
